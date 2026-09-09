@@ -6,13 +6,25 @@ Build a small GIS web app comparing Mercator and Eckert IV projections through o
 
 The learning process matters as much as the finished app: rebuild hands-on coding fluency, practice debugging, and develop a habit of reading official documentation.
 
-## Planned Stack
+## Current State
+
+Phases 1-3 are complete as of 2026-09-09:
+
+- The frontend renders 177 Natural Earth country features on one responsive SVG map, with a Mercator/Eckert IV blend slider, graticule, world outline, loading/error states, and a toggle for 30 equal-radius geographic circles.
+- Native PostgreSQL/PostGIS stores those countries as MultiPolygon geometries in EPSG:4326. USA and Sudan self-intersections were repaired; all 177 geometries are valid, nonempty, and non-null.
+- A stored generated column calculates WGS 84 ellipsoidal areas. All 177 values are positive and finite. A Berlin point-in-country query returned Germany and demonstrated the GiST spatial index in an execution plan.
+
+The frontend still loads static GeoJSON, not the database. No FastAPI endpoints, pyproj calculations, or Docker configuration exist yet. Database setup was verified interactively; the newly documented scripts have not yet had a complete fresh-database replay.
+
+See the [frontend guide](frontend/README.md) to run the map, the [database guide](database/README.md) for setup and read-only checks, and the [progress log](PROGRESS.md) for verification evidence. The database guide separates fresh setup from checks safe to run on the existing prepared database.
+
+## Stack
 
 - Frontend: React and TypeScript with Vite; D3.js with d3-geo and d3-geo-projection calculates SVG map paths.
-- Backend: Python and FastAPI, serving GeoJSON and computed distortion statistics.
-- Database: PostgreSQL with PostGIS, storing Natural Earth country geometries and precomputed geodesic areas.
-- Spatial tools: ogr2ogr for importing data and pyproj for reprojection in Python.
-- Deployment: Docker Compose for the database and API.
+- Database: native PostgreSQL 18.6 with PostGIS 3.6.2, storing Natural Earth country geometries and generated geodesic areas.
+- Spatial tools: GDAL 3.13.3/ogr2ogr via OSGeo4W for importing data; QGIS installed. Python reprojection with pyproj is planned.
+- Planned backend: Python and FastAPI, serving GeoJSON and computed distortion statistics.
+- Planned deployment: Docker Compose for the database and API.
 
 ## Learning Goals
 
@@ -25,12 +37,16 @@ The learning process matters as much as the finished app: rebuild hands-on codin
 
 ## Build Order
 
-1. Static frontend proof of concept: render Mercator and Eckert IV side by side from a local/static Natural Earth GeoJSON file. No backend yet.
-2. Add a Tissot's indicatrix overlay and a projection morph slider.
-3. Set up PostgreSQL and PostGIS, import Natural Earth data with ogr2ogr, and compute true geodesic country areas.
-4. Build FastAPI endpoints for GeoJSON and distortion statistics, replacing the static frontend data source.
-5. Containerize the database and API with Docker Compose.
-6. Stretch: add a country click/hover panel comparing true and projected areas, plus deployment polish.
+1. **Complete:** static Mercator and Eckert IV maps using local Natural Earth GeoJSON. The original side-by-side view established rendering before the single-map redesign.
+2. **Complete:** finite-circle approximation of Tissot's indicatrix, a projection morph slider, and the single-map educational layout.
+3. **Complete:** native PostgreSQL/PostGIS setup, ogr2ogr import, geometry validation/repair, stored geodesic areas, and a verified spatial-index query.
+4. **Next:** create a least-privilege database role and build FastAPI endpoints for GeoJSON and distortion statistics. Replace the frontend's static source, check exported polygon winding/CRS compatibility with D3, and use pyproj for defined projected-area comparisons.
+5. **Planned:** containerize the database and API with Docker Compose, including initialization/import, persistent storage, and private configuration.
+6. **Stretch:** country click/hover panel comparing ellipsoidal and projected areas, followed by deployment polish.
+
+Before implementing statistics, define the reference area, projection, units, and normalization. D3 uses a sphere while PostGIS geography uses the WGS 84 ellipsoid. The 3-degree circles are finite approximations, the morph is raw-coordinate interpolation, and intermediate blends generally preserve neither angles nor area. Mercator latitude is clamped at approximately +/-85.05 degrees, not geographically clipped. Each blend is fitted independently, so screen area is not directly comparable across slider positions.
+
+Country areas describe this generalized dataset, including database-only repairs, not authoritative national measurements. Phase 4 is not authorized by the documentation update; resume one small tutor-led step after confirmation.
 
 ## Starting Experience
 
