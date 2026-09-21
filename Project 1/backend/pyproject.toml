@@ -1,0 +1,10 @@
+[project]
+name = "projection-lab-backend"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi[standard]==0.141.1",
+    "psycopg[binary]>=3.3.6",
+    "pyproj>=3.7",
+    "shapely>=2.1",
+]

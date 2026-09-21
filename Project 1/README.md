@@ -8,22 +8,24 @@ The learning process matters as much as the finished app: rebuild hands-on codin
 
 ## Current State
 
-Phases 1-3 are complete as of 2026-09-09:
+Phases 1-3 are complete. As of 2026-09-21, Phase 4's local integration and Greenland-only statistics are implemented:
 
 - The frontend renders 177 Natural Earth country features on one responsive SVG map, with a Mercator/Eckert IV blend slider, graticule, world outline, loading/error states, and a toggle for 30 equal-radius geographic circles.
 - Native PostgreSQL/PostGIS stores those countries as MultiPolygon geometries in EPSG:4326. USA and Sudan self-intersections were repaired; all 177 geometries are valid, nonempty, and non-null.
 - A stored generated column calculates WGS 84 ellipsoidal areas. All 177 values are positive and finite. A Berlin point-in-country query returned Germany and demonstrated the GiST spatial index in an execution plan.
 
-The frontend still loads static GeoJSON, not the database. No FastAPI endpoints, pyproj calculations, or Docker configuration exist yet. Database setup was verified interactively; the newly documented scripts have not yet had a complete fresh-database replay.
+The frontend now loads database-backed GeoJSON through FastAPI and a Vite development proxy. A restricted `projection_api` role has verified read access to 177 countries. FastAPI exposes health, count, country GeoJSON, and Greenland area endpoints. The map highlights Greenland and shows ellipsoidal/spherical references and endpoint projection results alongside the morph slider. Intermediate blend areas are not calculated or interpolated.
 
-See the [frontend guide](frontend/README.md) to run the map, the [database guide](database/README.md) for setup and read-only checks, and the [progress log](PROGRESS.md) for verification evidence. The database guide separates fresh setup from checks safe to run on the existing prepared database.
+Calculation scope is deliberately Greenland-only at the learner's request. No generalized country statistics or Docker configuration exists. Database setup was verified interactively, but the scripts have not had a complete fresh-database replay. Production routing and API hardening remain pending.
+
+See the [frontend guide](frontend/README.md) to run the map, the [backend guide](backend/README.md) for endpoints and measurement details, the [database guide](database/README.md) for setup and read-only checks, and the [progress log](PROGRESS.md) for verification evidence. The database guide separates fresh setup from checks safe to run on the existing prepared database.
 
 ## Stack
 
 - Frontend: React and TypeScript with Vite; D3.js with d3-geo and d3-geo-projection calculates SVG map paths.
 - Database: native PostgreSQL 18.6 with PostGIS 3.6.2, storing Natural Earth country geometries and generated geodesic areas.
-- Spatial tools: GDAL 3.13.3/ogr2ogr via OSGeo4W for importing data; QGIS installed. Python reprojection with pyproj is planned.
-- Planned backend: Python and FastAPI, serving GeoJSON and computed distortion statistics.
+- Spatial tools: GDAL 3.13.3/ogr2ogr via OSGeo4W for importing data; QGIS installed. pyproj and Shapely calculate Greenland projection areas and convergence checks.
+- Backend: Python 3.14, FastAPI, and Psycopg; uv manages the virtual environment and locked dependencies. Database passwords remain outside the repository.
 - Planned deployment: Docker Compose for the database and API.
 
 ## Learning Goals
@@ -40,13 +42,15 @@ See the [frontend guide](frontend/README.md) to run the map, the [database guide
 1. **Complete:** static Mercator and Eckert IV maps using local Natural Earth GeoJSON. The original side-by-side view established rendering before the single-map redesign.
 2. **Complete:** finite-circle approximation of Tissot's indicatrix, a projection morph slider, and the single-map educational layout.
 3. **Complete:** native PostgreSQL/PostGIS setup, ogr2ogr import, geometry validation/repair, stored geodesic areas, and a verified spatial-index query.
-4. **Next:** create a least-privilege database role and build FastAPI endpoints for GeoJSON and distortion statistics. Replace the frontend's static source, check exported polygon winding/CRS compatibility with D3, and use pyproj for defined projected-area comparisons.
+4. **Complete for the agreed local Greenland-only scope:** restricted database login, FastAPI GeoJSON, API-backed map, winding/rendering checks, pyproj/Shapely endpoint statistics, and integrated Greenland results. See the progress log for verification and remaining hardening; production readiness and worldwide statistics are not implied.
 5. **Planned:** containerize the database and API with Docker Compose, including initialization/import, persistent storage, and private configuration.
 6. **Stretch:** country click/hover panel comparing ellipsoidal and projected areas, followed by deployment polish.
 
-Before implementing statistics, define the reference area, projection, units, and normalization. D3 uses a sphere while PostGIS geography uses the WGS 84 ellipsoid. The 3-degree circles are finite approximations, the morph is raw-coordinate interpolation, and intermediate blends generally preserve neither angles nor area. Mercator latitude is clamped at approximately +/-85.05 degrees, not geographically clipped. Each blend is fitted independently, so screen area is not directly comparable across slider positions.
+The implemented area ratio is projected square meters divided by spherical reference square meters, using radius 6,371,007.1809 m for both. The stored WGS 84 ellipsoidal area is reported separately. Great-circle boundary densification at 20/10/5 km checks convergence. Greenland's Mercator ratio is approximately 16.5433 and Eckert IV's approximately 1; see the [method and result table](backend/README.md#greenland-method).
 
-Country areas describe this generalized dataset, including database-only repairs, not authoritative national measurements. Phase 4 is not authorized by the documentation update; resume one small tutor-led step after confirmation.
+D3 uses a sphere while PostGIS geography uses the WGS 84 ellipsoid. The 3-degree circles are finite approximations, the morph is raw-coordinate interpolation, and intermediate blends generally preserve neither angles nor area. Mercator latitude is clamped at approximately +/-85.05 degrees, not geographically clipped. Each blend is fitted independently, so screen area is not directly comparable across slider positions. The panel marks only the exact endpoints as current; neither endpoint ratio describes an intermediate blend.
+
+Country areas describe this generalized dataset, including database repairs, not authoritative national measurements. On 2026-09-21 the learner authorized direct frontend integration of Greenland results and documentation/checkpoint updates. This does not authorize broader country calculations or Phase 5 implementation.
 
 ## Starting Experience
 
@@ -61,10 +65,10 @@ Country areas describe this generalized dataset, including database-only repairs
 
 - Work as a step-by-step tutor, not an autonomous implementation agent. The learner writes and runs the code.
 - Do not generate whole files or apply changes unless explicitly authorized. Permission to create these initial notes is not permission to implement the app.
-- Introduce only one small, ordered task at a time. Wait for the learner to implement and verify it before advancing.
+- As requested on 2026-09-21, use larger coherent implementation-and-verification batches and fewer confirmation stops. Wait for verification before advancing to a new batch.
 - Before explaining a new concept, library, or API, link to its specific official documentation page and pause for the learner to skim it.
-- Explain the reasoning and trade-offs before providing a small, focused snippet, such as one function, query, endpoint, or configuration block.
-- When reasonable, offer a hint and let the learner attempt the task before showing code.
+- Explain reasoning and trade-offs, then provide complete implementations for the agreed batch, with exact locations, commands, and checks. The learner now prefers complete code rather than fill-in-the-blanks exercises.
+- Direct edits still require explicit authorization; permission for one batch does not authorize subsequent implementation.
 - Allow time for slow syntax recall and basic mistakes. Encourage independent debugging without withholding needed help.
 - Flag gotchas when relevant to the current step, including coordinate order, CRS consistency, geometry versus geography, and D3 scale/translate behavior.
 - Never ask the learner to paste code into chat. Ask them to reference a workspace file with the VS Code file picker or select relevant lines, and wait until they say it is ready for review.

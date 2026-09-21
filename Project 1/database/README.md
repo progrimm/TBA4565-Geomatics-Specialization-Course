@@ -1,6 +1,6 @@
 # Database Setup and Verification
 
-Phase 3 uses a native Windows PostgreSQL/PostGIS installation. The frontend still reads its static GeoJSON; it does not connect to this database. FastAPI integration is Phase 4, and Docker Compose is Phase 5.
+The native Windows PostgreSQL/PostGIS installation now supplies country geometry and ellipsoidal areas to FastAPI through a restricted role. The browser reads the API, never the database directly. Phase 4 also calculates Greenland-only projection statistics in Python; Docker Compose remains Phase 5.
 
 ## Current State and Evidence
 
@@ -24,7 +24,7 @@ Use **OSGeo4W Shell (cmd.exe)** for the shell commands below. Start it in the re
 
 Authentication uses libpq's [password file](https://www.postgresql.org/docs/current/libpq-pgpass.html) at `%APPDATA%\postgresql\pgpass.conf`, outside the repository. It must be plain text, not a hidden `.conf.txt` file. Store a private entry matching `localhost`, port `5432`, database `projection_lab`, and the setup user `postgres`; escape colons and backslashes in the password as documented. Prefer UTF-8 without a BOM. Never put the password in a command, SQL file, repository note, or chat. Restrict access to this plaintext credential file.
 
-These instructions use `postgres` only for local setup. Create a dedicated least-privilege API role in Phase 4; do not use this administrator account in the application. Adjust the port consistently if your installation differs.
+These instructions use `postgres` only for local setup. The application uses `projection_api`, created and verified by the learner on 2026-09-21 as documented below. Do not use the administrator account in the application. Adjust the port consistently if your installation differs.
 
 Check GDAL and the required drivers:
 
@@ -113,13 +113,84 @@ Expected counts: total 177, missing/empty/invalid 0, populated areas 177, positi
 
 The observed plan used a bounding-box index condition followed by an exact `ST_Covers` filter. Another valid plan, including a sequential scan, may be chosen for a small table. Do not force an index or expect identical timings. `EXPLAIN ANALYZE` executes its statement; all statements in this verification script are read-only.
 
+## 5. API Role and Verification
+
+The following setup was run interactively on 2026-09-21. Do not recreate the already-existing role. Roles are cluster-wide, not confined to one database. On a fresh setup, connect SQL Shell (psql) as the administrator to `projection_lab` and run:
+
+```sql
+CREATE ROLE projection_api
+  LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+```
+
+Set its password with this psql command (no semicolon), entering the secret privately at both prompts:
+
+```text
+\password projection_api
+```
+
+Grant access to the existing table only:
+
+```sql
+GRANT CONNECT ON DATABASE projection_lab TO projection_api;
+GRANT USAGE ON SCHEMA public TO projection_api;
+GRANT SELECT ON TABLE public.countries TO projection_api;
+```
+
+Read-only checks, also safe on the existing setup:
+
+```sql
+SELECT rolname, rolcanlogin, rolsuper, rolcreatedb,
+     rolcreaterole, rolreplication, rolbypassrls
+FROM pg_roles WHERE rolname = 'projection_api';
+
+SELECT
+  has_database_privilege('projection_api', 'projection_lab', 'CONNECT') AS can_connect,
+  has_schema_privilege('projection_api', 'public', 'USAGE') AS can_use_schema,
+  has_table_privilege('projection_api', 'public.countries', 'SELECT') AS can_read,
+  has_table_privilege('projection_api', 'public.countries', 'INSERT,UPDATE,DELETE,TRUNCATE') AS has_table_write_privilege,
+  has_schema_privilege('projection_api', 'public', 'CREATE') AS can_create_in_public;
+```
+
+Observed: login true, all listed administrative flags false; effective privileges `true, true, true, false, false`. The comma-separated table check tests whether any listed privilege is present. These checks include inherited permissions but are not a cluster-wide security audit: default `PUBLIC` rights, such as temporary-table access, have not been broadly revoked. No role ownership, memberships, or global permissions should be changed just to reproduce these checks.
+
+Open a separate SQL Shell session with server `localhost`, database `projection_lab`, port `5432`, user `projection_api`, and the role's private password. Verify:
+
+```sql
+SELECT current_user, current_database(), COUNT(*) AS country_count
+FROM public.countries;
+```
+
+Observed: `projection_api | projection_lab | 177`. For Python, add a specific `localhost:5432:projection_lab:projection_api` credential entry to the existing external password file. Its final field is the password, entered only in that local file. Preserve existing entries, escape colons/backslashes, and put the specific entry before a matching wildcard entry. Do not include credentials in SQL, shell arguments, repository files, or chat. The learner verified the same identity/database/count through Psycopg without a password in Python source.
+
+## 6. GeoJSON Export Checks
+
+These read-only queries were learner-verified as `projection_api`:
+
+```sql
+SELECT admin, adm0_a3, ST_AsGeoJSON(geom)
+FROM public.countries WHERE adm0_a3 = 'DEU';
+
+SELECT ST_IsPolygonCW(geom) AS exterior_cw_holes_ccw, COUNT(*)
+FROM public.countries GROUP BY ST_IsPolygonCW(geom);
+
+SELECT ST_AsGeoJSON(country.*, geom_column => 'geom')
+FROM (
+  SELECT admin, adm0_a3, geodesic_area_m2, geom
+  FROM public.countries WHERE adm0_a3 = 'DEU'
+) AS country;
+```
+
+Germany exported as a MultiPolygon and then a Feature with the three selected properties. All 177 geometries passed the clockwise-exterior/counterclockwise-hole check. This matches D3's convention for small spherical polygons, not RFC 7946's recommended exterior winding; the API preserves it intentionally. Neither export nor inspection modifies stored data.
+
+The [API query](../backend/main.py) casts each Feature's text to `json`, aggregates in country-code order, and wraps the result in a FeatureCollection. The learner's compact SQL check returned `FeatureCollection | 177 | object | Feature`; the empty-array fallback was not separately tested against an empty database. API-backed rendering, including the repaired geometries, was subsequently learner-verified at both projection endpoints and the midpoint.
+
 ## Measurement Limits and Next Work
 
 EPSG:4326 geometry area is planar and measured in square degrees. Casting to geography does not reproject coordinates; `ST_Area(geom::geography)` measures on the WGS 84 spheroid in square meters. Divide by 1,000,000 for square kilometers. Stored generated values are recalculated by PostgreSQL when their geometry changes; never update them directly.
 
-These are ellipsoidal areas of generalized and, for two features, repaired boundaries. They are not surveyed national statistics. D3 uses spherical geometry, so its equal-area projection is not an exact ellipsoidal reference. The database repairs are not yet reflected in the frontend's unchanged static source; Phase 4 will switch rendering to the API's database-backed GeoJSON and check polygon winding and CRS compatibility.
+These are ellipsoidal areas of generalized and, for two features, repaired boundaries. They are not surveyed national statistics. D3 uses spherical geometry, so its equal-area projection is not an exact ellipsoidal reference. The frontend now renders the database's repaired geometries; the original static import source remains unchanged.
 
-Next: a least-privilege database role, FastAPI endpoints, PostGIS GeoJSON export, and a clearly defined distortion metric. QGIS database visualization and a fresh-database script replay remain unverified; neither is claimed as completed.
+Greenland statistics use a separate spherical denominator and pyproj/Shapely; see the [backend measurement method](../backend/README.md#greenland-method). QGIS database visualization, a full privilege audit, and a fresh-database script replay remain unverified. No database mutations were performed by the agent during the 2026-09-21 frontend/documentation update.
 
 ## Official References
 

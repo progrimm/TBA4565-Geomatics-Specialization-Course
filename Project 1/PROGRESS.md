@@ -4,26 +4,29 @@ Project scope and tutoring rules: [README.md](README.md).
 
 ## Current Checkpoint
 
-- Last updated: 2026-09-09.
-- Phase: 3 complete through learner-run database verification; Phase 4 not started.
-- Frontend: React, TypeScript, Vite, d3-geo, and d3-geo-projection. Local Natural Earth 1:110m countries, loading/error state, one morphing SVG map, graticule, world outline, 30 finite geographic circles with a toggle, keyboard-accessible blend slider, and projection explanations.
+- Last updated: 2026-09-21.
+- Phase: 4 local workflow verified for the explicitly agreed Greenland-only statistics scope. This is not a claim of production readiness or worldwide statistics. Phases 1-3 remain complete; Phase 5 is not started.
+- Frontend: React/TypeScript/Vite and D3 render API-backed Natural Earth countries on one morphing SVG map with graticule, world outline, 30 finite geographic circles, and a keyboard-accessible slider. Greenland is highlighted; an independent API request supplies the responsive area comparison panel. Only endpoint projections are marked current; intermediate blends have no calculated area.
 - Native tools: PostgreSQL 18.6, PostGIS 3.6.2, GDAL 3.13.3 via OSGeo4W; QGIS installed, version not recorded.
 - Database: `localhost:5432`, database `projection_lab`, table `public.countries`; 177 MultiPolygon/4326 features, primary key, GiST index, and stored generated `geodesic_area_m2`.
-- Frontend verification: production build and ESLint passed after redesign. Browser checks loaded 177 features and verified one SVG, valid paths at blend values 0, 0.5, and 1, 0/30 circles when toggled, keyboard controls, and no horizontal overflow at 1600, 1024, 768, 390, and 320 pixels.
+- Backend: Python 3.14.7, FastAPI 0.141.1, Psycopg 3.3.6, pyproj, and Shapely; uv manifest/lockfile and ignored local virtual environment. GET endpoints: `/health`, `/countries/count`, `/countries`, `/countries/GRL/areas`.
+- Frontend verification: learner confirmed API loading, 177 features, blend endpoints/midpoint, circles, and API outage/recovery; build/lint passed. After the panel update, agent-run build/lint and Playwright checks passed at 1600, 1024, 768, 390, and 320 pixels, all at blends 0/0.5/1; valid country/Greenland paths, correct active rows, no horizontal overflow, 0/30 circles, independent HTTP 503 and malformed-statistics handling, and no page exceptions. Desktop/mobile screenshots were inspected.
 - Database verification: after USA/Sudan repairs, 177 rows with zero null, empty, or invalid geometries; all 177 areas populated, positive, and finite. Greenland approximately 2,206,644.4394 square kilometers. Berlin returned Germany/DEU; its observed plan used the GiST index.
-- Integration status: frontend still reads the original static GeoJSON; no API, pyproj calculation, or Docker configuration exists.
+- Integration status: browser `/api/*` requests go through Vite to FastAPI on port 8000, then PostGIS. The static GeoJSON remains only as the original import source/asset; it is not a runtime fallback. All 177 database geometries passed `ST_IsPolygonCW`, and repaired geometries now reach the frontend. Export winding is D3-oriented rather than RFC 7946-normalized.
+- Role verification: learner created `projection_api`, set its password privately, granted CONNECT/USAGE/SELECT, verified administrative flags off, no table-level INSERT/UPDATE/DELETE/TRUNCATE or CREATE in public, and a separate login returning `projection_api | projection_lab | 177`. These checks are not an exhaustive privilege audit. Psycopg uses the external password file; no agent inspected credentials.
+- Greenland verification: spherical reference 2,189,750.321 km2; WGS 84 ellipsoidal reference 2,206,644.439 km2; Mercator projected 36,225,613.004 km2 (ratio 16.54326187); Eckert IV projected 2,189,749.778 km2 (ratio 0.99999975). Learner ran the standalone convergence checks; agent verified the live endpoint. Radius 6,371,007.1809 m, great-circle boundary densification 20/10/5 km, final relative changes below 1e-5 for both projections.
 - Reproduction status: [database guide and SQL scripts](database/README.md) recorded with explicit agent-edit authorization. Static checks only for these new artifacts; complete fresh-database replay remains unverified. No live database was changed by the agent.
-- Blockers: none known.
+- Remaining work: generic HTTP 500 handling for database/calculation failures, automated regression tests, production API routing, fresh-database replay, and future connection/configuration hardening. No Docker configuration. Generalized country statistics and intermediate-blend calculations are outside the current agreed scope.
 - Important constraints: finite circles approximate infinitesimal indicatrices; intermediate blends generally preserve neither angles nor area; Mercator latitude is clamped at approximately +/-85.05 degrees. Refitting each blend means screen areas are not on a common scale. D3 uses spherical geometry; PostGIS geography areas use the WGS 84 ellipsoid and generalized boundaries. Database repairs do not modify the static source.
-- Next proposed action: resume tutor mode for Phase 4 after explicit confirmation. Start with official FastAPI documentation and one small backend step; establish a least-privilege database role before application database access. Do not use `postgres` as the API role.
-- Teaching pace: brief React refreshers only; prioritize GIS implementation, without mandatory observation questions.
+- Next proposed action: agree whether to harden the current local API before starting Phase 5. Do not start Docker, additional-country statistics, or a general selection panel without confirmation.
+- Teaching pace: larger coherent implementation/verification batches and complete code requested on 2026-09-21; keep docs-first explanations and learner execution by default. Direct frontend results integration and today's documentation edits were explicitly authorized; this does not authorize the next phase.
 
 ## Phase Tracker
 
 - [x] Phase 1: static Mercator and Eckert IV maps using local Natural Earth GeoJSON.
 - [x] Phase 2: Tissot's indicatrix overlay and projection morph slider.
 - [x] Phase 3: PostGIS setup, Natural Earth import, and geodesic areas (interactive workflow verified; new script replay pending).
-- [ ] Phase 4: FastAPI GeoJSON and distortion statistics endpoints; frontend integration.
+- [x] Phase 4 local milestone: FastAPI GeoJSON, Greenland-only distortion statistics, and frontend integration, verified for the agreed scope. Hardening and broader statistics are not claimed complete.
 - [ ] Phase 5: Docker Compose for database and API.
 - [ ] Phase 6 (stretch): country area comparison panel and deployment polish.
 
@@ -69,6 +72,37 @@ Project scope and tutoring rules: [README.md](README.md).
 - Preparation uses source `ADM0_A3` codes `USA`/`SDN`, verified directly from the GeoJSON, instead of generated row IDs. Guard checks reject unexpected invalid features and incompatible repairs. No destructive reset/import options are provided.
 - Local database-guide links and basic SQL guard/block-structure checks passed. These checks do not execute or fully parse PostgreSQL/PostGIS SQL; a fresh-database replay is still pending. The scripts do not change the status of the already-verified interactive workflow.
 - No live database mutations or frontend behavior changes were made. Phase 4 remains unstarted and requires the learner's go-ahead.
+
+### 2026-09-21: FastAPI, uv, and Restricted Database Access
+
+- Learner created [main.py](backend/main.py) with `/health`, used uv for a virtual environment, verified the interpreter/import, and browser-tested the endpoint. With authorization, the agent recorded dependencies in [pyproject.toml](backend/pyproject.toml) and [uv.lock](backend/uv.lock); `uv sync --locked --dry-run` reported no changes at that stage. Psycopg, pyproj, and Shapely were subsequently added by the learner with uv.
+- Created and checked `projection_api` interactively; set a password with psql `\password`, added the role-specific external password-file entry, and granted database/schema/table access. Separate SQL Shell and Python queries verified the restricted identity and 177 rows. Only the learner performed database mutations.
+- Added and browser-verified `/countries/count`. Learned that synchronous Psycopg belongs in a normal `def` route, dispatched by FastAPI to a thread pool, and that connection context managers close connections even on return.
+
+### 2026-09-21: GeoJSON and Frontend Integration
+
+- Learner verified Germany's geometry export, then its Feature properties (`admin`, `adm0_a3`, `geodesic_area_m2`), all-country winding, and a FeatureCollection summary of `FeatureCollection | 177 | object | Feature`. Winding differs between D3 spherical polygons and RFC 7946; export preserves the already-verified D3 orientation without mutating data.
+- SQL casts `ST_AsGeoJSON` text to JSON before ordered aggregation to avoid quoted Feature strings, and supplies an empty-array fallback. The fallback was not separately tested with an empty table.
+- Implemented `/countries`; corrected a Python multiline SQL string by using triple quotes. Psycopg returns Python objects for PostgreSQL JSON, which FastAPI serializes directly.
+- Changed [App.tsx](frontend/src/App.tsx) to `/api/countries` and configured [vite.config.ts](frontend/vite.config.ts) to proxy to the backend. Learner confirmed HTTP 200/177 features, both endpoints/midpoint including repaired USA/Sudan geometries, circle toggling, API outage/error/recovery, and successful build/lint. This development routing is not production configuration.
+
+### 2026-09-21: Greenland Projection Calculations
+
+- Learner implemented [greenland_areas.py](backend/greenland_areas.py) using pyproj and Shapely. Coordinates are interpreted on a common sphere for Mercator/Eckert IV comparisons; stored WGS 84 ellipsoidal area is reported separately. Great-circle densification includes holes and all polygon parts. In-memory orientation ensures positive signed reference area; the database remains unchanged.
+- Standalone output verified 20/10/5 km refinements. At 5 km the Mercator relative change was `6.4509686e-6`; Eckert IV's was `5.8729288e-7`. Both meet the `1e-5` tolerance, and Eckert IV is within that tolerance of unit area ratio. Corrected the per-projection dictionary lookup so the second projection's first iteration does not access a missing previous value.
+- Refactored top-level computation into `calculate_greenland_areas()` with a main guard and explicit numerical exceptions, then exposed `/countries/GRL/areas`. Learner reported success; agent read the live endpoint and confirmed the values in the checkpoint. No generalized country endpoint was added; the learner explicitly retained Greenland-only scope.
+
+### 2026-09-21: Greenland Panel, Verification, and Documentation
+
+- With direct edit authorization, added independent Greenland statistics loading/error handling, finite-positive payload checks, a highlighted Greenland SVG layer, spherical/ellipsoidal references, and both endpoint areas/ratios. Slider endpoints select the matching row; intermediate blends explicitly have no calculated ratio. No interpolated statistics or additional backend calculations were introduced.
+- Agent ran `npm --prefix "Project 1/frontend" run build` and `npm --prefix "Project 1/frontend" run lint`: both passed; editor diagnostics were clear. Ad hoc Playwright checks against the live API passed all viewports/blends listed above, circle toggles, HTTP 503 isolation, and malformed statistics handling. Temporary desktop/mobile screenshots were visually inspected; these checks are not a committed test suite. The first test attempt hit a PowerShell Unicode-selector encoding issue, corrected in the test command, not the app.
+- Updated root/project/frontend/backend/database READMEs and this progress log, including fresh-setup versus read-only role checks, external secrets, endpoint behavior, Earth models, numerical results, and unverified work. Checked local documentation links. No fresh-database replay, containerization, or live database mutations were performed by the agent.
+
+### 2026-09-21: Projection Lab Simplification
+
+- At the learner's request, rebranded the frontend as Projection Lab, removed the introductory and three explanatory sections, shortened repeated labels, and moved measurement context into a collapsed Method disclosure. Preserved the map, blend slider, keyboard controls, 30 circles, Greenland highlight, all area values, and independent loading/error states. Endpoint ratios are still not interpolated.
+- Consolidated HTTP JSON fetching and Greenland-value validation, made endpoint labels data-driven, formatted JSX/CSS, removed unused styles, centralized palette colors, and updated page metadata. Backend/database code and calculations were unchanged.
+- Build and lint passed; editor diagnostics clear. Ad hoc Playwright checks against the live API passed at widths 1600/1024/768/390/320, verifying distinct valid morph paths at 0/0.5/1, correct endpoint markers, no overflow, keyboard Home/ArrowRight/End, 0/30 circles, Method keyboard interaction, delayed statistics, independent HTTP 503 failures, invalid statistics, and recovery. Desktop/mobile screenshots were inspected. No browser exceptions. This remains a local Greenland-only milestone, not a new phase.
 
 ## Updating Future Checkpoints
 
