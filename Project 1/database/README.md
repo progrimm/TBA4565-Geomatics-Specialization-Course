@@ -1,6 +1,35 @@
 # Database Setup and Verification
 
-The native Windows PostgreSQL/PostGIS installation now supplies country geometry and ellipsoidal areas to FastAPI through a restricted role. The browser reads the API, never the database directly. Phase 4 also calculates Greenland-only projection statistics in Python; Docker Compose remains Phase 5.
+PostgreSQL/PostGIS supplies country geometry and ellipsoidal areas to FastAPI through a restricted role. The browser reads the API, never the database directly. The database can run as a native Windows installation or in Docker Compose. Phase 4 also calculates Greenland-only projection statistics in Python.
+
+## Docker Compose Workflow
+
+The verified local Compose setup uses PostgreSQL 18/PostGIS 3.6, a GDAL one-shot bootstrap image, FastAPI, and an Nginx-served frontend. It publishes the web app at `127.0.0.1:8080`, the API at `127.0.0.1:8000`, and the database at `127.0.0.1:5433`. Container-to-container connections use Compose service names and the internal database port `5432`.
+
+From the repository root, create the private environment file from the example and replace both placeholders with private local development passwords. Do not commit or share `.env`:
+
+```powershell
+Copy-Item "Project 1/.env.example" "Project 1/.env"
+```
+
+Initialize and populate a new container database:
+
+```powershell
+docker compose --env-file "Project 1/.env" -f "Project 1/compose.yaml" up -d db
+docker compose --env-file "Project 1/.env" -f "Project 1/compose.yaml" --profile setup run --build --rm bootstrap
+```
+
+The explicit `setup` profile imports the versioned Natural Earth GeoJSON with `ogr2ogr`, runs `00_enable_postgis.sql` and `01_prepare_countries.sql`, then creates the read-only `projection_api` role using `03_create_api_role.sql`. The bootstrap checks for `public.countries` first and exits rather than overwriting an existing table. It is not run automatically on normal startup. If it fails partway through, inspect the database before retrying; do not run a fresh import blindly.
+
+Start the application after bootstrap succeeds:
+
+```powershell
+docker compose --env-file "Project 1/.env" -f "Project 1/compose.yaml" up -d --build web
+```
+
+Open <http://127.0.0.1:8080>. The Compose named volume preserves database contents when containers stop or are recreated. `docker compose down` retains the volume; `docker compose down -v` deletes it and all database contents. The current container database and API role were verified with 177 valid countries and read-only API privileges. A full independent fresh-volume replay has not been performed.
+
+For the frontend and API details, see the [project guide](../README.md#run-the-map), [backend guide](../backend/README.md#run-in-docker-compose), and [frontend guide](../frontend/README.md#run-the-full-app-in-docker).
 
 ## Current State and Evidence
 

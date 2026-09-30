@@ -16,7 +16,7 @@ uv sync --locked
 
 ## Run Locally
 
-PostgreSQL must be running at `localhost:5432` with database `projection_lab`, table `public.countries`, and the restricted `projection_api` role. See the [database role instructions](../database/README.md#5-api-role-and-verification). Authentication uses the role-specific entry in `%APPDATA%\postgresql\pgpass.conf`. Never embed a password in source or share the password file.
+PostgreSQL must be running with database `projection_lab`, table `public.countries`, and the restricted `projection_api` role. For native development, the API defaults to `localhost:5432`; libpq authentication can use the role-specific entry in `%APPDATA%\postgresql\pgpass.conf`. In Compose, the `api` service receives `DB_HOST=db`, `DB_PORT=5432`, and `DB_PASSWORD` from the ignored `Project 1/.env` file. Never embed a password in source or share the password file. See the [database setup guide](../database/README.md) for both workflows.
 
 From this directory:
 
@@ -28,13 +28,25 @@ Manual environment activation is not required with `uv run`. Open <http://127.0.
 
 In VS Code, select this directory's `.venv/Scripts/python.exe` as the Python interpreter.
 
+## Run in Docker Compose
+
+The API image is built from this directory's Dockerfile using Python 3.14 and the committed `uv.lock`. From the repository root, start it with the database and frontend:
+
+```powershell
+docker compose --env-file "Project 1/.env" -f "Project 1/compose.yaml" up -d --build web
+```
+
+Compose waits for PostGIS to be healthy before starting the API, and the frontend waits for the API health check. The API listens on port 8000 inside the Compose network and is also published locally at <http://127.0.0.1:8000>. For the full bootstrap and end-to-end workflow, see the [Project 1 guide](../README.md#run-the-map).
+
+The connection settings are centralized in [database.py](database.py). Environment variables override the local defaults: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and optional `DB_PASSWORD`. This lets both HTTP endpoints and the Greenland calculation use the same database settings.
+
 ## Endpoints
 
-| GET path | Response |
-| --- | --- |
-| `/health` | `{"status":"ok"}`; process health only, no database check |
-| `/countries/count` | `{"count":177}` from a database query |
-| `/countries` | FeatureCollection with 177 Features; properties `admin`, `adm0_a3`, `geodesic_area_m2` |
+| GET path               | Response                                                                                             |
+| ---------------------- | ---------------------------------------------------------------------------------------------------- |
+| `/health`              | `{"status":"ok"}`; process health only, no database check                                            |
+| `/countries/count`     | `{"count":177}` from a database query                                                                |
+| `/countries`           | FeatureCollection with 177 Features; properties `admin`, `adm0_a3`, `geodesic_area_m2`               |
 | `/countries/GRL/areas` | Greenland spherical/ellipsoidal areas, projection areas/ratios, CRS strings and convergence metadata |
 
 [main.py](main.py) uses synchronous `def` database routes, which FastAPI dispatches through its thread pool. Each request opens a connection with a five-second connection timeout and closes it through a context manager. This timeout is not a query or computation timeout. No connection pool or cache is configured.
@@ -56,12 +68,12 @@ uv run --locked greenland_areas.py
 5. Densify boundaries to maximum segment lengths of 20, 10, and 5 km. Project them using `+proj=merc` and `+proj=eck4`, the same `+R`, meter units, default central meridian zero, and default unit scale. `always_xy=True` preserves longitude/latitude order.
 6. Shapely measures the projected polygons in square meters. For each projection, divide by the spherical reference area. Retain the 5 km result only if the change from 10 km is below `1e-5` (0.001%). Also check positive finite areas, valid geometry, Eckert IV's ratio within `1e-5` of 1, and Mercator's ratio above 1.
 
-| Measurement | Area (square kilometers) | Ratio to spherical area |
-| --- | ---: | ---: |
-| WGS 84 ellipsoid, PostGIS | 2,206,644.439 | Not the ratio denominator |
-| Spherical reference | 2,189,750.321 | 1 |
-| Spherical Mercator | 36,225,613.004 | 16.54326187 |
-| Spherical Eckert IV | 2,189,749.778 | 0.99999975 |
+| Measurement               | Area (square kilometers) |   Ratio to spherical area |
+| ------------------------- | -----------------------: | ------------------------: |
+| WGS 84 ellipsoid, PostGIS |            2,206,644.439 | Not the ratio denominator |
+| Spherical reference       |            2,189,750.321 |                         1 |
+| Spherical Mercator        |           36,225,613.004 |               16.54326187 |
+| Spherical Eckert IV       |            2,189,749.778 |                0.99999975 |
 
 These values were observed from the current generalized Greenland geometry. Final relative area changes (10 km to 5 km) were approximately `6.45097e-6` for Mercator and `5.87293e-7` for Eckert IV. Passing these checks is numerical convergence evidence, not a guarantee of surveyed boundary accuracy or an exhaustive error bound.
 
@@ -77,7 +89,7 @@ These are physical-coordinate projection calculations, not pixel measurements. D
 
 On 2026-09-21 the learner verified the dedicated login, 177-row Python query, all four HTTP endpoints, SQL GeoJSON structure/winding, and frontend API integration. The agent also read the live Greenland response and confirmed the values above. The standalone calculation raises explicit exceptions on failed numerical checks; it has no committed automated test suite yet.
 
-Database failures and calculation exceptions still return generic HTTP 500 responses. Error handling, configuration externalization beyond passwords, connection management, and automated regression coverage remain hardening work. No Docker configuration, production reverse proxy, general country endpoint, or intermediate-blend calculation exists. The database setup scripts still lack a fresh-database replay.
+Database failures and calculation exceptions still return generic HTTP 500 responses. Error handling, connection management, and automated regression coverage remain hardening work. The Compose production frontend uses Nginx for static files and API routing. There is no general country-statistics endpoint or intermediate-blend calculation. A complete independent fresh-volume bootstrap replay remains unverified.
 
 ## Official References
 

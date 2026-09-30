@@ -1,0 +1,83 @@
+services:
+  db:
+    image: postgis/postgis:18-3.6
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: projection_lab
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in Project 1/.env}"
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - projection_db_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  bootstrap:
+    profiles: ["setup"]
+    build:
+      context: ./database/bootstrap
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: projection_lab
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in Project 1/.env}"
+      PROJECTION_API_PASSWORD: "${PROJECTION_API_PASSWORD:?Set PROJECTION_API_PASSWORD in Project 1/.env}"
+    volumes:
+      - ./frontend/public/data/ne_110m_admin_0_countries.geojson:/data/ne_110m_admin_0_countries.geojson:ro
+      - ./database:/database:ro
+
+  api:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: projection_lab
+      DB_USER: projection_api
+      DB_PASSWORD: "${PROJECTION_API_PASSWORD:?Set PROJECTION_API_PASSWORD in Project 1/.env}"
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+  web:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  projection_db_data:

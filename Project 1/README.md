@@ -14,19 +14,19 @@ Phases 1-3 are complete. As of 2026-09-21, Phase 4's local integration and Green
 - Native PostgreSQL/PostGIS stores those countries as MultiPolygon geometries in EPSG:4326. USA and Sudan self-intersections were repaired; all 177 geometries are valid, nonempty, and non-null.
 - A stored generated column calculates WGS 84 ellipsoidal areas. All 177 values are positive and finite. A Berlin point-in-country query returned Germany and demonstrated the GiST spatial index in an execution plan.
 
-The frontend now loads database-backed GeoJSON through FastAPI and a Vite development proxy. A restricted `projection_api` role has verified read access to 177 countries. FastAPI exposes health, count, country GeoJSON, and Greenland area endpoints. The map highlights Greenland and shows ellipsoidal/spherical references and endpoint projection results alongside the morph slider. Intermediate blend areas are not calculated or interpolated.
+The frontend loads database-backed GeoJSON through FastAPI. In native development, Vite proxies `/api` requests to the API. In Docker Compose, Nginx serves the production frontend and proxies those requests to FastAPI. A restricted `projection_api` role has verified read access to 177 countries. FastAPI exposes health, count, country GeoJSON, and Greenland area endpoints. The map highlights Greenland and shows ellipsoidal/spherical references and endpoint projection results alongside the morph slider. Intermediate blend areas are not calculated or interpolated.
 
-Calculation scope is deliberately Greenland-only at the learner's request. No generalized country statistics or Docker configuration exists. Database setup was verified interactively, but the scripts have not had a complete fresh-database replay. Production routing and API hardening remain pending.
+Calculation scope is deliberately Greenland-only. Docker Compose is implemented and locally verified for PostGIS, FastAPI, and the production frontend. An explicit setup-profile bootstrap imports the versioned GeoJSON, prepares geometries and areas, and creates the restricted API role. The bootstrap was verified against the current container database; it refuses to overwrite an existing countries table. This does not establish a complete independent fresh-volume replay or production security hardening.
 
 See the [frontend guide](frontend/README.md) to run the map, the [backend guide](backend/README.md) for endpoints and measurement details, the [database guide](database/README.md) for setup and read-only checks, and the [progress log](PROGRESS.md) for verification evidence. The database guide separates fresh setup from checks safe to run on the existing prepared database.
 
 ## Stack
 
 - Frontend: React and TypeScript with Vite; D3.js with d3-geo and d3-geo-projection calculates SVG map paths.
-- Database: native PostgreSQL 18.6 with PostGIS 3.6.2, storing Natural Earth country geometries and generated geodesic areas.
-- Spatial tools: GDAL 3.13.3/ogr2ogr via OSGeo4W for importing data; QGIS installed. pyproj and Shapely calculate Greenland projection areas and convergence checks.
+- Database: PostgreSQL 18 with PostGIS 3.6, storing Natural Earth country geometries and generated geodesic areas. The database can run natively or in Docker Compose.
+- Spatial tools: GDAL 3.13.3/ogr2ogr for importing data (OSGeo4W locally or the GDAL bootstrap image); QGIS installed. pyproj and Shapely calculate Greenland projection areas and convergence checks.
 - Backend: Python 3.14, FastAPI, and Psycopg; uv manages the virtual environment and locked dependencies. Database passwords remain outside the repository.
-- Planned deployment: Docker Compose for the database and API.
+- Containers: Docker Compose runs PostGIS, FastAPI, and an Nginx frontend; a named volume persists database data.
 
 ## Learning Goals
 
@@ -43,14 +43,14 @@ See the [frontend guide](frontend/README.md) to run the map, the [backend guide]
 2. **Complete:** finite-circle approximation of Tissot's indicatrix, a projection morph slider, and the single-map educational layout.
 3. **Complete:** native PostgreSQL/PostGIS setup, ogr2ogr import, geometry validation/repair, stored geodesic areas, and a verified spatial-index query.
 4. **Complete for the agreed local Greenland-only scope:** restricted database login, FastAPI GeoJSON, API-backed map, winding/rendering checks, pyproj/Shapely endpoint statistics, and integrated Greenland results. See the progress log for verification and remaining hardening; production readiness and worldwide statistics are not implied.
-5. **Planned:** containerize the database and API with Docker Compose, including initialization/import, persistent storage, and private configuration.
+5. **Complete and locally verified:** containerize PostGIS, FastAPI, and the production frontend with Docker Compose, including an explicit guarded data bootstrap, persistent storage, and private local configuration.
 6. **Stretch:** country click/hover panel comparing ellipsoidal and projected areas, followed by deployment polish.
 
 The implemented area ratio is projected square meters divided by spherical reference square meters, using radius 6,371,007.1809 m for both. The stored WGS 84 ellipsoidal area is reported separately. Great-circle boundary densification at 20/10/5 km checks convergence. Greenland's Mercator ratio is approximately 16.5433 and Eckert IV's approximately 1; see the [method and result table](backend/README.md#greenland-method).
 
 D3 uses a sphere while PostGIS geography uses the WGS 84 ellipsoid. The 3-degree circles are finite approximations, the morph is raw-coordinate interpolation, and intermediate blends generally preserve neither angles nor area. Mercator latitude is clamped at approximately +/-85.05 degrees, not geographically clipped. Each blend is fitted independently, so screen area is not directly comparable across slider positions. The panel marks only the exact endpoints as current; neither endpoint ratio describes an intermediate blend.
 
-Country areas describe this generalized dataset, including database repairs, not authoritative national measurements. On 2026-09-21 the learner authorized direct frontend integration of Greenland results and documentation/checkpoint updates. This does not authorize broader country calculations or Phase 5 implementation.
+Country areas describe this generalized dataset, including database repairs, not authoritative national measurements. The learner authorized Greenland-only statistics; broader country calculations remain out of scope.
 
 ## Starting Experience
 
