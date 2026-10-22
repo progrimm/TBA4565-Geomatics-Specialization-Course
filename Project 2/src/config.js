@@ -20,3 +20,14 @@ export const CAMERA_VIEWS = {
     pitch: -45,
   },
 };
+
+/**
+ * 3D Tiles settings. maximumScreenSpaceError (SSE, in pixels) controls when a
+ * tile is refined: higher = fewer, coarser tiles and faster; Cesium default is 16.
+ */
+export const TILESET_SETTINGS = {
+  // Cesium OSM Buildings (ion asset 96188). Licence: ODbL, © OpenStreetMap contributors.
+  buildings: {
+    maximumScreenSpaceError: 16,
+  },
+};
