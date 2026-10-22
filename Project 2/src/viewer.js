@@ -1,5 +1,4 @@
 import { Ion, Viewer } from 'cesium';
-import 'cesium/Build/Cesium/Widgets/widgets.css';
 import { showMessage } from './ui/notify.js';
 
 /**
@@ -27,7 +26,15 @@ export function createViewer(containerId, { terrain }) {
     terrain,
     // Only re-render when something changes: saves CPU/GPU and battery.
     requestRenderMode: true,
+    // Hide built-in widgets replaced by our own panel. Credits and InfoBox stay:
+    // attribution is required by Cesium ion's terms and the data licences.
     animation: false,
     timeline: false,
+    baseLayerPicker: false,
+    geocoder: false,
+    homeButton: false,
+    sceneModePicker: false,
+    navigationHelpButton: false,
+    fullscreenButton: false,
   });
 }

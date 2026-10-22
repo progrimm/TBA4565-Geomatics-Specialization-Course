@@ -108,5 +108,9 @@ public/data/ – small static datasets (GeoJSON)
 - Module 1: done (camera start view, terrain with error handling, notify UI).
 - Module 2: done (Cesium OSM Buildings, ion 96188).
 - Module 3: done (DSB public shelters, EPSG:25832 → WGS84 via scripts/fetch-shelters.js, InfoBox).
-- Module 4 (UI: modern design, layer toggles, camera presets): next.
+- Module 4: UI done (dark glass panel, layer toggles, camera presets, mobile
+  bottom sheet). Camera positions for Nidarosdomen/Bakklandet are estimates
+  and may need tuning.
+- Next: 3DGS showcase (ion 4547222) as an extra view button, then Module 5
+  (README with attributions, deployment).
   (Update this section after each module.)

@@ -13,13 +13,35 @@ export const CESIUM_TOKEN = import.meta.env.VITE_CESIUM_TOKEN;
  */
 export const CAMERA_VIEWS = {
   trondheimCentre: {
+    label: 'Midtbyen',
     longitude: 10.3951,
     latitude: 63.4305,
     height: 1500,
     heading: 0,
     pitch: -45,
   },
+  // Camera ~400 m south of the cathedral (10.3969, 63.4269), looking north.
+  nidarosdomen: {
+    label: 'Nidarosdomen',
+    longitude: 10.3969,
+    latitude: 63.4233,
+    height: 250,
+    heading: 0,
+    pitch: -20,
+  },
+  // Camera west of Gamle Bybro (10.4024, 63.4283), looking south-east over Bakklandet.
+  bakklandet: {
+    label: 'Bakklandet',
+    longitude: 10.3975,
+    latitude: 63.43,
+    height: 200,
+    heading: 128,
+    pitch: -20,
+  },
 };
+
+/** Media query for the mobile layout. Keep in sync with the breakpoint in style.css. */
+export const MOBILE_QUERY = '(max-width: 640px)';
 
 /**
  * 3D Tiles settings. maximumScreenSpaceError (SSE, in pixels) controls when a

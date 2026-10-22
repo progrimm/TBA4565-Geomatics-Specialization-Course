@@ -3,10 +3,45 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Explore Trondheim in 3D: terrain, buildings and public shelters."
+    />
+    <meta name="color-scheme" content="dark" />
     <title>Trondheim 3D</title>
   </head>
   <body>
-    <div id="cesiumContainer"></div>
+    <main id="cesiumContainer" aria-label="3D map of Trondheim"></main>
+
+    <aside class="panel" id="panel" aria-label="Map controls">
+      <header class="panel__header">
+        <h1 class="panel__title">Trondheim <span class="panel__accent">3D</span></h1>
+        <button
+          class="panel__toggle"
+          id="panel-toggle"
+          type="button"
+          aria-expanded="true"
+          aria-controls="panel-body"
+          aria-label="Hide controls"
+        >
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" />
+          </svg>
+        </button>
+      </header>
+
+      <div class="panel__body" id="panel-body">
+        <section aria-labelledby="views-heading">
+          <h2 class="panel__heading" id="views-heading">Views</h2>
+          <div class="views" id="view-buttons"></div>
+        </section>
+        <section aria-labelledby="layers-heading">
+          <h2 class="panel__heading" id="layers-heading">Layers</h2>
+          <ul class="layers" id="layer-toggles"></ul>
+        </section>
+      </div>
+    </aside>
+
     <div id="messages" aria-live="polite"></div>
     <script type="module" src="/src/main.js"></script>
   </body>
