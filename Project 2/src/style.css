@@ -8,3 +8,25 @@ body,
   overflow: hidden;
   font-family: system-ui, sans-serif;
 }
+
+#messages {
+  position: absolute;
+  top: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(90vw, 28rem);
+  pointer-events: none;
+}
+
+.message {
+  margin: 0 0 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  background: rgb(30 30 30 / 85%);
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.message--error {
+  background: rgb(150 30 30 / 90%);
+}

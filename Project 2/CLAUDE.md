@@ -105,5 +105,6 @@ public/data/ – small static datasets (GeoJSON)
 
 - Module 0: setup done (Vite + Cesium 1.146.0, ESLint, Prettier, Vitest,
   CI workflow at repo root `.github/workflows/project2-ci.yml`).
-- Module 1 (basic viewer, terrain, camera): next.
+- Module 1: done (camera start view, terrain with error handling, notify UI).
+- Module 2 (3D buildings): next.
   (Update this section after each module.)
