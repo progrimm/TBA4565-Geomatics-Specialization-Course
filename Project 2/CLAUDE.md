@@ -107,5 +107,6 @@ public/data/ – small static datasets (GeoJSON)
   CI workflow at repo root `.github/workflows/project2-ci.yml`).
 - Module 1: done (camera start view, terrain with error handling, notify UI).
 - Module 2: done (Cesium OSM Buildings, ion 96188).
-- Module 3 (open dataset + click-to-inspect): next.
+- Module 3: done (DSB public shelters, EPSG:25832 → WGS84 via scripts/fetch-shelters.js, InfoBox).
+- Module 4 (UI: modern design, layer toggles, camera presets): next.
   (Update this section after each module.)

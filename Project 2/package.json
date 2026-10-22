@@ -14,7 +14,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "data:shelters": "node scripts/fetch-shelters.js"
   },
   "dependencies": {
     "cesium": "1.146.0"
@@ -23,8 +24,10 @@
     "@eslint/js": "10.0.1",
     "eslint": "10.13.0",
     "eslint-config-prettier": "10.1.8",
+    "fast-xml-parser": "5.11.2",
     "globals": "17.13.0",
     "prettier": "3.9.10",
+    "proj4": "2.22.0",
     "vite": "8.3.5",
     "vite-plugin-static-copy": "4.1.1",
     "vitest": "5.0.5"

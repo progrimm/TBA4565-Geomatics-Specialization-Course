@@ -1,0 +1,149 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [10.3990299, 63.4310289]
+      },
+      "properties": {
+        "romnr": 6870,
+        "plasser": 630,
+        "adresse": "Westermannsveita 4 Tidl. Nordre gate 1"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [10.4159861, 63.3944644]
+      },
+      "properties": {
+        "romnr": 11848,
+        "plasser": 200,
+        "adresse": "Siriusveien 10"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [10.3458111, 63.372677]
+      },
+      "properties": {
+        "romnr": 12325,
+        "plasser": 200,
+        "adresse": "Øvre Flatåsveg 2 A"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [10.3332241, 63.3731916]
+      },
+      "properties": {
+        "romnr": 12330,
+        "plasser": 45,
+        "adresse": "Øvre Flatåsveg 16"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [10.4527231, 63.4115111]
+      },
+      "properties": {
+        "romnr": 12333,
+        "plasser": 280,
+        "adresse": "Gamle Jonsvannsveien 12"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [10.4022946, 63.4320783]
+      },
+      "properties": {
+        "romnr": 20798,
+        "plasser": 650,
+        "adresse": "Kjøpmannsgata 34"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [10.3966156, 63.4334329]
+      },
+      "properties": {
+        "romnr": 30667,
+        "plasser": 220,
+        "adresse": "Olav Tryggvasons gate 28"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [10.4035881, 63.428649]
+      },
+      "properties": {
+        "romnr": 30671,
+        "plasser": 800,
+        "adresse": "Nedre Bakklandet 11 - 41"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [10.3920475, 63.421146]
+      },
+      "properties": {
+        "romnr": 30673,
+        "plasser": 500,
+        "adresse": "Olav Kyrres gate 6 -Revmatismebygget - St. Olavs H"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [10.3808292, 63.3596445]
+      },
+      "properties": {
+        "romnr": 30677,
+        "plasser": 780,
+        "adresse": "Østre Rosten 39 - Rostenhallen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [10.4955293, 63.4368222]
+      },
+      "properties": {
+        "romnr": 30678,
+        "plasser": 513,
+        "adresse": "Hasselbakken 5A og 5 C"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [10.4302052, 63.4377223]
+      },
+      "properties": {
+        "romnr": 48494,
+        "plasser": 450,
+        "adresse": "Mellomveien 5"
+      }
+    }
+  ]
+}
