@@ -84,6 +84,9 @@ public/data/ – small static datasets (GeoJSON)
 - Note: Vite embeds VITE\_ variables in the client bundle, so the token is
   public in production. The production token must be a separate token with
   minimal scopes and restricted to the deployed URL in Cesium ion.
+- Exception (deliberate): the splat asset 4547222 is not in the Asset Depot,
+  so only that asset is requested with Cesium's built-in evaluation token
+  (`CESIUM_EVALUATION_TOKEN` in viewer.js). Everything else uses our token.
 - Never run commands that delete files, force-push or rewrite git history
   without asking.
 

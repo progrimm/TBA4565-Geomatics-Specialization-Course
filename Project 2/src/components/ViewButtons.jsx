@@ -1,16 +1,16 @@
 import { toCameraOptions } from '../utils/camera.js';
-
-const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
+import { flightDuration } from '../utils/motion.js';
 
 /**
  * One button per preset camera view; clicking flies the camera there.
- * @param {{camera?: import('cesium').Camera, views: Record<string, {label: string}>}} props
+ * @param {object} props
+ * @param {import('cesium').Camera} [props.camera]
+ * @param {Record<string, {label: string}>} props.views - CAMERA_VIEWS from config.js.
+ * @param {import('react').ReactNode} [props.children] - extra view buttons (e.g. splat).
  */
-export default function ViewButtons({ camera, views }) {
+export default function ViewButtons({ camera, views, children }) {
   const flyTo = (view) => {
-    // Duration 0 = jump instantly; undefined = Cesium picks a duration from the distance.
-    const duration = window.matchMedia(REDUCED_MOTION).matches ? 0 : undefined;
-    camera.flyTo({ ...toCameraOptions(view), duration });
+    camera.flyTo({ ...toCameraOptions(view), duration: flightDuration() });
   };
 
   return (
@@ -30,6 +30,7 @@ export default function ViewButtons({ camera, views }) {
             {view.label}
           </button>
         ))}
+        {children}
       </div>
     </section>
   );

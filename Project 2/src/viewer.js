@@ -2,6 +2,13 @@ import { Ion, Viewer } from 'cesium';
 import { showMessage } from './state/messages.js';
 
 /**
+ * Cesium's built-in evaluation token, captured before configureIon replaces it.
+ * Only for public assets that cannot be added to our own ion account (the
+ * splat showcase). Cesium shows a "default token" notice in the credits when used.
+ */
+export const CESIUM_EVALUATION_TOKEN = Ion.defaultAccessToken;
+
+/**
  * Set the Cesium ion access token. Must run before any ion asset (terrain,
  * tilesets) is requested, because requests read the token when they start.
  * @param {string | undefined} token - Cesium ion access token.

@@ -136,6 +136,17 @@ body {
   background: var(--surface-hover);
 }
 
+.view-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.view-button__meta {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
 /* ---------- Layer toggles (checkbox styled as switch) ---------- */
 .layers {
   display: grid;

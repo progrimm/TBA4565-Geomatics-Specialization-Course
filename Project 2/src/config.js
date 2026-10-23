@@ -68,3 +68,16 @@ export const SHELTERS = {
     outlineWidth: 2,
   },
 };
+
+/**
+ * 3D Gaussian splat showcase: Microsoft Redmond Campus, USA (Cesium ion asset).
+ * Georeferenced, so the camera flies to the tileset's own bounding sphere.
+ */
+export const SPLAT = {
+  ionAssetId: 4547222,
+  label: '3DGS showcase',
+  location: 'Redmond, USA',
+  tilesetSettings: {
+    maximumScreenSpaceError: 8,
+  },
+};
