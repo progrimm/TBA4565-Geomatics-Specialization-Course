@@ -18,12 +18,16 @@
     "data:shelters": "node scripts/fetch-shelters.js"
   },
   "dependencies": {
-    "cesium": "1.146.0"
+    "cesium": "1.146.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@vitejs/plugin-react": "6.1.2",
     "eslint": "10.13.0",
     "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-react-hooks": "7.1.1",
     "fast-xml-parser": "5.11.2",
     "globals": "17.13.0",
     "prettier": "3.9.10",

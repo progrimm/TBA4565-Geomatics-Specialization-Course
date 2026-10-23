@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 // CesiumJS loads Workers, Assets, Widgets and ThirdParty files at runtime,
@@ -13,6 +14,7 @@ export default defineConfig({
     CESIUM_BASE_URL: JSON.stringify(`./${cesiumBaseUrl}`),
   },
   plugins: [
+    react(),
     viteStaticCopy({
       targets: ['Workers', 'Assets', 'Widgets', 'ThirdParty'].map((dir) => ({
         src: `${cesiumSource}/${dir}`,

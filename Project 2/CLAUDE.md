@@ -32,9 +32,10 @@ Learning goals:
 
 ## Tech stack
 
-- Vite (vanilla JavaScript, ES modules, no framework)
+- Vite + React 19 (JavaScript/JSX, no TypeScript). Plain React with refs,
+  no Resium: Cesium classes are used directly so they stay visible.
 - CesiumJS from npm, version pinned in package.json
-- ESLint + Prettier for code quality
+- ESLint (incl. eslint-plugin-react-hooks) + Prettier for code quality
 - Vitest for unit tests
 - GitHub Actions for CI (lint, test, build)
 - Deployment: static hosting (e.g. GitHub Pages or Netlify), decided in Module 5
@@ -43,18 +44,24 @@ Learning goals:
 ## Project structure
 
 src/
-main.js – entry point, wires everything together only
+main.jsx – entry point: global setup (ion token) and React root only
+App.jsx – composes hooks and components
 config.js – constants: camera views, asset IDs, data URLs
 viewer.js – Viewer creation and global scene settings
-layers/ – one module per data layer (terrain, buildings, splat, ...)
-ui/ – toggles, buttons, info panels
+layers/ – plain-JS Cesium loaders, one per data layer (no React)
+hooks/ – React hooks bridging React and Cesium (viewer lifecycle, layer state)
+components/ – React UI: panel, view buttons, layer toggles, messages
+state/ – small framework-independent stores (messages)
 utils/ – pure helper functions (e.g. coordinate conversion)
-tests/ – Vitest unit tests for utils and data parsing
+scripts/ – Node data-prep scripts (e.g. fetch-shelters.js)
+tests/ – Vitest unit tests for utils, stores and data parsing
 public/data/ – small static datasets (GeoJSON)
 
 ## Code standards
 
-- Small, single-purpose modules and functions. No logic in main.js beyond setup.
+- Small, single-purpose modules and functions. No logic in main.jsx beyond setup.
+- Cesium code lives in layers/ and viewer.js, not in components. Components
+  call those modules; Cesium objects are mutated outside React render.
 - No magic numbers: coordinates, asset IDs and URLs live in config.js.
 - Every async load (tilesets, terrain, data) has error handling. The app must
   keep working and show a user-friendly message if one layer fails.
@@ -111,6 +118,7 @@ public/data/ – small static datasets (GeoJSON)
 - Module 4: UI done (dark glass panel, layer toggles, camera presets, mobile
   bottom sheet). Camera positions for Nidarosdomen/Bakklandet are estimates
   and may need tuning.
+- React refactor: done (hooks/, components/, state/; plain React, no Resium).
 - Next: 3DGS showcase (ion 4547222) as an extra view button, then Module 5
   (README with attributions, deployment).
   (Update this section after each module.)

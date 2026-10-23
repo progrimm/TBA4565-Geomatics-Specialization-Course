@@ -1,5 +1,5 @@
 import { Ion, Viewer } from 'cesium';
-import { showMessage } from './ui/notify.js';
+import { showMessage } from './state/messages.js';
 
 /**
  * Set the Cesium ion access token. Must run before any ion asset (terrain,
@@ -16,13 +16,13 @@ export function configureIon(token) {
 
 /**
  * Create the Cesium Viewer with global scene settings.
- * @param {string} containerId - id of the DOM element to render into.
+ * @param {string | Element} container - DOM element (or its id) to render into.
  * @param {object} options
  * @param {import('cesium').Terrain} options.terrain - terrain to load asynchronously.
  * @returns {Viewer}
  */
-export function createViewer(containerId, { terrain }) {
-  return new Viewer(containerId, {
+export function createViewer(container, { terrain }) {
+  return new Viewer(container, {
     terrain,
     // Only re-render when something changes: saves CPU/GPU and battery.
     requestRenderMode: true,

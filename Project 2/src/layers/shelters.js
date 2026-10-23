@@ -1,6 +1,6 @@
 import { Color, GeoJsonDataSource, HeightReference } from 'cesium';
 import { SHELTERS } from '../config.js';
-import { showMessage } from '../ui/notify.js';
+import { showMessage } from '../state/messages.js';
 import { toDescriptionTable } from '../utils/html.js';
 
 /**
@@ -39,6 +39,8 @@ export async function addShelters(viewer) {
   const hideLoading = showMessage('Loading shelters…');
   try {
     const dataSource = await GeoJsonDataSource.load(SHELTERS.url, { credit: SHELTERS.credit });
+    // The viewer may have been destroyed while loading (e.g. React StrictMode remount).
+    if (viewer.isDestroyed()) return undefined;
     dataSource.entities.values.forEach(styleShelter);
     await viewer.dataSources.add(dataSource);
     return dataSource;

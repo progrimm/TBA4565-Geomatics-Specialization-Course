@@ -1,5 +1,5 @@
 import { Terrain } from 'cesium';
-import { showMessage } from '../ui/notify.js';
+import { showMessage } from '../state/messages.js';
 
 /**
  * Create Cesium World Terrain (ion asset 1) with a loading message and error handling.
