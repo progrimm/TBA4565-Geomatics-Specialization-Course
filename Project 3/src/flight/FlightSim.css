@@ -1,0 +1,159 @@
+/* Same plain, old-school look as the tour panel. */
+.flight-hud {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+  width: 290px;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  border: 2px outset #dcdcdc;
+  background: #f0f0f0;
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.flight-hud-header {
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #808080;
+  font-weight: bold;
+}
+
+.gauge {
+  margin-bottom: 6px;
+}
+
+.gauge-label {
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+}
+
+.gauge-label span:last-child {
+  font-weight: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.gauge-bar {
+  position: relative;
+  height: 12px;
+  border: 2px inset #dcdcdc;
+  background: #fff;
+}
+
+.gauge-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: #000080;
+}
+
+.gauge-bar.centered::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  border-left: 1px solid #808080;
+}
+
+.flight-readout,
+.flight-keys {
+  width: 100%;
+  margin-top: 8px;
+  border-collapse: collapse;
+  border: 1px solid #808080;
+  background: #fff;
+}
+
+.flight-readout th,
+.flight-readout td,
+.flight-keys th,
+.flight-keys td {
+  padding: 2px 6px;
+  border-top: 1px solid #c0c0c0;
+  text-align: left;
+  vertical-align: top;
+}
+
+.flight-readout td {
+  font-variant-numeric: tabular-nums;
+}
+
+.flight-keys th {
+  width: 30%;
+}
+
+.flight-key-pair {
+  display: inline-block;
+  margin-right: 8px;
+  white-space: nowrap;
+}
+
+.flight-keys kbd {
+  display: inline-block;
+  min-width: 14px;
+  padding: 0 3px;
+  border: 2px outset #dcdcdc;
+  background: #e0e0e0;
+  font-family: inherit;
+  font-size: 12px;
+  text-align: center;
+}
+
+.flight-keys kbd.down {
+  border-style: inset;
+  background: #000080;
+  color: #fff;
+}
+
+.flight-warning {
+  margin: 8px 0 0;
+  padding: 2px 6px;
+  border: 1px solid #800000;
+  background: #ffff80;
+  color: #800000;
+  font-weight: bold;
+}
+
+.minimap {
+  position: absolute;
+  right: 10px;
+  bottom: 40px;
+  z-index: 1;
+  width: 260px;
+  height: 260px;
+  border: 2px outset #dcdcdc;
+  background: #f0f0f0;
+}
+
+.minimap-hat-icon {
+  background: none;
+  border: 0;
+}
+
+.minimap-hat {
+  display: block;
+  transform-origin: 50% 50%;
+}
+
+@media (max-width: 600px) {
+  .flight-hud {
+    top: 50px;
+    width: 220px;
+    font-size: 12px;
+  }
+
+  .flight-keys {
+    display: none;
+  }
+
+  .minimap {
+    width: 150px;
+    height: 150px;
+  }
+}

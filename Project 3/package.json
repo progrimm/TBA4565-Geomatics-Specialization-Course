@@ -1,29 +1,30 @@
 {
-  "name": "cesium-globe",
+  "name": "project-3",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.0.0",
   "type": "module",
-  "engines": {
-    "node": ">=24"
-  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "lint": "oxlint",
     "preview": "vite preview",
-    "typecheck": "tsc -b"
+    "generate:model": "node scripts/generate-wizard-model.mjs"
   },
   "dependencies": {
-    "cesium": "1.146.0",
-    "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "cesium": "^1.146.0",
+    "leaflet": "^1.9.4",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
-    "@types/node": "26.6.5",
-    "@types/react": "19.3.0",
-    "@types/react-dom": "19.3.0",
-    "@vitejs/plugin-react": "6.1.2",
-    "typescript": "7.0.2",
-    "vite": "8.3.5",
-    "vite-plugin-cesium": "1.2.23"
+    "@types/leaflet": "^1.9.22",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "oxlint": "^1.88.0",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.4",
+    "vite-plugin-cesium": "^1.2.23"
   }
 }

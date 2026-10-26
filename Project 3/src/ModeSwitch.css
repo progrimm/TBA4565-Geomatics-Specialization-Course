@@ -1,0 +1,54 @@
+.mode-switch {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  transform: translateX(-50%);
+  border: 2px outset #dcdcdc;
+  background: #f0f0f0;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+}
+
+.mode-switch button {
+  padding: 3px 10px;
+  border: 2px outset #dcdcdc;
+  background: #e0e0e0;
+  color: #000;
+  font: inherit;
+  cursor: pointer;
+}
+
+.mode-switch button[aria-selected='true'] {
+  border-style: inset;
+  background: #fff;
+  font-weight: bold;
+}
+
+.mode-switch button:focus-visible {
+  outline: 1px dotted #000;
+  outline-offset: 1px;
+}
+
+.mode-switch-hint {
+  padding: 0 4px;
+  color: #555;
+}
+
+.mode-switch-hint kbd {
+  padding: 0 3px;
+  border: 2px outset #dcdcdc;
+  background: #e0e0e0;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+@media (max-width: 600px) {
+  .mode-switch-hint {
+    display: none;
+  }
+}
