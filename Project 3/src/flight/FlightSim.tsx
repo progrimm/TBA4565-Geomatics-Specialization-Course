@@ -10,7 +10,8 @@ import {
   Transforms,
   type Viewer,
 } from 'cesium'
-import { type ReactNode, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { AttitudeIndicator, HeadingTape, ThrottleLever } from './Instruments'
 import Minimap from './Minimap'
 import {
   FEET_PER_METER,
@@ -25,10 +26,10 @@ import './FlightSim.css'
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/wizard-on-broom.glb`
 const MODEL_SCALE = 3
-const CHASE_RANGE = 45
+const CHASE_RANGE = 24
 const CHASE_PITCH = CesiumMath.toRadians(-12)
 const GROUND_CLEARANCE = 3
-const HUD_INTERVAL_MS = 100
+const HUD_INTERVAL_MS = 33
 const GROUND_SAMPLE_INTERVAL_MS = 250
 // Deepest the broom can sink into terrain between two ground samples (≈ 35 m
 // at full speed in a steep dive). Anything deeper is a coarse tile, not ground.
@@ -135,6 +136,9 @@ function FlightSim({ viewer }: { viewer: Viewer }) {
           loaded.destroy()
           return
         }
+        // The dynamic environment map reflects the dark ground below as
+        // blotches on the broad cloth surfaces, so use plain sun lighting.
+        loaded.environmentMapManager.enabled = false
         model = scene.primitives.add(loaded)
       })
       .catch((error) => console.error('Failed to load wizard model', error))
@@ -219,59 +223,55 @@ function FlightSim({ viewer }: { viewer: Viewer }) {
   const altitudeFt = (flight.height - GEOID_SEPARATION) * FEET_PER_METER
   const isDown = (code: string) => pressed.includes(code)
 
+  const airspeedKt = Math.round(flight.speed * KNOTS_PER_MPS)
+  const aboveGroundFt =
+    aboveGround === undefined ? undefined : Math.round(aboveGround * FEET_PER_METER)
+
   return (
     <>
-      <aside className="flight-hud" aria-label="Flight instruments">
-        <header className="flight-hud-header">Broom flight simulator</header>
+      <HeadingTape heading={headingDeg} />
 
-        <Gauge label="Throttle" value={`${Math.round(flight.throttle * 100)} %`}>
-          <div className="gauge-bar">
-            <div className="gauge-fill" style={{ width: `${flight.throttle * 100}%` }} />
+      <section className="cockpit" aria-label="Flight instruments">
+        <ThrottleLever value={flight.throttle} />
+
+        <div className="readout">
+          <span className="instrument-label">Airspeed</span>
+          <span className="instrument-value">{airspeedKt}</span>
+          <span className="instrument-unit">knots</span>
+        </div>
+
+        <div className="adi-wrap">
+          <AttitudeIndicator pitch={pitchDeg} roll={rollDeg} />
+          {groundContact && (
+            <p className="terrain-alert" role="alert">
+              Terrain. Pull up
+            </p>
+          )}
+          <div className="attitude-values">
+            <span>Pitch {pitchDeg.toFixed(0)}°</span>
+            <span>Roll {rollDeg.toFixed(0)}°</span>
           </div>
-        </Gauge>
-        <Gauge label="Pitch" value={`${pitchDeg.toFixed(0)}°`}>
-          <CenteredBar value={pitchDeg / 60} />
-        </Gauge>
-        <Gauge label="Roll" value={`${rollDeg.toFixed(0)}°`}>
-          <CenteredBar value={rollDeg / 75} />
-        </Gauge>
+        </div>
 
-        <table className="flight-readout">
-          <tbody>
-            <tr>
-              <th>Airspeed</th>
-              <td>{Math.round(flight.speed * KNOTS_PER_MPS)} kt</td>
-            </tr>
-            <tr>
-              <th>Altitude</th>
-              <td>{Math.round(altitudeFt).toLocaleString('en-US')} ft MSL</td>
-            </tr>
-            <tr>
-              <th>Above ground</th>
-              <td>
-                {aboveGround === undefined
-                  ? '—'
-                  : `${Math.round(aboveGround * FEET_PER_METER).toLocaleString('en-US')} ft`}
-              </td>
-            </tr>
-            <tr>
-              <th>Heading</th>
-              <td>{String(Math.round(headingDeg) % 360).padStart(3, '0')}°</td>
-            </tr>
-          </tbody>
-        </table>
+        <div className="readout">
+          <span className="instrument-label">Altitude</span>
+          {/* No thousands separator: in the monospaced face a comma reads as a gap. */}
+          <span className="instrument-value">{Math.round(altitudeFt)}</span>
+          <span className="instrument-unit">
+            ft MSL,{' '}
+            {aboveGroundFt === undefined
+              ? 'ground loading'
+              : `${aboveGroundFt.toLocaleString('en-US')} ft above ground`}
+          </span>
+        </div>
 
-        {groundContact && <p className="flight-warning">GROUND! Pull up (↓)</p>}
-
-        <table className="flight-keys">
-          <tbody>
-            <KeyRow label="Throttle" keys={[['KeyW', 'W', 'up'], ['KeyS', 'S', 'down']]} isDown={isDown} />
-            <KeyRow label="Pitch" keys={[['ArrowDown', '↓', 'nose up'], ['ArrowUp', '↑', 'nose down']]} isDown={isDown} />
-            <KeyRow label="Roll" keys={[['ArrowLeft', '←', 'left'], ['ArrowRight', '→', 'right']]} isDown={isDown} />
-            <KeyRow label="Reset" keys={[['KeyR', 'R', 'restart']]} isDown={isDown} />
-          </tbody>
-        </table>
-      </aside>
+        <dl className="key-legend">
+          <KeyGroup label="Throttle" keys={[['KeyW', 'W'], ['KeyS', 'S']]} isDown={isDown} />
+          <KeyGroup label="Pitch" keys={[['ArrowDown', '↓'], ['ArrowUp', '↑']]} isDown={isDown} />
+          <KeyGroup label="Roll" keys={[['ArrowLeft', '←'], ['ArrowRight', '→']]} isDown={isDown} />
+          <KeyGroup label="Restart" keys={[['KeyR', 'R']]} isDown={isDown} />
+        </dl>
+      </section>
 
       <Minimap
         latitude={CesiumMath.toDegrees(flight.latitude)}
@@ -283,54 +283,26 @@ function FlightSim({ viewer }: { viewer: Viewer }) {
   )
 }
 
-function Gauge({ label, value, children }: { label: string; value: string; children: ReactNode }) {
-  return (
-    <div className="gauge">
-      <div className="gauge-label">
-        <span>{label}</span>
-        <span>{value}</span>
-      </div>
-      {children}
-    </div>
-  )
-}
-
-/** Bar centered on zero; value in -1 … 1. */
-function CenteredBar({ value }: { value: number }) {
-  const clamped = Math.max(-1, Math.min(1, value))
-  return (
-    <div className="gauge-bar centered">
-      <div
-        className="gauge-fill"
-        style={{
-          left: clamped < 0 ? `${50 + clamped * 50}%` : '50%',
-          width: `${Math.abs(clamped) * 50}%`,
-        }}
-      />
-    </div>
-  )
-}
-
-function KeyRow({
+function KeyGroup({
   label,
   keys,
   isDown,
 }: {
   label: string
-  keys: [code: string, key: string, action: string][]
+  keys: [code: string, key: string][]
   isDown: (code: string) => boolean
 }) {
   return (
-    <tr>
-      <th>{label}</th>
-      <td>
-        {keys.map(([code, key, action]) => (
-          <span key={code} className="flight-key-pair">
-            <kbd className={isDown(code) ? 'down' : undefined}>{key}</kbd> {action}
-          </span>
+    <div className="key-group">
+      <dt>{label}</dt>
+      <dd>
+        {keys.map(([code, key]) => (
+          <kbd key={code} className={isDown(code) ? 'down' : undefined}>
+            {key}
+          </kbd>
         ))}
-      </td>
-    </tr>
+      </dd>
+    </div>
   )
 }
 
