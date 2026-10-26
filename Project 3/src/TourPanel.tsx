@@ -1,16 +1,15 @@
 import type { Landmark } from './landmarks'
+import type { TourPosition } from './tourPosition'
 import './TourPanel.css'
 
 interface TourPanelProps {
   landmarks: Landmark[]
-  selectedIndex: number
-  onSelect: (index: number) => void
+  position: TourPosition
 }
 
-function TourPanel({ landmarks, selectedIndex, onSelect }: TourPanelProps) {
-  const landmark = landmarks[selectedIndex]
+function TourPanel({ landmarks, position }: TourPanelProps) {
+  const { index: selectedIndex, landmark, next, previous, select } = position
   const count = landmarks.length
-  const goTo = (index: number) => onSelect((index + count) % count)
 
   return (
     <aside className="tour-panel" aria-label="Lillehammer landmark tour">
@@ -36,10 +35,10 @@ function TourPanel({ landmarks, selectedIndex, onSelect }: TourPanelProps) {
       </article>
 
       <nav className="tour-nav">
-        <button type="button" onClick={() => goTo(selectedIndex - 1)}>
+        <button type="button" onClick={previous}>
           &lt;&lt; Previous
         </button>
-        <button type="button" onClick={() => goTo(selectedIndex + 1)}>
+        <button type="button" onClick={next}>
           Next &gt;&gt;
         </button>
       </nav>
@@ -50,7 +49,7 @@ function TourPanel({ landmarks, selectedIndex, onSelect }: TourPanelProps) {
             <button
               type="button"
               aria-current={index === selectedIndex ? 'step' : undefined}
-              onClick={() => onSelect(index)}
+              onClick={() => select(item.id)}
             >
               {item.name}
             </button>

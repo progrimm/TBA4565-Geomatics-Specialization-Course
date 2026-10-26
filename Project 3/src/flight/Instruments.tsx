@@ -103,8 +103,7 @@ export function HeadingTape({ heading }: { heading: number }) {
 }
 
 /** Vertical throttle lever. */
-export function ThrottleLever({ value }: { value: number }) {
-  const percent = Math.round(value * 100)
+export function ThrottleLever({ percent }: { percent: number }) {
   return (
     <div className="throttle" role="meter" aria-label="Throttle" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
       <div className="throttle-track">

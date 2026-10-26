@@ -12,6 +12,32 @@ An interactive React/TypeScript map explores Mercator and Eckert IV projection d
 - [Backend setup, endpoints, and Greenland calculations](Project%201/backend/README.md)
 - [Database setup, SQL scripts, and verification](Project%201/database/README.md)
 
+## Project 2: Trondheim 3D
+
+A CesiumJS + React web app for exploring Trondheim in 3D. It shows terrain, OpenStreetMap buildings and DSB public shelters that you can click to inspect. It also has a Gaussian splat showcase view. CI runs lint, format check, tests and build.
+
+- [Setup, scripts, data, and attributions](Project%202/README.md)
+
+```powershell
+Copy-Item "Project 2/.env.example" "Project 2/.env"   # then add your Cesium ion token
+npm --prefix "Project 2" ci
+npm --prefix "Project 2" run dev
+```
+
+## Project 3: Cesium Globe
+
+A CesiumJS globe built with Vite, React and TypeScript. It opens on Lillehammer with Cesium World Terrain. The project is at an early stage.
+
+- [Setup, structure, and attribution](Project%203/README.md)
+
+```powershell
+Copy-Item "Project 3/.env.example" "Project 3/.env"   # then add your Cesium ion token
+npm --prefix "Project 3" ci
+npm --prefix "Project 3" run dev
+```
+
+The rest of this README covers Project 1.
+
 ## Run the Map
 
 ### Docker Compose

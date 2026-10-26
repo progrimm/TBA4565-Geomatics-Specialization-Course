@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import FlightSim from './flight/FlightSim'
 import ModeSwitch, { type Mode } from './ModeSwitch'
 import Tour from './Tour'
+import { useTourPosition } from './tourPosition'
 
 Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ION_ACCESS_TOKEN ?? ''
 
@@ -12,7 +13,8 @@ function App() {
   const containerRef = useRef<HTMLDivElement>(null)
   const [viewer, setViewer] = useState<Viewer | null>(null)
   const [mode, setMode] = useState<Mode>('tour')
-  const [selectedIndex, setSelectedIndex] = useState(0)
+  // Held here so the tour resumes where it was after a flight.
+  const tour = useTourPosition()
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -65,7 +67,7 @@ function App() {
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
       <ModeSwitch mode={mode} onChange={setMode} />
       {viewer && mode === 'tour' && (
-        <Tour viewer={viewer} selectedIndex={selectedIndex} onSelect={setSelectedIndex} />
+        <Tour viewer={viewer} position={tour} />
       )}
       {viewer && mode === 'flight' && <FlightSim viewer={viewer} />}
     </div>

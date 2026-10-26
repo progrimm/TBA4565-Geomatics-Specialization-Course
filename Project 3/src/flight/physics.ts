@@ -29,12 +29,11 @@ const DEG = Math.PI / 180
 
 // Geoid separation around Lillehammer–Oslo (≈ 38–40 m) used to convert
 // between ellipsoidal heights and altitude above mean sea level.
-export const GEOID_SEPARATION = 39.4
-export const FEET_PER_METER = 3.28084
-export const KNOTS_PER_MPS = 1.94384
+const GEOID_SEPARATION = 39.4
+const METERS_PER_FOOT = 0.3048
 
-export const MIN_SPEED = 25
-export const MAX_SPEED = 140
+const MIN_SPEED = 25
+const MAX_SPEED = 140
 
 const PITCH_RATE = 35 * DEG
 const ROLL_RATE = 70 * DEG
@@ -44,6 +43,24 @@ const MAX_ROLL = 75 * DEG
 
 const LILLEHAMMER = { longitude: 10.4641 * DEG, latitude: 61.1151 * DEG }
 const OSLO = { longitude: 10.7522 * DEG, latitude: 59.9139 * DEG }
+
+/** Altitude above mean sea level, in meters, of an ellipsoidal height. */
+export function altitudeMsl(height: number) {
+  return height - GEOID_SEPARATION
+}
+
+/** Great-circle (haversine) distance in meters between a and b. */
+export function distance(
+  from: { longitude: number; latitude: number },
+  to: { longitude: number; latitude: number },
+) {
+  const dLat = to.latitude - from.latitude
+  const dLon = to.longitude - from.longitude
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(from.latitude) * Math.cos(to.latitude) * Math.sin(dLon / 2) ** 2
+  return 2 * EARTH_RADIUS * Math.asin(Math.sqrt(a))
+}
 
 /** Initial great-circle bearing from a to b. */
 export function bearing(
@@ -62,7 +79,7 @@ export function bearing(
 export function initialFlightState(): FlightState {
   return {
     ...LILLEHAMMER,
-    height: 2000 / FEET_PER_METER + GEOID_SEPARATION,
+    height: 2000 * METERS_PER_FOOT + GEOID_SEPARATION,
     heading: bearing(LILLEHAMMER, OSLO),
     pitch: 0,
     roll: 0,

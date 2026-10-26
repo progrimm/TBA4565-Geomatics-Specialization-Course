@@ -14,6 +14,7 @@ import {
 import { useEffect } from 'react'
 import { landmarks } from './landmarks'
 import TourPanel from './TourPanel'
+import type { TourPosition } from './tourPosition'
 
 // Every landmark gets a blue pin; the selected one is drawn larger.
 const MARKER_COLOR = Color.fromCssColorString('#1e6fd9')
@@ -25,11 +26,12 @@ function landmarkPosition(index: number) {
 
 interface TourProps {
   viewer: Viewer
-  selectedIndex: number
-  onSelect: (index: number) => void
+  position: TourPosition
 }
 
-function Tour({ viewer, selectedIndex, onSelect }: TourProps) {
+function Tour({ viewer, position }: TourProps) {
+  const { index: selectedIndex, next, previous, select } = position
+
   useEffect(() => {
     const entities: Entity[] = landmarks.map((landmark, index) =>
       viewer.entities.add({
@@ -59,9 +61,7 @@ function Tour({ viewer, selectedIndex, onSelect }: TourProps) {
     // Clicking a marker selects that landmark in the tour.
     const removeSelectionListener = viewer.selectedEntityChanged.addEventListener(
       (entity) => {
-        if (!entity) return
-        const index = landmarks.findIndex((landmark) => landmark.id === entity.id)
-        if (index !== -1) onSelect(index)
+        if (entity) select(entity.id)
       },
     )
 
@@ -69,7 +69,7 @@ function Tour({ viewer, selectedIndex, onSelect }: TourProps) {
       removeSelectionListener()
       entities.forEach((entity) => viewer.entities.remove(entity))
     }
-  }, [viewer, onSelect])
+  }, [viewer, select])
 
   // Frame the selected landmark from an oblique angle rather than top-down.
   useEffect(() => {
@@ -98,17 +98,14 @@ function Tour({ viewer, selectedIndex, onSelect }: TourProps) {
   // Arrow keys step through the tour.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'ArrowRight') {
-        onSelect((selectedIndex + 1) % landmarks.length)
-      } else if (event.key === 'ArrowLeft') {
-        onSelect((selectedIndex - 1 + landmarks.length) % landmarks.length)
-      }
+      if (event.key === 'ArrowRight') next()
+      else if (event.key === 'ArrowLeft') previous()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [selectedIndex, onSelect])
+  }, [next, previous])
 
-  return <TourPanel landmarks={landmarks} selectedIndex={selectedIndex} onSelect={onSelect} />
+  return <TourPanel landmarks={landmarks} position={position} />
 }
 
 export default Tour
