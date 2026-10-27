@@ -43,7 +43,7 @@ The learner ran and verified the individual setup, import, repair, and area stat
 - Greenland: approximately 2,206,644.4394 square kilometers.
 - Berlin point (13.405, 52.52): Germany (`DEU`). The observed plan used `countries_geom_geom_idx`, rejected one bounding-box candidate during `ST_Covers`, and returned one row. Execution time was 0.110 ms for that run, not a benchmark.
 
-The scripts below consolidate that work and add transactional guard checks. They have not been executed as a complete fresh-database replay. Do not rerun the preparation script on the already-prepared database; use only the read-only verification script there. No live database was changed when these files were added.
+The scripts below consolidate that work and add transactional guard checks. On 2026-10-27 the Compose bootstrap executed `00`, `01`, `03` and `04` on a fresh, empty volume; see [Fresh-Volume Replay](#fresh-volume-replay). The native, OSGeo4W-based sequence below has not been replayed end to end. Do not rerun the preparation script on the already-prepared database; use only the read-only verification script there. No live database was changed when these files were added.
 
 ## Prerequisites and Secrets
 
@@ -240,7 +240,40 @@ Verified on 2026-10-27:
 - The native query ran as `projection_api`.
 - Greenland's Mercator ratio is `16.543261873210085` on native and `16.543261873210074` from the Linux container, which differ only in the last digits.
 
-A complete fresh-volume replay of bootstrap plus `areas` was **not** performed.
+### Fresh-Volume Replay
+
+Verified on 2026-10-27. The replay starts from an empty volume and runs the whole sequence: bootstrap, then the area precompute, then the app. It runs beside the existing stack and does not touch it.
+
+- **Separate project name.** `-p projection-replay` makes Compose create a new volume, `projection-replay_projection_db_data`. The existing `project1_projection_db_data` volume and its containers were not stopped, modified or deleted.
+- **Overlay file.** [compose.replay.yaml](../compose.replay.yaml) only moves the published ports to 5434 (db), 8001 (api) and 8081 (web). It uses Compose's `!override` tag, so the two stacks don't collide.
+
+From the repository root (PowerShell):
+
+```powershell
+$c = @('compose','-p','projection-replay','--env-file','Project 1/.env','-f','Project 1/compose.yaml','-f','Project 1/compose.replay.yaml')
+docker @c up -d --wait db
+docker @c --profile setup run --build --rm bootstrap
+docker @c --profile setup run --build --rm areas
+docker @c up -d --build --wait web
+docker @c down          # stops the replay; add -v only to delete its volume
+```
+
+Observed outcome:
+
+- **Bootstrap.**
+  - PostGIS 3.6.4 was enabled.
+  - `01` printed the two expected self-intersection notices and repaired USA and SDN (`UPDATE 2`), then `COMMIT`.
+  - `03` printed `CREATE ROLE` plus three `GRANT`s.
+  - `04` printed `CREATE TABLE` / `GRANT`.
+- **Precompute (`areas`):** `Computed 177 countries; 1 not ok`. SDN carried the same geometry flag and ATA was clipped (kept fraction 0.922678). It ended with `Wrote 177 rows to public.country_area_stats`.
+- **App:** db, api and web were all healthy. `:8001/countries/count` returned `{"count":177}` and `/countries/GRL/areas` returned 200.
+- **API (through Nginx at `:8081/api/countries/areas`) against [results/country_areas.csv](../results/country_areas.csv):**
+  - The same 177 codes, with identical names, statuses and clip flags.
+  - Every numeric field agrees to within a maximum relative difference of **1.1e-13**. The largest, 1.119e-13, is `sec2_at_centroid` for ATA; every area field is within 3.6e-14.
+  - Exact bit-for-bit matches range from 5 to 177 of 177 per field. The CSV was exported from the native Windows database, while the replay runs Linux builds of PROJ/GEOS and PostGIS 3.6.4. Native runs PostGIS 3.6.2, which accounts for the ellipsoidal-area differences of at most 3.6e-14.
+- **Replay against the existing Compose stack (Linux against Linux):** the full `/countries/areas` JSON was **identical**.
+
+The replay's comparison script is not committed: it fetches the API, joins it to the CSV by `adm0_a3` and reports exact matches and the maximum relative difference per field. The replay volume was kept and can be deleted with `down -v` on the command above.
 
 ## Measurement Limits and Next Work
 
@@ -248,7 +281,7 @@ EPSG:4326 geometry area is planar and measured in square degrees. Casting to geo
 
 These are ellipsoidal areas of generalized and, for two features, repaired boundaries. They are not surveyed national statistics. D3 uses spherical geometry, so its equal-area projection is not an exact ellipsoidal reference. The frontend now renders the database's repaired geometries; the original static import source remains unchanged.
 
-Greenland statistics use a separate spherical denominator and pyproj/Shapely; see the [backend measurement method](../backend/README.md#country-method). QGIS database visualization, a full privilege audit, and a fresh-database script replay remain unverified. No database mutations were performed by the agent during the 2026-09-21 frontend/documentation update.
+Greenland statistics use a separate spherical denominator and pyproj/Shapely; see the [backend measurement method](../backend/README.md#country-method). QGIS database visualization, a full privilege audit, and an end-to-end replay of the *native* (non-Docker) setup remain unverified. No database mutations were performed by the agent during the 2026-09-21 frontend/documentation update.
 
 ## Official References
 

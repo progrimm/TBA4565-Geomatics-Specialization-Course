@@ -163,7 +163,7 @@ Remaining work:
 
 - Other database failures still return a generic HTTP 500.
 - There is no connection pool and no intermediate-blend calculation.
-- A complete fresh-volume bootstrap replay (`bootstrap` + `areas`) remains unverified.
+- A fresh-volume Compose replay (`bootstrap` + `areas` + app) was verified on 2026-10-27 and matches the CSV to within 1.1e-13 relative. See the [database guide](../database/README.md#fresh-volume-replay).
 
 ## Official References
 

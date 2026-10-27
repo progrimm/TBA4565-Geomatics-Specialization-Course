@@ -25,7 +25,7 @@ Project scope and tutoring rules: [README.md](README.md).
 
 - [x] Phase 1: static Mercator and Eckert IV maps using local Natural Earth GeoJSON.
 - [x] Phase 2: Tissot's indicatrix overlay and projection morph slider.
-- [x] Phase 3: PostGIS setup, Natural Earth import, and geodesic areas (interactive workflow verified; new script replay pending).
+- [x] Phase 3: PostGIS setup, Natural Earth import, and geodesic areas (interactive workflow verified; scripts replayed on a fresh Compose volume on 2026-10-27).
 - [x] Phase 4 local milestone: FastAPI GeoJSON, Greenland-only distortion statistics, and frontend integration, verified for the agreed scope. Hardening and broader statistics are not claimed complete.
 - [ ] Phase 5: Docker Compose for database and API.
 - [x] Phase 6: country area comparison panel (all countries) and distortion-vs-latitude chart, verified locally on 2026-10-27. Deployment polish remains.
@@ -174,6 +174,20 @@ Project scope and tutoring rules: [README.md](README.md).
   - The same commands ran locally in the same working directories: `npm ci` then lint (exit 0) and build passed; `uv sync --locked` reported nothing to change; pytest reported `12 passed`.
 - The first local `npm ci` failed with EPERM on the rolldown binary. A Vite dev server the agent had started earlier was still running and locking the file. The agent stopped that process and the rerun succeeded.
 - Not verified: an actual GitHub Actions run, because the branch was not pushed.
+
+### 2026-10-27: Fresh-Volume Replay (completion step 2)
+
+- Added [compose.replay.yaml](compose.replay.yaml), an overlay that only moves the published ports (5434/8001/8081). Run with `-p projection-replay`, it gives a new, empty volume beside the running stack. The existing `project1_projection_db_data` volume was not touched.
+- **Ran in order:** `up -d --wait db`, `--profile setup run --build --rm bootstrap`, `--profile setup run --build --rm areas`, `up -d --build --wait web`. The exact commands are in the [database guide](database/README.md#fresh-volume-replay).
+  - Bootstrap: PostGIS 3.6.4, USA/SDN repaired (`UPDATE 2`), role and grants created, `country_area_stats` created.
+  - `areas`: `Computed 177 countries; 1 not ok` (SDN flag) and `Wrote 177 rows`.
+  - All three services healthy; `/countries/count` returned 177.
+- **API against `results/country_areas.csv`:**
+  - The same 177 codes and identical names, statuses and clip flags.
+  - Numeric fields within a maximum relative difference of 1.1e-13. The CSV comes from native Windows; the replay runs Linux PROJ/GEOS and a newer PostGIS.
+  - The replay's full JSON is identical to the existing Compose stack's.
+- The replay was then stopped with `down`. Its volume was kept, and can be removed with `down -v`.
+- This also executed the `00`/`01`/`03`/`04` SQL scripts on a fresh database for the first time. The native OSGeo4W setup path has still not been replayed end to end.
 
 ## Updating Future Checkpoints
 
