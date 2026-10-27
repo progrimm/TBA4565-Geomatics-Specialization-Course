@@ -1,6 +1,6 @@
 # TBA4565-Geomatics-Specialization-Course
 
-Learning projects for the TBA4565 Geomatics Specialization Course.
+Learning projects for the TBA4565 Geomatics Specialization Course: two web GIS applications, one GI Science-oriented (Project 1) and one GI Systems-oriented (Project 2).
 
 ## Project 1: Comparing Map Projections
 
@@ -22,18 +22,6 @@ A CesiumJS + React web app for exploring Trondheim in 3D. It shows terrain, Open
 Copy-Item "Project 2/.env.example" "Project 2/.env"   # then add your Cesium ion token
 npm --prefix "Project 2" ci
 npm --prefix "Project 2" run dev
-```
-
-## Project 3: Cesium Globe
-
-A CesiumJS globe built with Vite, React and TypeScript. It opens on Lillehammer with Cesium World Terrain. The project is at an early stage.
-
-- [Setup, structure, and attribution](Project%203/README.md)
-
-```powershell
-Copy-Item "Project 3/.env.example" "Project 3/.env"   # then add your Cesium ion token
-npm --prefix "Project 3" ci
-npm --prefix "Project 3" run dev
 ```
 
 The rest of this README covers Project 1.
