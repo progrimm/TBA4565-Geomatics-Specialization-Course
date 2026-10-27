@@ -24,13 +24,16 @@ page.stage.remove();
 
 const runs = csv('viewer-benchmark.csv');
 const staticMetrics = csv('viewer-static.csv');
+const RESOLUTIONS = [...new Set(runs.map((row) => row.resolution))].filter(Boolean);
+if (!RESOLUTIONS.length) RESOLUTIONS.push('1280x720');
 
-function benchmarkRow(viewer) {
-  const own = runs.filter((row) => row.viewer === viewer.name);
+function benchmarkRow(viewer, resolution) {
+  const own = runs.filter((row) => row.viewer === viewer.name && row.resolution === resolution);
   const pick = (key, digits) => (own.length ? median(own.map((r) => r[key])).toFixed(digits) : '–');
   const sizes = staticMetrics.find((row) => row.viewer === viewer.name);
   return [
     viewer.name,
+    resolution.replace('x', ' × '),
     pick('first_frame_s', 2),
     pick('mean_fps', 1),
     pick('p5_fps', 1),
@@ -68,13 +71,15 @@ section.innerHTML = `
     ).join('')}
   </ul>
   <h2>Benchmark</h2>
-  <p class="lab-note">Medians of 3 runs per viewer, measured with
-    <code>scripts/viewer-benchmark.mjs</code> (method and machine in the project README).
-    CesiumJS is not in this benchmark; see the gallery's own measurements.</p>
+  <p class="lab-note">Medians of 3 runs per viewer and resolution, measured with
+    <code>scripts/viewer-benchmark.mjs</code> during a scripted 10 s orbit. Frame rates are
+    capped by the display's refresh rate (vsync on). Method, machine and limits are in the
+    project README. CesiumJS is not in this benchmark; see the gallery's own measurements.</p>
   ${table(
     'Benchmark results',
     [
       'Viewer',
+      'Resolution',
       'First frame (s)',
       'Mean FPS',
       '5th-pct FPS',
@@ -83,8 +88,12 @@ section.innerHTML = `
       'Bundle gzip (KiB)',
       'Integration lines',
     ],
-    VIEWERS.filter((viewer) => viewer.benchmarked).map(benchmarkRow),
-    1,
+    RESOLUTIONS.flatMap((resolution) =>
+      VIEWERS.filter((viewer) => viewer.benchmarked).map((viewer) =>
+        benchmarkRow(viewer, resolution),
+      ),
+    ),
+    2,
   )}
   <h2>Comparison</h2>
   ${table(

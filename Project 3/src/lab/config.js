@@ -10,8 +10,20 @@ export const SPLAT_CREDIT = {
   licenceUrl: 'https://creativecommons.org/licenses/by/4.0/',
 };
 
-/** Fixed drawing-buffer size (CSS px at device pixel ratio 1) for comparable runs. */
-export const CANVAS = { width: 1280, height: 720, pixelRatio: 1 };
+/**
+ * Drawing-buffer scale from the page URL (?scale=2 renders 2560 × 1440, a heavier
+ * load for the benchmark). 1 outside the browser (Node scripts) or if not given.
+ */
+const SCALE =
+  typeof window === 'undefined'
+    ? 1
+    : Number(new URLSearchParams(window.location.search).get('scale')) || 1;
+
+/**
+ * Fixed drawing-buffer size in pixels, the same for every viewer, so runs are
+ * comparable. The CSS size of the canvas follows the page layout.
+ */
+export const CANVAS = { width: 1280 * SCALE, height: 720 * SCALE, pixelRatio: 1 };
 
 /**
  * Camera, in the splat's own PLY coordinates (metres, local frame, no CRS). This

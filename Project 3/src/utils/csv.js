@@ -20,16 +20,19 @@ export function parseCsv(text) {
 }
 
 /**
- * Serialise rows as CSV with the keys of the first row as header. Numbers are
- * written with the given number of decimals, everything else in double quotes.
+ * Serialise rows as CSV with the keys of the first row as header. Integers are
+ * written as they are, other numbers with the given number of decimals, and
+ * everything else in double quotes.
  * @param {Record<string, string | number>[]} rows - at least one row.
  * @param {number} [decimals=2] - decimals for numbers.
  * @returns {string} CSV text ending in a newline.
  */
 export function toCsv(rows, decimals = 2) {
   const header = Object.keys(rows[0]);
-  const format = (value) =>
-    typeof value === 'number' ? value.toFixed(decimals) : `"${String(value)}"`;
+  const format = (value) => {
+    if (Number.isInteger(value)) return String(value);
+    return typeof value === 'number' ? value.toFixed(decimals) : `"${String(value)}"`;
+  };
   const lines = rows.map((row) => header.map((key) => format(row[key])).join(','));
   return `${[header.join(','), ...lines].join('\n')}\n`;
 }

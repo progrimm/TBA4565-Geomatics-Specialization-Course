@@ -22,7 +22,7 @@ describe('toCsv', () => {
       { viewer: 'PlayCanvas', run: 2, fps: 40 },
     ];
     const text = toCsv(rows);
-    expect(text).toBe('viewer,run,fps\n"Spark",1.00,58.23\n"PlayCanvas",2.00,40.00\n');
+    expect(text).toBe('viewer,run,fps\n"Spark",1,58.23\n"PlayCanvas",2,40\n');
     expect(parseCsv(text)).toEqual([
       { viewer: 'Spark', run: 1, fps: 58.23 },
       { viewer: 'PlayCanvas', run: 2, fps: 40 },

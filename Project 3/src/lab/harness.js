@@ -30,11 +30,13 @@ function navigationBar(title) {
   const nav = document.createElement('nav');
   nav.className = 'lab-bar';
   nav.setAttribute('aria-label', 'Site');
+  // The lab index is itself "Viewer lab", so it has no separate lab link.
+  const labLink = title === 'Viewer lab' ? '' : `<a href="${LAB_URL}">Viewer lab</a> /`;
   nav.innerHTML = `
     <a class="lab-bar__home" href="${HOME_URL}">← My GIS module</a>
     <span class="lab-bar__trail">
       <a href="${GALLERY_URL}">3DGS Viewer</a> /
-      <a href="${LAB_URL}">Viewer lab</a> /
+      ${labLink}
       <span aria-current="page"></span>
     </span>`;
   nav.querySelector('[aria-current]').textContent = title;

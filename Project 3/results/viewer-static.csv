@@ -1,0 +1,5 @@
+viewer,files,bundle_raw_kib,bundle_gzip_kib,integration_lines
+"Spark",4,3180.7,1056.7,43
+"PlayCanvas",5,1399.5,364.8,79
+"Babylon.js",37,1769.0,440.7,37
+"ArcGIS Maps SDK",511,3502.3,1078.7,27
