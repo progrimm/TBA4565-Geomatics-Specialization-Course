@@ -28,8 +28,10 @@ Learning goals:
   Dam via iTwin share key, expires 2026-12-01), lazily loaded, one shown at a time
 - Georeferencing inspector, two-point measurement, alignment check (reference
   layers, dam offset, swipe splat vs mesh/reference), performance panel
-- Planned (see `report/SPRINT.md` sessions 7–8): a "Viewer lab" benchmarking
-  Spark, PlayCanvas, Babylon.js and CesiumJS on the same splat, one page per viewer.
+- Viewer lab (`lab/`, `src/lab/`): the CC BY "SOAR Telescope" PLY in Spark,
+  PlayCanvas and Babylon.js (benchmarked by `scripts/viewer-benchmark.mjs`) and
+  Esri's sample layer in the ArcGIS Maps SDK (qualitative only). CesiumJS is not
+  a lab page (would need an ion upload; the user chose to skip it).
 - Do NOT add features beyond this list without asking.
 
 ## Tech stack
@@ -116,4 +118,6 @@ tests/ – Vitest unit tests
   splat vs mesh swipe, performance panel; results in README and `results/`).
   CesiumJS 1.146 quirks: splats are not pickable, have no opacity/style, need
   extra frames after sorting in requestRenderMode (layers/splat.js).
-- Next: session 7, Viewer lab (see `report/SPRINT.md`).
+- 2026-10-27: session 7 done (Viewer lab, benchmark in `results/viewer-*.csv`).
+  All three viewers hit the 120 Hz display cap, so FPS does not rank them.
+- Next: session 8, hardening (see `report/SPRINT.md`).

@@ -99,6 +99,12 @@ section.innerHTML = `
   ${table(
     'Qualitative comparison',
     COMPARISON_COLUMNS.map((column) => column.label),
-    COMPARISON.map((row) => COMPARISON_COLUMNS.map((column) => row[column.key])),
+    COMPARISON.map((row) => {
+      const name = VIEWERS.find((viewer) => viewer.id === row.id)?.name;
+      const lines = staticMetrics.find((metrics) => metrics.viewer === name)?.integration_lines;
+      return COMPARISON_COLUMNS.map((column) =>
+        column.key === 'lines' ? String(lines ?? 'n/a') : row[column.key],
+      );
+    }),
   )}`;
 document.querySelector('.lab-page').append(section);

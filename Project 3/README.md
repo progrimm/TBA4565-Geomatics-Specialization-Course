@@ -6,8 +6,8 @@ as 3D Tiles and can be inspected, measured and checked against independent geoda
 
 It is a learning project for TBA4565 at NTNU (3D GIS). It was split out of
 [Project 2, Trondheim 3D](../Project%202/README.md) on 2026-10-27 and uses the same tooling and
-code structure. A "Viewer lab" that compares 3DGS web viewers is still planned. See
-[Status](#status).
+code structure. A [Viewer lab](#viewer-lab) shows one test splat in Spark, PlayCanvas and
+Babylon.js (benchmarked) and the ArcGIS Maps SDK (qualitative), each on its own page.
 
 ## Features
 
@@ -34,6 +34,9 @@ code structure. A "Viewer lab" that compares 3DGS web viewers is still planned. 
   and the time to `tileset.json` and to the first view
   ([`initialTilesLoaded`](https://cesium.com/learn/cesiumjs/ref-doc/Cesium3DTileset.html#initialTilesLoaded)).
   While the panel is open, rendering is continuous.
+- **Viewer lab** (`lab/`). The same CC BY splat in three general-purpose 3DGS viewers, plus
+  an ArcGIS page with Esri's sample layer, a Playwright benchmark and a comparison table. See
+  [Viewer lab](#viewer-lab).
 - Loading and error messages per splat. If one splat fails, the rest keeps working. The
   collapsible panel becomes a bottom sheet on mobile. Camera flights respect
   `prefers-reduced-motion`.
@@ -110,6 +113,8 @@ Measurement scripts (Playwright, run headless on a real GPU):
 | `node scripts/alignment-check.mjs pick <splat> <lon> <lat> <m> <name> sx sy rx ry`                | Horizontal offset between two picked pixels, appended to `offsets.csv`  |
 | `uv run --with numpy --with pillow python scripts/alignment-register.py results/alignment/<name>` | Image registration of a screenshot pair                                 |
 | `node scripts/gallery-performance.mjs [runs]`                                                     | Performance of each splat (needs `npm run build` and `npm run preview`) |
+| `node scripts/viewer-benchmark.mjs [runs]`                                                        | Viewer lab benchmark, headed (needs `npm run build`; serves `dist/`)    |
+| `node scripts/lab-static-metrics.mjs`                                                             | Viewer lab bundle sizes and integration lines (needs `npm run build`)   |
 
 The dev server exposes `window.cesiumViewer` for the alignment script. Production builds do
 not (`import.meta.env.DEV`).
@@ -133,6 +138,10 @@ src/
   state/          framework-independent message store
   utils/          pure helpers: georeferencing, measurement, formatting, frame
                   statistics, camera options, HTML escaping, reduced motion
+  lab/            Viewer lab: shared config and harness, one module per viewer
+                  (spark, playcanvas, babylon, arcgis), the lab index and its tables
+lab/              one HTML entry per Viewer lab page (Vite multi-page build)
+public/splats/    the Viewer lab test splat and its attribution
 tests/            Vitest unit tests
 scripts/          Playwright measurement scripts and the registration script
 results/          measured results (alignment screenshots and offsets, performance CSV)
@@ -151,6 +160,10 @@ Main design choices:
 - **The view comes from the data.** Each splat is framed by its own `boundingSphere` with
   [`Camera.flyToBoundingSphere`](https://cesium.com/learn/cesiumjs/ref-doc/Camera.html#flyToBoundingSphere).
   The marker coordinates in `config.js` are used only before a tileset is loaded.
+- **One page per lab viewer.** Each viewer is its own Vite entry (`build.rollupOptions.input`),
+  so it has its own WebGL context and bundle, and its bundle can be measured. The lab pages are
+  plain JavaScript without React, so a shared framework does not add the same weight to every
+  row.
 - **`requestRenderMode` is on.** The scene only re-renders when something changes. Splats need
   a workaround, described under Findings.
 
@@ -281,6 +294,167 @@ reliable. The JS heap is in the CSV, but it varied a lot between runs, so it is 
 - Limits: one machine, a static camera, headless Chromium, and the network at the time of the
   runs. Rendering was continuous while the panel was open, including during loading.
 
+## Viewer lab
+
+Research question, second half: what does a geospatial viewer offer over general-purpose splat
+viewers? The lab renders one test splat in three popular 3DGS web viewers and adds the ArcGIS
+Maps SDK as a geospatial counterpart to the CesiumJS gallery. Open it from the gallery panel or
+at `lab/`.
+
+### Test splat
+
+"SOAR Telescope" by Luis Cerda,
+[khyron/Gaussian-Splatting](https://github.com/khyron/Gaussian-Splatting) release 1.0,
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). It shows the SOAR telescope on Cerro
+Pachón, Chile, with 200,258 splats and spherical harmonics of degree 3. The source file is a
+SuperSplat compressed PLY. It was converted to a standard 3DGS PLY with
+`npx @playcanvas/splat-transform@3.10.3`, so every viewer loads the same plain format. Details
+and checksums are in [`public/splats/ATTRIBUTION.md`](public/splats/ATTRIBUTION.md). The splat
+is in local coordinates without georeferencing, so it is not in the globe gallery.
+
+| Format                     | File size (bytes) | Native to                  |
+| -------------------------- | ----------------- | -------------------------- |
+| Standard PLY (shared file) | 47,262,365        | all three (benchmarked)    |
+| Compressed PLY (original)  | 12,273,900        | SuperSplat / PlayCanvas    |
+| SPZ                        | 4,962,502         | Niantic; Spark, Babylon    |
+| SOG                        | 4,813,751         | PlayCanvas; Spark, Babylon |
+
+The SPZ and SOG sizes come from converting the original with the same splat-transform version
+on 2026-10-27. These files are not shipped; only the PLY is benchmarked.
+
+### Viewers and pages
+
+| Page                  | Package (pinned)                                        | Docs                                                                                                               |
+| --------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `lab/spark.html`      | `@sparkjsdev/spark` 2.4.0 on `three` 0.186.1            | [Spark docs](https://sparkjs.dev/docs/)                                                                            |
+| `lab/playcanvas.html` | `playcanvas` 2.23.3 (gsplat component)                  | [PlayCanvas Gaussian splatting](https://developer.playcanvas.com/user-manual/gaussian-splatting/)                  |
+| `lab/babylon.html`    | `@babylonjs/core` and `@babylonjs/loaders` 9.32.1       | [Babylon.js Gaussian splatting](https://doc.babylonjs.com/features/featuresDeepDive/mesh/gaussianSplatting)        |
+| `lab/arcgis.html`     | `@arcgis/core` 5.1.27 (`GaussianSplatLayer`, since 5.0) | [`GaussianSplatLayer`](https://developers.arcgis.com/javascript/latest/references/core/layers/GaussianSplatLayer/) |
+
+- **Shared harness** (`src/lab/harness.js`, `src/lab/config.js`). Every page gets the same
+  "← My GIS module" bar, credits, status line, 1280 × 720 drawing buffer (scaled down by CSS on
+  narrow screens), 60° vertical field of view and camera orbit. Each viewer module only creates
+  its engine, loads the PLY and applies camera poses.
+- **Axis conventions.** The PLY follows the 3DGS/COLMAP convention with +y pointing down. The
+  shared camera poses are in the PLY's own coordinates with "up" = −y. Spark (Three.js) uses
+  them directly with `camera.up = (0, −1, 0)`. PlayCanvas's orbit controls assume +y up, so the
+  splat entity is turned 180° about z (as in PlayCanvas's own examples) and the poses get the
+  same turn. Babylon.js keeps its default left-handed scene, and its image matched the others
+  only when y was negated in the poses. With `useRightHandedSystem` it was mirrored. These were
+  found by comparing screenshots of the start view, which now look the same in all three viewers.
+- **ArcGIS page.** It loads Esri's public sample layer (portal item
+  `01596d71a5ce40ec8a6f21baad6e5b6f`, "Portcoast industrial", owner `jsapi_team`, credit
+  "Portcoast Consultant Corporation", no licence stated on the item) in a `SceneView` with the
+  `satellite` basemap and world elevation. It worked without an API key (no console errors). The
+  SDK's own assets come from Esri's CDN (`js.arcgis.com`). It cannot load our PLY (the layer
+  takes a scene service or portal item), so it is compared qualitatively only.
+- **CesiumJS** is not a lab page. It would need the splat as 3D Tiles, i.e. uploading the PLY to
+  Cesium ion and tiling it there, which was left out on purpose. The gallery's
+  [performance numbers](#performance) are for other splats and are not comparable.
+
+### Benchmark method
+
+`scripts/viewer-benchmark.mjs` runs Playwright Chromium **headed** on the real GPU. It serves
+`dist/` from its own static server without compression: `vite preview` gzips responses on the
+fly, which made the 47 MB PLY take 2.7–3.4 s instead of 0.13–0.2 s on localhost (measured with a
+browser `fetch` and with curl). Each viewer runs 3 times per resolution, each in a fresh browser
+context with an empty cache, at 1280 × 720 and at 2560 × 1440 (four times the pixels,
+`?scale=2`). The page runs in `?bench` mode:
+
+- **First frame**: from navigation start to the second animation frame after the engine says
+  the splat is loaded (Spark: `SplatMesh.initialized`; PlayCanvas: the asset's `load` event;
+  Babylon: `ImportMeshAsync`). It includes download, parsing and GPU upload.
+- **Mean and 5th-percentile FPS**: after 2 s of settling, the harness moves the camera once
+  around the splat in 10 s (one pose per animation frame) and records every frame's timestamp.
+  Mean FPS = frames / time; 5th-percentile FPS = 1000 / the 95th-percentile frame time.
+- **JS heap**: `Runtime.getHeapUsage` (Chrome DevTools Protocol) after a forced garbage
+  collection.
+- **Network**: response bytes sent by the static server during the run. They are counted on the
+  server because Spark downloads the splat in a Web Worker, which the page's DevTools session
+  did not see (a first trial counted only 3.1 MiB for Spark).
+- **Bundle size**: `scripts/lab-static-metrics.mjs` gzips (zlib default level) each page's entry
+  chunk, its static imports and its CSS, as listed by the Vite manifest. **Integration lines**
+  are the non-blank, non-comment lines of each viewer module in `src/lab/`.
+
+Vsync stays on. A trial with `--disable-gpu-vsync --disable-frame-rate-limit` gave impossible
+numbers (Spark: 191 fps mean but 2,500 fps 5th percentile), because `requestAnimationFrame` then
+fires without new frames being shown, so that mode was dropped.
+
+### Benchmark results
+
+Measured on 2026-10-27: Chromium 156.0.8078.4 (Playwright, headed), AMD Radeon 780M (integrated,
+ANGLE/D3D11), AMD Ryzen 7 7840HS, Windows 11 Home 10.0.26200, display at 120 Hz, viewport
+1600 × 1000. Medians of 3 runs. Every run is in `results/viewer-benchmark.csv`, the environment
+in `results/viewer-benchmark-env.json` and the static metrics in `results/viewer-static.csv`.
+
+| Viewer     | Resolution  | First frame | Mean FPS | 5th-pct FPS | JS heap | Network  | Bundle (gzip) | Integration lines |
+| ---------- | ----------- | ----------- | -------- | ----------- | ------- | -------- | ------------- | ----------------- |
+| Spark      | 1280 × 720  | 0.49 s      | 120.0    | 114.9       | 6.8 MiB | 48.2 MiB | 1,057 KiB     | 43                |
+| PlayCanvas | 1280 × 720  | 0.83 s      | 119.9    | 113.6       | 5.9 MiB | 46.4 MiB | 365 KiB       | 79                |
+| Babylon.js | 1280 × 720  | 0.77 s      | 120.0    | 113.6       | 5.9 MiB | 46.8 MiB | 441 KiB       | 37                |
+| Spark      | 2560 × 1440 | 0.48 s      | 119.9    | 113.6       | 6.8 MiB | 48.2 MiB | 1,057 KiB     | 43                |
+| PlayCanvas | 2560 × 1440 | 0.83 s      | 120.0    | 113.6       | 5.9 MiB | 46.4 MiB | 365 KiB       | 79                |
+| Babylon.js | 2560 × 1440 | 0.61 s      | 120.0    | 113.6       | 5.9 MiB | 46.8 MiB | 441 KiB       | 37                |
+
+The ArcGIS page's initial bundle is 1,079 KiB gzipped (511 files in the manifest, before any
+lazily loaded chunk or CDN asset) with 27 integration lines. It is not benchmarked.
+
+What the numbers say:
+
+- **Frame rate does not separate the viewers here.** All three held the 120 Hz display rate
+  during the orbit at both resolutions. A 5th percentile of 113.6 fps is an 8.8 ms frame, i.e.
+  ordinary vsync jitter. A 200,000-splat scene is not a stress test for this GPU; a larger splat
+  or a weaker device would be needed to rank the renderers.
+- **Time to first frame** is under 1 s for all three on localhost. Spark was fastest (0.48–0.49 s
+  median), then Babylon.js and PlayCanvas. One Spark run (the very first run) took 0.88 s. Each
+  engine reports "loaded" at a slightly different stage, so differences of a few hundred
+  milliseconds are not a strong result.
+- **Network** is dominated by the 45.1 MiB PLY in every case. The rest is the page's own code,
+  served uncompressed by the benchmark server, which is why Spark (largest bundle) is highest.
+- **JS heap** is only 6–7 MiB. The splat data lives in ArrayBuffers, workers and GPU memory,
+  which `Runtime.getHeapUsage` does not count, so this column says little about real memory use.
+- **Bundle size** differs most: Spark with Three.js is about 2.9 times PlayCanvas's.
+
+### Qualitative comparison
+
+| Viewer                     | Licence                                     | Engine                      | Formats                                                                | LOD and streaming                                                 | Georeferencing and CRS                               | GIS features                                                        |
+| -------------------------- | ------------------------------------------- | --------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------- |
+| Spark 2.4.0                | MIT                                         | Three.js (WebGL2)           | PLY (incl. compressed), SPZ, SOG, SPLAT, KSPLAT, RAD                   | Optional (`lod: true`, built in a worker); paged `.rad` streaming | None: local coordinates                              | None built in                                                       |
+| PlayCanvas 2.23.3          | MIT                                         | PlayCanvas (WebGL2/WebGPU)  | PLY (incl. compressed), SOG, streamed SOG, GLB, SPZ                    | Streamed SOG: chunked spatial tree with LOD levels                | None: local coordinates                              | None built in                                                       |
+| Babylon.js 9.32.1          | Apache 2.0                                  | Babylon.js (WebGL2/WebGPU)  | PLY (incl. compressed), SPLAT, SPZ, SOG, glTF `KHR_gaussian_splatting` | Streamed SOG with LOD (`lod-meta.json`), memory and splat budgets | None: local coordinates, left-handed by default      | None built in                                                       |
+| CesiumJS 1.146.0 (gallery) | Apache 2.0                                  | CesiumJS (WebGL2)           | 3D Tiles with glTF `KHR_gaussian_splatting` (+ SPZ compression)        | Hierarchical 3D Tiles LOD, streamed by screen-space error         | Root transform to ECEF (EPSG:4978) on a WGS 84 globe | Terrain, imagery, OSM Buildings, measurement, swipe (this app)      |
+| ArcGIS Maps SDK 5.1.27     | Proprietary (Esri Master License Agreement) | ArcGIS `SceneView` (WebGL2) | `GaussianSplatLayer` from a scene service or portal item (3D Tiles)    | Streamed scene service                                            | Georeferenced layer in a global or local scene       | Basemap, elevation, 3D analysis widgets; some unsupported on splats |
+
+Mobile: all four lab pages render at 390 px in Playwright's emulated viewport; touch orbiting
+was not tested on a real phone. On the ArcGIS page the map widgets cover much of the small view.
+Documentation (my assessment): Spark has a dedicated docs site with guides; PlayCanvas a user
+manual and many engine examples; Babylon.js one deep-dive page plus Playground examples;
+CesiumJS and ArcGIS an API reference plus Sandcastle examples or samples. The same table, with
+integration lines, is on the lab index page (`src/lab/comparison.js`).
+
+Sources (checked 2026-10-27): [Spark: loading splats](https://sparkjs.dev/docs/loading-splats/),
+[Spark: level of detail](https://sparkjs.dev/docs/lod-getting-started/),
+[PlayCanvas: splat formats](https://developer.playcanvas.com/user-manual/gaussian-splatting/formats/),
+[Babylon.js: Gaussian splatting](https://doc.babylonjs.com/features/featuresDeepDive/mesh/gaussianSplatting),
+[ArcGIS: `GaussianSplatLayer`](https://developers.arcgis.com/javascript/latest/references/core/layers/GaussianSplatLayer/),
+the npm `license` field of each package, and `node_modules/@arcgis/core/LICENSE.md`.
+
+The main finding is the geospatial difference. The three general-purpose viewers place the
+splat in an arbitrary local frame, each with its own axis convention that the app had to fix by
+hand. CesiumJS and ArcGIS put splats on the globe through a georeferenced 3D Tiles transform and
+add terrain, basemaps and measurement. The cost is a bigger stack and, for CesiumJS, a tiling
+step (3D Tiles) before a PLY can be shown.
+
+### Limits of the lab
+
+- One machine, one browser, one splat (200,258 splats), localhost network. The frame rate hit
+  the display cap, so it does not rank the viewers.
+- The camera path is the same circle in every viewer, but each engine's projection and near/far
+  handling differ slightly, so the images are close, not pixel-identical.
+- "First frame" relies on each engine's own load signal; sorting may finish a frame or two later.
+- JS heap leaves out ArrayBuffers and GPU memory.
+- ArcGIS and CesiumJS were not benchmarked on the test splat.
+
 ## Cesium ion Token and Security
 
 - The token is read from `.env` as `VITE_CESIUM_TOKEN`. `.env` is git-ignored, so do not commit
@@ -306,15 +480,21 @@ reliable. The JS heap is in the CSV, but it varied a lot between runs, so it is 
 On-screen credits come from Cesium's credit display, which is kept enabled on purpose. The
 panel and each marker's InfoBox also show each splat's credits.
 
-| Data                                                  | Source                                        | Licence / terms                                                           |
-| ----------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------- |
-| Cesium World Terrain (ion 1), default imagery (ion 2) | Cesium ion                                    | [Cesium ion Terms of Service](https://cesium.com/legal/terms-of-service/) |
-| Cesium OSM Buildings (ion 96188)                      | Cesium ion, © OpenStreetMap contributors      | Cesium ion terms; ODbL for the OSM data                                   |
-| Splats 4547222, 3667783, 3667784 and mesh 3443919     | Public Cesium ion assets (Sandcastle samples) | Cesium ion terms; no separate licence is stated                           |
-| O'Shaughnessy Dam splat                               | Bentley iTwin Platform, shared by Cesium      | Bentley iTwin terms; no separate licence is stated                        |
-| Place identification                                  | OpenStreetMap (Nominatim, Overpass)           | ODbL                                                                      |
+| Data                                                  | Source                                         | Licence / terms                                                           |
+| ----------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------- |
+| Cesium World Terrain (ion 1), default imagery (ion 2) | Cesium ion                                     | [Cesium ion Terms of Service](https://cesium.com/legal/terms-of-service/) |
+| Cesium OSM Buildings (ion 96188)                      | Cesium ion, © OpenStreetMap contributors       | Cesium ion terms; ODbL for the OSM data                                   |
+| Splats 4547222, 3667783, 3667784 and mesh 3443919     | Public Cesium ion assets (Sandcastle samples)  | Cesium ion terms; no separate licence is stated                           |
+| O'Shaughnessy Dam splat                               | Bentley iTwin Platform, shared by Cesium       | Bentley iTwin terms; no separate licence is stated                        |
+| Place identification                                  | OpenStreetMap (Nominatim, Overpass)            | ODbL                                                                      |
+| Viewer lab test splat "SOAR Telescope"                | Luis Cerda, khyron/Gaussian-Splatting          | CC BY 4.0; converted to standard PLY (format change only)                 |
+| ArcGIS lab page: "Portcoast industrial" splat layer   | Esri sample (portal item, Portcoast)           | No licence stated on the item; Esri terms                                 |
+| ArcGIS lab page: satellite basemap, world elevation   | Esri and its data providers (shown on the map) | Esri terms of use                                                         |
 
-CesiumJS is licensed under Apache 2.0.
+CesiumJS and Babylon.js are licensed under Apache 2.0, Spark, Three.js and PlayCanvas under
+MIT. The ArcGIS Maps SDK for JavaScript is proprietary (Esri Master License Agreement; the npm
+package may be redistributed unmodified with its copyright notice). Every lab page shows the
+credit of the splat it displays and the viewer's licence.
 
 ## Verification
 
@@ -331,9 +511,27 @@ On 2026-10-27 (session 6, the gallery):
 - Not verified: Firefox and Safari, a real phone, keyboard-only use of the new tools, and
   whether our own ion token can read the gallery assets.
 
+On 2026-10-27 (session 7, the Viewer lab):
+
+- `npm run lint`, `npm run format:check`, `npm test` (13 files, 48 tests) and `npm run build`
+  pass. New tests cover the orbit math, frame statistics, CSV handling, the manifest walk for
+  bundle sizes and the line counter.
+- Browser checks with Playwright (headless Chromium 156, same GPU) at 1600 and 390 px wide:
+  every lab page loads with no console errors. The Spark, PlayCanvas and Babylon.js start views
+  were compared side by side and show the splat upright and from the same side. The ArcGIS page
+  shows the Esri layer in an oblique view. The index shows both tables; on mobile they scroll
+  sideways. The gallery's "Viewer lab" link opens `lab/`.
+- The benchmark ran headed on this machine (results above).
+- Not verified: touch interaction on a real phone, Firefox and Safari, WebGPU paths of
+  PlayCanvas and Babylon.js, and whether the ArcGIS terms allow the page on a public site
+  without an Esri account.
+
 ## Status
 
 Session 6 (globe gallery) is done: gallery, inspector, measurement, alignment check, splat vs
 mesh and the performance panel.
 
-Next: session 7, the Viewer lab (see `report/SPRINT.md`).
+Session 7 (Viewer lab) is done: lab pages for Spark, PlayCanvas, Babylon.js and ArcGIS, the
+benchmark, and the comparison. CesiumJS is not a lab page (see [Viewer lab](#viewer-lab)).
+
+Next: session 8, Project 3 hardening (see `report/SPRINT.md`).
