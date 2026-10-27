@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Cartographic, Math as CesiumMath } from 'cesium';
-import { toCameraOptions } from '../src/utils/camera.js';
+import { toCameraOptions, toGlobeCameraOptions } from '../src/utils/camera.js';
 
 const view = { longitude: 10.3951, latitude: 63.4305, height: 1500, heading: 90, pitch: -45 };
 
@@ -18,5 +18,16 @@ describe('toCameraOptions', () => {
     expect(orientation.heading).toBeCloseTo(Math.PI / 2);
     expect(orientation.pitch).toBeCloseTo(-Math.PI / 4);
     expect(orientation.roll).toBe(0);
+  });
+});
+
+describe('toGlobeCameraOptions', () => {
+  const globe = { ...view, height: 16_000_000, mobileHeight: 30_000_000 };
+
+  it('uses the mobile height only on mobile', () => {
+    const desktop = Cartographic.fromCartesian(toGlobeCameraOptions(globe, false).destination);
+    const mobile = Cartographic.fromCartesian(toGlobeCameraOptions(globe, true).destination);
+    expect(desktop.height).toBeCloseTo(16_000_000, 0);
+    expect(mobile.height).toBeCloseTo(30_000_000, 0);
   });
 });

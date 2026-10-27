@@ -1,10 +1,10 @@
-import { Ion, Viewer } from 'cesium';
+import { Ion, ITwinPlatform, Viewer } from 'cesium';
 import { showMessage } from './state/messages.js';
 
 /**
  * Cesium's built-in evaluation token, captured before configureIon replaces it.
  * Only for public assets that cannot be added to our own ion account (the
- * Redmond splat). Cesium shows a "default token" notice in the credits when used.
+ * gallery's splats and mesh, which belong to Cesium's own account). Cesium shows a "default token" notice in the credits when used.
  */
 export const CESIUM_EVALUATION_TOKEN = Ion.defaultAccessToken;
 
@@ -19,6 +19,15 @@ export function configureIon(token) {
   } else {
     showMessage('No Cesium ion token configured: terrain may not load.', 'error');
   }
+}
+
+/**
+ * Set the iTwin Platform share key used by ITwinData to read public reality data.
+ * A share key grants read access to one iTwin without a user login (OAuth).
+ * @param {string} shareKey
+ */
+export function configureITwin(shareKey) {
+  ITwinPlatform.defaultShareKey = shareKey;
 }
 
 /**

@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
 import { createViewer } from '../viewer.js';
 import { createTerrain } from '../layers/terrain.js';
+import { GLOBE_VIEW, MOBILE_QUERY } from '../config.js';
+import { toGlobeCameraOptions } from '../utils/camera.js';
 
 /**
  * Create a Cesium Viewer inside the element the returned ref is attached to,
@@ -13,6 +15,10 @@ export function useCesiumViewer() {
   // Stable callback ref: React calls it on mount and its returned cleanup on unmount.
   const containerRef = useCallback((element) => {
     const instance = createViewer(element, { terrain: createTerrain() });
+    // Opening view: the whole globe with a marker per splat.
+    instance.camera.setView(
+      toGlobeCameraOptions(GLOBE_VIEW, window.matchMedia(MOBILE_QUERY).matches),
+    );
     setViewer(instance);
     return () => {
       setViewer(undefined);

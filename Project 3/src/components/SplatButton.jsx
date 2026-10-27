@@ -1,29 +1,26 @@
-import { SPLAT } from '../config.js';
-import { viewSplat } from '../layers/splat.js';
-import { flightDuration } from '../utils/motion.js';
-
 const STATUS_TEXT = { loading: 'Loading…', error: 'Unavailable' };
 
 /**
- * Button that flies the camera back to the splat. The splat itself is loaded at
- * startup (see App.jsx), so the button is disabled until it is ready.
+ * Gallery entry: selecting it loads the splat (first time) and flies there.
  * @param {object} props
- * @param {import('cesium').Camera} [props.camera]
- * @param {import('../hooks/useAsyncLayer.js').LayerState} props.state - splat loading state.
+ * @param {import('../config.js').Splat} props.splat
+ * @param {import('../hooks/useGallery.js').SplatState} [props.state] - undefined until first selected.
+ * @param {boolean} props.selected
+ * @param {(id: string) => void} props.onSelect
  */
-export default function SplatButton({ camera, state }) {
-  const ready = Boolean(camera) && state.status === 'ready';
-
+export default function SplatButton({ splat, state, selected, onSelect }) {
   return (
     <button
       type="button"
       className="view-button"
-      disabled={!ready}
-      aria-busy={state.status === 'loading'}
-      onClick={() => viewSplat(camera, state.layer, flightDuration())}
+      aria-pressed={selected}
+      aria-busy={state?.status === 'loading'}
+      onClick={() => onSelect(splat.id)}
     >
-      {SPLAT.label}
-      <span className="view-button__meta">{STATUS_TEXT[state.status] ?? SPLAT.location}</span>
+      {splat.label}
+      <span className="view-button__meta">
+        {STATUS_TEXT[state?.status] ?? `${splat.place}, ${splat.country}`}
+      </span>
     </button>
   );
 }

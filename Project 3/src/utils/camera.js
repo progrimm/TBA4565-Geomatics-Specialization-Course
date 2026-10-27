@@ -18,3 +18,13 @@ export function toCameraOptions({ longitude, latitude, height, heading, pitch })
     },
   };
 }
+
+/**
+ * Camera options for the globe overview, backed off on narrow (mobile) screens.
+ * @param {{mobileHeight: number} & Parameters<typeof toCameraOptions>[0]} view
+ * @param {boolean} isMobile
+ * @returns {ReturnType<typeof toCameraOptions>}
+ */
+export function toGlobeCameraOptions(view, isMobile) {
+  return toCameraOptions(isMobile ? { ...view, height: view.mobileHeight } : view);
+}

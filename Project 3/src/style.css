@@ -141,10 +141,38 @@ body {
   opacity: 0.5;
 }
 
+.view-button[aria-pressed='true'] {
+  background: var(--surface-hover);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.view-button--quiet {
+  color: var(--text-muted);
+}
+
 .view-button__meta {
   display: block;
   color: var(--text-muted);
   font-size: 0.75rem;
+}
+
+/* ---------- Facts (definition lists) ---------- */
+.facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-3) 0 0;
+  padding: 0 var(--space-3);
+  font-size: 0.8rem;
+}
+
+.facts dt {
+  color: var(--text-muted);
+}
+
+.facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 /* ---------- Messages (toasts) ---------- */
@@ -220,9 +248,10 @@ body {
     border-bottom: 0;
   }
 
-  /* Keep attribution visible above the collapsed sheet (~65 px tall). */
+  /* Keep attribution visible above the collapsed sheet (~66 px tall). The Viewer
+     sets an inline bottom offset on this element, so only !important overrides it. */
   .cesium-viewer-bottom {
-    bottom: 65px;
+    bottom: 72px !important;
   }
 
   .cesium-infoBox {
