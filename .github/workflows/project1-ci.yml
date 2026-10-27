@@ -1,0 +1,41 @@
+name: Project 1 CI
+
+on:
+  push:
+    branches: [main]
+    paths: ['Project 1/**', '.github/workflows/project1-ci.yml']
+  pull_request:
+    paths: ['Project 1/**', '.github/workflows/project1-ci.yml']
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Project 1/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: Project 1/frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Project 1/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.14'
+          enable-cache: true
+          cache-dependency-glob: Project 1/backend/uv.lock
+      # The unit tests are pure calculations; no database is needed.
+      - run: uv sync --locked
+      - run: uv run --locked pytest

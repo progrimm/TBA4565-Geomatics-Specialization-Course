@@ -164,6 +164,17 @@ Project scope and tutoring rules: [README.md](README.md).
   - screenshots were inspected. They showed the tooltip covering its own point, which was fixed and rechecked.
 - `npm audit` shows 4 high findings, all in dev tooling. They predate this change, and `--omit=dev` reports 0.
 
+### 2026-10-27: Continuous Integration (completion step 1)
+
+- Added [project1-ci.yml](../.github/workflows/project1-ci.yml), modelled on Project 2's workflow and path-filtered to `Project 1/**` plus the workflow file. It runs on pushes to `main` and on pull requests, as two jobs:
+  - `frontend`: Node 24 with the npm cache; `npm ci`, `npm run lint`, `npm run build` in `Project 1/frontend`.
+  - `backend`: [astral-sh/setup-uv](https://github.com/astral-sh/setup-uv) with Python 3.14 and the uv cache; `uv sync --locked`, `uv run --locked pytest` in `Project 1/backend`. The tests are pure calculations, so CI needs no database.
+- **Local verification:**
+  - `uvx --from actionlint-py actionlint .github/workflows/project1-ci.yml` passed with no findings.
+  - The same commands ran locally in the same working directories: `npm ci` then lint (exit 0) and build passed; `uv sync --locked` reported nothing to change; pytest reported `12 passed`.
+- The first local `npm ci` failed with EPERM on the rolldown binary. A Vite dev server the agent had started earlier was still running and locking the file. The agent stopped that process and the rerun succeeded.
+- Not verified: an actual GitHub Actions run, because the branch was not pushed.
+
 ## Updating Future Checkpoints
 
 After each completed step, update the current checkpoint and append a short dated entry containing:
