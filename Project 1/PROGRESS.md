@@ -189,6 +189,21 @@ Project scope and tutoring rules: [README.md](README.md).
 - The replay was then stopped with `down`. Its volume was kept, and can be removed with `down -v`.
 - This also executed the `00`/`01`/`03`/`04` SQL scripts on a fresh database for the first time. The native OSGeo4W setup path has still not been replayed end to end.
 
+### 2026-10-27: Method Explanation (completion step 3)
+
+- Rewrote the collapsed **Method** section in [App.tsx](frontend/src/App.tsx) as six short definition items for non-experts:
+  - Mercator is conformal; area grows by sec²φ, 4× at 60° and about 33× at 80°.
+  - Eckert IV is equal-area.
+  - The circles are a finite-circle version of Tissot's indicatrix.
+  - Why chart dots sit above the sec²φ curve.
+  - Sphere, not ellipsoid.
+  - What is not measured: blends, the Mercator cap and Antarctica's clipping, simplified borders.
+- The "under 1% for every country" claim was measured from `results/country_areas.csv`: the ellipsoidal/spherical area ratio − 1 ranges from −0.45% (GAB) to +0.81% (ATA). The sec² examples are exact arithmetic: sec²60° = 4 and sec²80° ≈ 33.2.
+- **Verification:**
+  - lint and build passed;
+  - Playwright opened the disclosure with the keyboard (Enter on the focused summary) at 1600 and 390 px, with all six terms present and no horizontal overflow;
+  - footer screenshots at both widths were inspected and are readable in two columns and in one column respectively.
+
 ## Updating Future Checkpoints
 
 After each completed step, update the current checkpoint and append a short dated entry containing:

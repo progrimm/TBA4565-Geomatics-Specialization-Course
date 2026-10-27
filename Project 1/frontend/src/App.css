@@ -438,7 +438,7 @@ a:focus-visible {
 }
 
 .method-notes {
-  max-width: 75ch;
+  max-width: 110ch;
 }
 
 .method-notes summary {
@@ -448,8 +448,21 @@ a:focus-visible {
   padding-block: 6px;
 }
 
-.method-notes p {
-  margin-top: 12px;
+.method-notes dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 16px 32px;
+  margin: 12px 0 0;
+}
+
+.method-notes dt {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.method-notes dd {
+  margin: 4px 0 0;
+  line-height: 1.5;
 }
 
 .study-footer a {

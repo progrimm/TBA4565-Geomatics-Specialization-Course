@@ -425,26 +425,57 @@ function App() {
       <footer className="study-footer">
         <details className="method-notes">
           <summary>Method</summary>
-          <p>
-            Mercator preserves local angles; Eckert IV preserves spherical area.
-            Ratios use a sphere, not the WGS 84 ellipsoid. A ratio of 1 means
-            equal area.
-          </p>
-          <p>
-            Mercator's local area scale is sec²φ, so a country's ratio is the
-            area-weighted mean of sec²φ. Because sec²φ is convex, that mean is
-            above sec²φ at the centroid, most of all for countries spanning many
-            degrees of latitude.
-          </p>
-          <p>
-            Blends have no calculated area and generally preserve neither angles
-            nor area. Each view is fitted independently. Mercator latitude is
-            capped at ±85.05°; Antarctica is clipped there for its statistics.
-          </p>
-          <p>
-            The 3° circles approximate Tissot's indicatrix. Boundaries are
-            generalized, not authoritative national measurements.
-          </p>
+          <dl>
+            <div>
+              <dt>Mercator keeps shapes</dt>
+              <dd>
+                It is conformal: small shapes and angles look right, which is
+                why it is used for navigation. To do that it stretches the map
+                by sec φ both east–west and north–south, so area grows by sec²φ:
+                4× at 60°, about 33× at 80°.
+              </dd>
+            </div>
+            <div>
+              <dt>Eckert IV keeps areas</dt>
+              <dd>
+                It is equal-area: every country keeps its true share of the
+                globe (ratio 1), but shapes are squeezed towards the edges.
+              </dd>
+            </div>
+            <div>
+              <dt>The circles</dt>
+              <dd>
+                Each red shape is the same 3° circle on the globe. Watch them
+                grow and flatten: that is Tissot&apos;s indicatrix, made with
+                small circles instead of infinitely small ones.
+              </dd>
+            </div>
+            <div>
+              <dt>Why dots sit above the curve</dt>
+              <dd>
+                The curve is the stretch at one latitude. A country spanning
+                many latitudes averages them, and its poleward part gains more
+                than the rest loses, so its ratio beats the curve at its centre.
+              </dd>
+            </div>
+            <div>
+              <dt>Sphere, not ellipsoid</dt>
+              <dd>
+                Ratios compare with the area on a sphere of radius 6,371 km. The
+                WGS 84 ellipsoid area is shown for reference; it differs by
+                under 1% for every country.
+              </dd>
+            </div>
+            <div>
+              <dt>What is not measured</dt>
+              <dd>
+                Slider positions between the ends mix both formulas, keep
+                neither shapes nor areas and are resized to fit, so no area is
+                calculated for them. Mercator stops at ±85.05°; Antarctica is
+                clipped there. Borders are simplified.
+              </dd>
+            </div>
+          </dl>
         </details>
         <a href="https://www.naturalearthdata.com/downloads/110m-cultural-vectors/110m-admin-0-countries/">
           Natural Earth · 1:110m
