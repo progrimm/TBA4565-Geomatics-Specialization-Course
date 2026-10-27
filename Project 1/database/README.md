@@ -281,7 +281,7 @@ EPSG:4326 geometry area is planar and measured in square degrees. Casting to geo
 
 These are ellipsoidal areas of generalized and, for two features, repaired boundaries. They are not surveyed national statistics. D3 uses spherical geometry, so its equal-area projection is not an exact ellipsoidal reference. The frontend now renders the database's repaired geometries; the original static import source remains unchanged.
 
-Greenland statistics use a separate spherical denominator and pyproj/Shapely; see the [backend measurement method](../backend/README.md#country-method). QGIS database visualization, a full privilege audit, and an end-to-end replay of the *native* (non-Docker) setup remain unverified. No database mutations were performed by the agent during the 2026-09-21 frontend/documentation update.
+Country projection statistics use a separate spherical denominator and pyproj/Shapely; see the [backend measurement method](../backend/README.md#country-method). QGIS database visualization, a full privilege audit, and an end-to-end replay of the *native* (non-Docker) setup remain unverified. No database mutations were performed by the agent during the 2026-09-21 frontend/documentation update.
 
 ## Official References
 

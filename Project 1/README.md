@@ -29,7 +29,7 @@ The components:
 
 The frontend loads database-backed GeoJSON through FastAPI. In native development, Vite proxies `/api` requests to the API. In Docker Compose, Nginx serves the production frontend and proxies those requests to FastAPI. A restricted `projection_api` role has verified read access to 177 countries. FastAPI exposes health, count and country GeoJSON endpoints, plus `/countries/areas` and `/countries/{adm0_a3}/areas`, which read the precomputed table. The original `/countries/GRL/areas` still works. Intermediate blend areas are not calculated or interpolated.
 
-Docker Compose is implemented and locally verified for PostGIS, FastAPI, and the production frontend. An explicit setup-profile bootstrap imports the versioned GeoJSON, prepares geometries and areas, and creates the restricted API role. The bootstrap was verified against the current container database; it refuses to overwrite an existing countries table. This does not establish a complete independent fresh-volume replay or production security hardening.
+Docker Compose is implemented and locally verified for PostGIS, FastAPI, and the production frontend. An explicit setup-profile bootstrap imports the versioned GeoJSON, prepares geometries and areas, and creates the restricted API role. It refuses to overwrite an existing countries table. A separate `areas` setup service precomputes the statistics. On 2026-10-27 the whole Compose sequence was replayed on a fresh, empty volume with [compose.replay.yaml](compose.replay.yaml). Its API matched [results/country_areas.csv](results/country_areas.csv) to within 1.1e-13 relative; see the [database guide](database/README.md#fresh-volume-replay). GitHub Actions ([project1-ci.yml](../.github/workflows/project1-ci.yml)) runs frontend lint and build plus the backend pytest suite.
 
 See the [frontend guide](frontend/README.md) to run the map, the [backend guide](backend/README.md) for endpoints and measurement details, the [database guide](database/README.md) for setup and read-only checks, and the [progress log](PROGRESS.md) for verification evidence. The database guide separates fresh setup from checks safe to run on the existing prepared database.
 
@@ -55,15 +55,31 @@ See the [frontend guide](frontend/README.md) to run the map, the [backend guide]
 1. **Complete:** static Mercator and Eckert IV maps using local Natural Earth GeoJSON. The original side-by-side view established rendering before the single-map redesign.
 2. **Complete:** finite-circle approximation of Tissot's indicatrix, a projection morph slider, and the single-map educational layout.
 3. **Complete:** native PostgreSQL/PostGIS setup, ogr2ogr import, geometry validation/repair, stored geodesic areas, and a verified spatial-index query.
-4. **Complete:** restricted database login, FastAPI GeoJSON, API-backed map, winding/rendering checks, pyproj/Shapely endpoint statistics, and integrated Greenland results. Extended to all 177 countries on 2026-10-27. See the progress log for verification and remaining hardening; production readiness is not implied.
-5. **Complete and locally verified:** containerize PostGIS, FastAPI, and the production frontend with Docker Compose, including an explicit guarded data bootstrap, persistent storage, and private local configuration.
-6. **Complete locally (2026-10-27):** click or tap any country to see its area panel, plus the distortion-vs-latitude chart. Deployment polish (static GitHub Pages mode) is still open; `frontend/public/data/country_areas.json` is already generated for it.
+4. **Complete:** restricted database login, FastAPI GeoJSON, API-backed map, winding/rendering checks, and pyproj/Shapely projection statistics. These started with Greenland (2026-09-21) and were extended to all 177 countries on 2026-10-27: precomputed in PostGIS, exported to CSV, and tested with pytest.
+5. **Complete and locally verified:** containerize PostGIS, FastAPI, and the production frontend with Docker Compose, including an explicit guarded data bootstrap, the `areas` precompute service, persistent storage, and private local configuration. Replayed on a fresh volume on 2026-10-27.
+6. **Complete locally (2026-10-27):** any country can be selected by click, tap or keyboard to open its area panel. The distortion-vs-latitude chart is keyboard-navigable, the Method section is written for non-experts, and the layout was checked for contrast and at 320 px. CI was added. **Open:** the static GitHub Pages mode. `frontend/public/data/country_areas.json` is already generated for it.
 
 The implemented area ratio is projected square meters divided by spherical reference square meters, using radius 6,371,007.1809 m for both. The stored WGS 84 ellipsoidal area is reported separately. Great-circle boundary densification at 20/10/5 km checks convergence. Greenland's Mercator ratio is approximately 16.5433 and Eckert IV's approximately 1. See the [method](backend/README.md#country-method), including how poles (Antarctica), the antimeridian and the centroid latitude are handled.
 
 D3 uses a sphere while PostGIS geography uses the WGS 84 ellipsoid. The 3-degree circles are finite approximations, the morph is raw-coordinate interpolation, and intermediate blends generally preserve neither angles nor area. Mercator latitude is clamped at approximately +/-85.05 degrees, not geographically clipped. Each blend is fitted independently, so screen area is not directly comparable across slider positions. The panel marks only the exact endpoints as current; neither endpoint ratio describes an intermediate blend.
 
 Country areas describe this generalized dataset, including database repairs, not authoritative national measurements. The all-country extension was requested on 2026-10-27 under the sprint override in the root CLAUDE.md. That override also supersedes the tutoring agreement below until 2026-10-30.
+
+## Limitations
+
+- **Not deployed.** GitHub Pages static data mode (Vite `base` `/projection-lab/`, reading JSON instead of `/api`) is not built. The app currently needs FastAPI and PostGIS. The geometry for static mode would also have to be exported, because `country_areas.json` holds statistics only.
+- **CI not yet observed.** The workflow was linted with actionlint, and its steps were run locally. It has not run on GitHub because the branch was not pushed.
+- **Generalised boundaries.** All areas describe Natural Earth 1:110m boundaries, including the database repairs of USA and Sudan. They are not official national figures.
+- **Sphere, not ellipsoid.** Projection ratios use a sphere of radius 6,371,007.1809 m. The WGS 84 ellipsoidal area is reported separately and differs by −0.45% to +0.81% per country.
+- **Antarctica** is clipped at ±85.0511° for its statistics and excluded from the summary statistics.
+- **Sudan** carries a projected-geometry validity flag. A spike in its boundary self-intersects as great circles; the effect on area is about 5e-7, and the country is still included.
+- **Blends.** Intermediate blends are neither measured nor area- or angle-preserving. Each blend is fitted independently, so screen sizes are not comparable across slider positions.
+- **Circles.** The 3° circles approximate Tissot's infinitesimal indicatrix.
+- **Map keyboard access.** The map itself is not keyboard-navigable; the country list and the chart are the keyboard routes. No screen-reader software was tested.
+- **Browser tests are not committed.** The Playwright checks used for verification are ad hoc scripts, so CI does not run them.
+- **Platform differences.** Results computed on Windows and in the Linux containers differ by at most about 1e-13 relative, because of floating-point differences between PROJ/GEOS builds.
+- **Native replay.** The native (non-Docker) database setup has not been replayed end to end.
+- **API hardening.** Database failures other than a missing statistics table still return a generic HTTP 500. There is no connection pool.
 
 ## Starting Experience
 
@@ -75,6 +91,9 @@ Country areas describe this generalized dataset, including database repairs, not
 - Coding syntax recall and independent debugging need practice after relying heavily on AI tools.
 
 ## Tutoring Agreement
+
+The sprint override in the root CLAUDE.md supersedes this agreement until 2026-10-30; until then the agent implements directly.
+
 
 - Work as a step-by-step tutor, not an autonomous implementation agent. The learner writes and runs the code.
 - Do not generate whole files or apply changes unless explicitly authorized. Permission to create these initial notes is not permission to implement the app.

@@ -78,7 +78,7 @@ The spherical area is the denominator for both ratios. The WGS 84 ellipsoidal ar
 
 After the single-map redesign, the production build and ESLint passed. Browser checks confirmed 177 features, one map, valid paths at blends 0, 0.5, and 1, 0/30 circles when toggled, and working keyboard controls. No horizontal overflow was observed at viewport widths 1600, 1024, 768, 390, and 320 pixels. These are recorded manual checks, not a committed automated browser test suite.
 
-On 2026-09-21 the learner verified API-backed loading, 177 features, projection endpoints and midpoint, circle toggling, API shutdown/error/recovery, and passing build/lint. The Greenland panel's agent-run checks are recorded separately in the [progress log](../PROGRESS.md).
+On 2026-09-21 the learner verified API-backed loading, 177 features, projection endpoints and midpoint, circle toggling, API shutdown/error/recovery, and passing build/lint. The agent-run checks for the earlier single-country panel are recorded in the [progress log](../PROGRESS.md).
 
 After the Projection Lab simplification, build and lint passed. Live-API browser checks covered five widths (320, 390, 768, 1024, 1600), distinct valid map paths at all three blend test positions, endpoint markers, keyboard slider controls, circle toggling, Method disclosure, delayed statistics loading, independent request failures, malformed statistics, and recovery. No page exceptions or horizontal overflow were observed; desktop/mobile screenshots were inspected. Backend calculations were unchanged.
 

@@ -4,31 +4,37 @@ Project scope and tutoring rules: [README.md](README.md).
 
 ## Current Checkpoint
 
-- Last updated: 2026-10-27 (sprint; agent implements directly per the root CLAUDE.md override).
-- Phase: 4 extended from Greenland-only to all 177 countries, and Phase 6's country panel delivered locally, with a distortion-vs-latitude chart. Phase 5 (Compose) was already done (see README). This is not a claim of production readiness; static GitHub Pages mode is not built.
-- Frontend: React/TypeScript/Vite and D3 render API-backed Natural Earth countries on one morphing SVG map with graticule, world outline, 30 finite geographic circles, and a keyboard-accessible slider. Greenland is highlighted; an independent API request supplies the responsive area comparison panel. Only endpoint projections are marked current; intermediate blends have no calculated area.
-- Native tools: PostgreSQL 18.6, PostGIS 3.6.2, GDAL 3.13.3 via OSGeo4W; QGIS installed, version not recorded.
-- Database: `localhost:5432`, database `projection_lab`, table `public.countries`; 177 MultiPolygon/4326 features, primary key, GiST index, and stored generated `geodesic_area_m2`.
-- Backend: Python 3.14.7, FastAPI 0.141.1, Psycopg 3.3.6, pyproj, Shapely and pytest (dev). GET endpoints: `/health`, `/countries/count`, `/countries`, `/countries/areas`, `/countries/{adm0_a3}/areas` (GRL still works). Statistics are precomputed by `country_areas.py compute` into `public.country_area_stats` on both the native and Compose databases.
-- Frontend verification: learner confirmed API loading, 177 features, blend endpoints/midpoint, circles, and API outage/recovery; build/lint passed. After the panel update, agent-run build/lint and Playwright checks passed at 1600, 1024, 768, 390, and 320 pixels, all at blends 0/0.5/1; valid country/Greenland paths, correct active rows, no horizontal overflow, 0/30 circles, independent HTTP 503 and malformed-statistics handling, and no page exceptions. Desktop/mobile screenshots were inspected.
-- Database verification: after USA/Sudan repairs, 177 rows with zero null, empty, or invalid geometries; all 177 areas populated, positive, and finite. Greenland approximately 2,206,644.4394 square kilometers. Berlin returned Germany/DEU; its observed plan used the GiST index.
-- Integration status: browser `/api/*` requests go through Vite to FastAPI on port 8000, then PostGIS. The static GeoJSON remains only as the original import source/asset; it is not a runtime fallback. All 177 database geometries passed `ST_IsPolygonCW`, and repaired geometries now reach the frontend. Export winding is D3-oriented rather than RFC 7946-normalized.
-- Role verification: learner created `projection_api`, set its password privately, granted CONNECT/USAGE/SELECT, verified administrative flags off, no table-level INSERT/UPDATE/DELETE/TRUNCATE or CREATE in public, and a separate login returning `projection_api | projection_lab | 177`. These checks are not an exhaustive privilege audit. Psycopg uses the external password file; no agent inspected credentials.
-- Greenland verification: spherical reference 2,189,750.321 km2; WGS 84 ellipsoidal reference 2,206,644.439 km2; Mercator projected 36,225,613.004 km2 (ratio 16.54326187); Eckert IV projected 2,189,749.778 km2 (ratio 0.99999975). Learner ran the standalone convergence checks; agent verified the live endpoint. Radius 6,371,007.1809 m, great-circle boundary densification 20/10/5 km, final relative changes below 1e-5 for both projections.
-- Reproduction status: [database guide and SQL scripts](database/README.md) recorded with explicit agent-edit authorization. Static checks only for these new artifacts; complete fresh-database replay remains unverified. No live database was changed by the agent.
-- Remaining work: static Pages mode (Vite `base`, reading `country_areas.json`), generic HTTP 500 handling for other database failures, a fresh-volume Compose replay (`bootstrap` + `areas`), and a committed browser test suite.
-- Important constraints: finite circles approximate infinitesimal indicatrices; intermediate blends generally preserve neither angles nor area; Mercator latitude is clamped at approximately +/-85.05 degrees. Refitting each blend means screen areas are not on a common scale. D3 uses spherical geometry; PostGIS geography areas use the WGS 84 ellipsoid and generalized boundaries. Database repairs do not modify the static source.
-- Next proposed action: wire static data mode for GitHub Pages at `/projection-lab/`, then use [results/summary.md](results/summary.md) and the chart in the report.
-- Teaching pace: larger coherent implementation/verification batches and complete code requested on 2026-09-21; keep docs-first explanations and learner execution by default. Direct frontend results integration and today's documentation edits were explicitly authorized; this does not authorize the next phase.
+- **Last updated:** 2026-10-27, in the sprint (the agent implements directly, per the root CLAUDE.md override).
+- **Status:** all six build phases are done and verified locally. Projection statistics cover all 177 countries. The one open deployment item is GitHub Pages static data mode; see [Limitations](README.md#limitations).
+- **Frontend:**
+  - React/TypeScript/Vite and D3 draw one morphing SVG map with graticule, world outline, 30 finite circles and a keyboard slider.
+  - Any country can be selected by click, tap, the country list, or the arrow keys on the chart, which opens its area panel.
+  - The distortion-vs-latitude chart (d3-scale, log y-axis, sec²φ curve) and a plain-language Method section.
+- **Backend:** Python 3.14.7, FastAPI 0.141.1, Psycopg 3.3.6, pyproj, Shapely and pytest (dev).
+  - GET endpoints: `/health`, `/countries/count`, `/countries`, `/countries/areas`, `/countries/{adm0_a3}/areas`.
+  - [country_areas.py](backend/country_areas.py) `compute` fills `public.country_area_stats`; `export` writes [results/](results/).
+- **Database:** native `localhost:5432` and Compose `127.0.0.1:5433` both hold `public.countries` (177 valid MultiPolygons, GiST index, stored WGS 84 areas) and `public.country_area_stats` (177 rows).
+- **Results:** [results/summary.md](results/summary.md) and [results/country_areas.csv](results/country_areas.csv). Excluding the clipped Antarctica:
+  - the median Mercator ratio is 1.2063 and the maximum 16.5433 (Greenland);
+  - Eckert IV stays within 2.5e-6 of 1;
+  - sec²(φc) predicts within 1% for 156 of 176 countries and always underestimates (Jensen).
+- **Verification:**
+  - pytest: 12 passed;
+  - frontend lint and build pass;
+  - CI workflow linted with actionlint;
+  - Playwright: 39 interaction checks and 31 accessibility checks at 1600/390/320 px, with screenshots inspected;
+  - a fresh-volume Compose replay matched the CSV to within 1.1e-13.
+- **Remaining:** static Pages mode; CI not yet observed on GitHub; browser tests not committed; native-setup replay; generic HTTP 500s for other database failures. See [Limitations](README.md#limitations).
+- **Next action:** wire static data mode for GitHub Pages at `/projection-lab/`, then write the report from `results/summary.md` and the chart.
 
 ## Phase Tracker
 
 - [x] Phase 1: static Mercator and Eckert IV maps using local Natural Earth GeoJSON.
 - [x] Phase 2: Tissot's indicatrix overlay and projection morph slider.
-- [x] Phase 3: PostGIS setup, Natural Earth import, and geodesic areas (interactive workflow verified; scripts replayed on a fresh Compose volume on 2026-10-27).
-- [x] Phase 4 local milestone: FastAPI GeoJSON, Greenland-only distortion statistics, and frontend integration, verified for the agreed scope. Hardening and broader statistics are not claimed complete.
-- [ ] Phase 5: Docker Compose for database and API.
-- [x] Phase 6: country area comparison panel (all countries) and distortion-vs-latitude chart, verified locally on 2026-10-27. Deployment polish remains.
+- [x] Phase 3: PostGIS setup, Natural Earth import, and geodesic areas. The interactive workflow was verified, and the scripts were replayed on a fresh Compose volume on 2026-10-27.
+- [x] Phase 4: FastAPI GeoJSON, projection-area statistics (Greenland first, then all 177 countries on 2026-10-27), and frontend integration.
+- [x] Phase 5: Docker Compose for database, API and frontend, including bootstrap and the `areas` precompute. Replayed on a fresh volume on 2026-10-27.
+- [x] Phase 6: country area panel for all countries, the distortion-vs-latitude chart, accessibility pass and CI (2026-10-27). Open: GitHub Pages static mode.
 
 ## Learning Log
 
@@ -221,6 +227,14 @@ Project scope and tutoring rules: [README.md](README.md).
 - The first 320 px screenshot showed the x-axis labels colliding (the tick-count fix above).
 - A test bug: the tab loop counted focus leaving the page (`BODY`) as a stop without an outline. The test was fixed; the app was not changed for it.
 - Not done: no screen-reader software (NVDA, VoiceOver) was used. The map itself is not keyboard-navigable; the select is the keyboard route.
+
+### 2026-10-27: Documentation Cleanup (completion step 5)
+
+- Removed outdated "Greenland-only" and "limited to Greenland" wording from the root README and every Project 1 README: project, backend, database and frontend. The dated learning-log entries above are history and were kept as written.
+- **Root README:** a new Project 1 summary, the missing `areas` precompute step in "Run the Map", a link to the results, and a rewritten Status.
+- **Project 1 README:** updated status and build order, plus a new [Limitations](README.md#limitations) section listing what is still open or approximate.
+- **This file:** rewrote the checkpoint. Phase 5 was still unticked even though Compose was done; it is now ticked.
+- **Check:** `grep -i "greenland-only|limited to Greenland"` over the READMEs returns nothing.
 
 ## Updating Future Checkpoints
 

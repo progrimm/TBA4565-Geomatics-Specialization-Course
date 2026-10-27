@@ -70,7 +70,7 @@ The country SQL uses `ST_AsGeoJSON(record)`, casts its text result to `json`, ag
 
 ## Country Method
 
-[country_areas.py](country_areas.py) generalises the original Greenland-only script to every country. It was renamed from `greenland_areas.py` on 2026-10-27. The pure calculation, `calculate_country_areas()`, takes a Shapely geometry and has no database access, so pytest can test it directly. Database loading and the command-line interface are separate functions in the same module.
+[country_areas.py](country_areas.py) generalises the original single-country (Greenland) script to every country. It was renamed from `greenland_areas.py` on 2026-10-27. The pure calculation, `calculate_country_areas()`, takes a Shapely geometry and has no database access, so pytest can test it directly. Database loading and the command-line interface are separate functions in the same module.
 
 1. Read each database geometry at 15 decimal places, plus the stored WGS 84 ellipsoidal area. No database geometry is modified.
 2. Orient an in-memory copy with counterclockwise exteriors, so pyproj's signed geodesic area is positive. Holes keep the opposite winding.

@@ -4,12 +4,13 @@ Learning projects for the TBA4565 Geomatics Specialization Course: three web GIS
 
 ## Project 1: Comparing Map Projections
 
-An interactive React/TypeScript map explores Mercator and Eckert IV projection distortion through a morph slider and equal-radius geographic circles. FastAPI serves 177 country geometries from PostGIS. A Greenland comparison panel shows calculated endpoint projection areas alongside the morphing map; intermediate blends are explicitly unmeasured.
+An interactive React/TypeScript map explores Mercator and Eckert IV projection distortion through a morph slider and equal-radius geographic circles. FastAPI serves 177 country geometries from PostGIS, together with projection-area statistics precomputed for every country. Click any country, or pick it from the list, to compare its spherical, ellipsoidal, Mercator and Eckert IV areas. A distortion-vs-latitude chart compares every country's Mercator inflation with the theoretical sec²φ. Intermediate blends are explicitly unmeasured. CI runs frontend lint and build plus the backend pytest suite.
 
 - [Project overview and learning agreement](Project%201/README.md)
 - [Current checkpoint and learning log](Project%201/PROGRESS.md)
 - [Frontend setup and data source](Project%201/frontend/README.md)
-- [Backend setup, endpoints, and Greenland calculations](Project%201/backend/README.md)
+- [Backend setup, endpoints, and the country area method](Project%201/backend/README.md)
+- [Results: per-country CSV and summary](Project%201/results/summary.md)
 - [Database setup, SQL scripts, and verification](Project%201/database/README.md)
 
 ## Project 2: Trondheim 3D
@@ -55,7 +56,13 @@ docker compose --env-file "Project 1/.env" -f "Project 1/compose.yaml" up -d db
 docker compose --env-file "Project 1/.env" -f "Project 1/compose.yaml" --profile setup run --build --rm bootstrap
 ```
 
-The bootstrap imports the versioned GeoJSON, applies the existing geometry preparation SQL, and creates the read-only `projection_api` role. It refuses to import if `public.countries` already exists. It is an explicit one-shot command, not part of ordinary application startup.
+The bootstrap imports the versioned GeoJSON, applies the existing geometry preparation SQL, creates the read-only `projection_api` role and creates the empty `country_area_stats` table. It refuses to import if `public.countries` already exists. It is an explicit one-shot command, not part of ordinary application startup.
+
+Then precompute the projection-area statistics once. This runs the backend image as the database administrator:
+
+```powershell
+docker compose --env-file "Project 1/.env" -f "Project 1/compose.yaml" --profile setup run --build --rm areas
+```
 
 Build and start the app:
 
@@ -97,6 +104,13 @@ npm --prefix "Project 1/frontend" run lint
 
 ## Status
 
-Phases 1-3 are complete: static maps, the interactive distortion study, and manually verified PostGIS import/repair/area/index work. The database scripts and Compose bootstrap were verified against the container database; a full fresh-database replay remains an optional additional check.
+All six build phases of Project 1 are done and verified locally:
 
-Phase 4's local API-to-map workflow and Greenland-only statistics are implemented. Phase 5 is implemented and verified locally: Compose runs PostGIS, FastAPI, and an Nginx-served production frontend, with an explicit bootstrap service for importing and preparing the country data. Calculation scope remains deliberately limited to Greenland; see the progress log for verification and remaining hardening work. Broader country statistics and a general country-selection panel remain unimplemented.
+- static maps;
+- the distortion study with circles and the morph slider;
+- the PostGIS import, repair, areas and index;
+- the restricted API and projection statistics for **all 177 countries**;
+- Docker Compose;
+- the country panel and distortion-vs-latitude chart.
+
+On 2026-10-27 the Compose setup (bootstrap, area precompute, app) was replayed on a fresh, empty volume. The API it served matched `results/country_areas.csv` to within 1.1e-13 relative. Headline results and the method are in the [Project 1 README](Project%201/README.md). The remaining limitations are listed there too. The main open item is deployment: the GitHub Pages static data mode at `/projection-lab/` is not built yet.
