@@ -13,6 +13,20 @@ export default defineConfig({
   define: {
     CESIUM_BASE_URL: JSON.stringify(`./${cesiumBaseUrl}`),
   },
+  build: {
+    // One entry per page: the gallery plus the Viewer lab pages. Each lab page gets
+    // its own bundle, so their sizes can be compared. The manifest lists the chunks
+    // of each page for scripts/lab-static-metrics.mjs.
+    manifest: true,
+    rollupOptions: {
+      input: Object.fromEntries(
+        [
+          'index',
+          ...['index', 'spark', 'playcanvas', 'babylon', 'arcgis'].map((p) => `lab/${p}`),
+        ].map((name) => [name, `${name}.html`]),
+      ),
+    },
+  },
   plugins: [
     react(),
     viteStaticCopy({

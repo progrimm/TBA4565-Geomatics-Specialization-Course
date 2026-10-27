@@ -30,6 +30,10 @@ export default function App() {
         <MeasureTool viewer={viewer} />
         <AlignmentTool splat={tileset && gallery.selected} alignment={alignment} />
         <PerformancePanel viewer={viewer} tileset={tileset} />
+        <p className="tool__note">
+          <a href="lab/">Viewer lab</a>: one splat in Spark, PlayCanvas, Babylon.js and ArcGIS, with
+          a benchmark.
+        </p>
       </ControlPanel>
       {alignment.swipe && tileset && <SplitLine position={alignment.splitPosition} />}
       <Messages />

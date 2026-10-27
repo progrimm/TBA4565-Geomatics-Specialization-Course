@@ -1,0 +1,193 @@
+/* Viewer lab pages. Tokens match src/style.css so the lab looks like the gallery. */
+:root {
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --text: #f2f3f5;
+  --text-muted: #a3a9b4;
+  --accent: #f5a623;
+  --error: #e5484d;
+  --surface: rgb(255 255 255 / 4%);
+  --border: rgb(255 255 255 / 10%);
+  --radius: 14px;
+  --radius-sm: 8px;
+  --gutter: 16px;
+  --bar-height: 44px;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #0b0c0e;
+  color: var(--text);
+  font-family: var(--font);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- Navigation bar ---------- */
+.lab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+  min-height: var(--bar-height);
+  padding: 8px var(--gutter);
+  border-bottom: 1px solid var(--border);
+  background: rgb(18 20 24 / 92%);
+  font-size: 14px;
+}
+
+.lab-bar__home {
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.lab-bar__trail {
+  color: var(--text-muted);
+}
+
+.lab-bar__trail a {
+  color: var(--text-muted);
+}
+
+/* ---------- Page ---------- */
+.lab-page {
+  max-width: 1312px;
+  margin: 0 auto;
+  padding: var(--gutter);
+}
+
+.lab-page h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.lab-page h2 {
+  margin: 32px 0 8px;
+  font-size: 18px;
+}
+
+.lab-page__engine,
+.lab-note {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* Fixed 16:9 stage. The drawing buffer stays 1280 × 720 for the benchmark; on
+   narrow screens the canvas is only scaled down by CSS. */
+.lab-stage {
+  position: relative;
+  width: 100%;
+  max-width: 1280px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #000;
+}
+
+.lab-stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.lab-status {
+  min-height: 1.5em;
+  margin: 8px 0 0;
+  font-size: 14px;
+}
+
+.lab-status:empty {
+  display: none;
+}
+
+.lab-status--error {
+  color: var(--error);
+}
+
+.lab-credit {
+  max-width: 1312px;
+  margin: 0 auto;
+  padding: 0 var(--gutter) var(--gutter);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ---------- Lab index ---------- */
+.lab-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.lab-cards a {
+  display: block;
+  height: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.lab-cards a:hover {
+  border-color: var(--accent);
+}
+
+.lab-cards strong {
+  display: block;
+  color: var(--accent);
+}
+
+.lab-cards span {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.lab-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.lab-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.lab-table-wrap th,
+.lab-table-wrap td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.lab-table-wrap td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.lab-table-wrap th {
+  background: var(--surface);
+  white-space: nowrap;
+}
