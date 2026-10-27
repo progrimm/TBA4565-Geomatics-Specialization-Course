@@ -2,7 +2,9 @@ from fastapi import FastAPI
 
 from database import connect_database
 
-from greenland_areas import calculate_greenland_areas
+from shapely.geometry import shape
+
+from country_areas import calculate_country_areas, load_countries, to_response
 
 app = FastAPI()
 
@@ -43,4 +45,5 @@ def get_countries():
 
 @app.get("/countries/GRL/areas")
 def get_greenland_areas():
-    return calculate_greenland_areas()
+    code, admin, geojson, ellipsoidal = load_countries(["GRL"])[0]
+    return to_response(calculate_country_areas(code, admin, shape(geojson), ellipsoidal))

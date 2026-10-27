@@ -104,6 +104,22 @@ Project scope and tutoring rules: [README.md](README.md).
 - Consolidated HTTP JSON fetching and Greenland-value validation, made endpoint labels data-driven, formatted JSX/CSS, removed unused styles, centralized palette colors, and updated page metadata. Backend/database code and calculations were unchanged.
 - Build and lint passed; editor diagnostics clear. Ad hoc Playwright checks against the live API passed at widths 1600/1024/768/390/320, verifying distinct valid morph paths at 0/0.5/1, correct endpoint markers, no overflow, keyboard Home/ArrowRight/End, 0/30 circles, Method keyboard interaction, delayed statistics, independent HTTP 503 failures, invalid statistics, and recovery. Desktop/mobile screenshots were inspected. No browser exceptions. This remains a local Greenland-only milestone, not a new phase.
 
+### 2026-10-27: All-Country Calculation Module and Tests (sprint step 1)
+
+- Sprint mode, as set out in the root CLAUDE.md: the agent implements directly. The goal is to answer, for all 177 countries, how much Mercator inflates area, how that depends on latitude, and how well sec²(φ) predicts it compared with Eckert IV.
+- Renamed `backend/greenland_areas.py` to [country_areas.py](backend/country_areas.py) (`git mv`) and generalised it into these parts:
+  - the pure `calculate_country_areas()`;
+  - latitude-only clipping at ±85.0511°, with the clip edge densified along the parallel;
+  - an area-weighted centroid latitude via `+proj=cea`;
+  - sec²(φc);
+  - a per-country `status` that records failures instead of raising.
+- The old Greenland output was saved before the rename. A new run against the native database matched all 15 original fields **bit for bit**.
+- A dry run over all 177 countries took about 1.8 s. It printed `Computed 177 countries; 1 not ok`, `SDN Sudan: merc_invalid_geometry,eck4_invalid_geometry` and `ATA clipped to +/-85.0511 deg, kept fraction 0.922678`. Every country converged (10→5 km change < 1e-5).
+- Sudan's flag was diagnosed as a narrow spike in the ring. It is valid with straight lon/lat edges but crosses itself once the edges are treated as great circles. Repairing it with `make_valid` changes the projected area by about 5e-7 relative, so its ratios are kept and the flag stays visible ([backend guide](backend/README.md#country-method)).
+- Mistake found and fixed: clipping with a rectangle edge on ±180° replaced densified antimeridian edges with straight lines. The polar-cap test then failed with an Eckert IV ratio of 0.9771. The fix clips in latitude only, using x = ±360.
+- Added pytest as a uv dev dependency, plus `tests/test_country_areas.py` (12 tests). `uv run --locked --project "Project 1/backend" pytest` reports `12 passed`.
+- `/countries/GRL/areas` temporarily computes live through the new module. Checked with FastAPI's TestClient: HTTP 200, Mercator 16.543261873210085, Eckert IV 0.9999997520352772. The precomputed table follows in step 2.
+
 ## Updating Future Checkpoints
 
 After each completed step, update the current checkpoint and append a short dated entry containing:

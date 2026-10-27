@@ -8,3 +8,12 @@ dependencies = [
     "pyproj>=3.7",
     "shapely>=2.1",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

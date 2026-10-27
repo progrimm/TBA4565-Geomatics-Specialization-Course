@@ -9,7 +9,7 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-install-project --no-dev
 
-COPY database.py main.py greenland_areas.py ./
+COPY database.py main.py country_areas.py ./
 
 ENV PATH="/app/.venv/bin:$PATH"
 

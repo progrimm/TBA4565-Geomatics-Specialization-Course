@@ -1,6 +1,6 @@
 # Projection Lab Backend
 
-FastAPI serves PostGIS country GeoJSON and Greenland-only area comparisons. The frontend accesses it through Vite's `/api` development proxy. No additional country-statistics endpoints are implemented or authorized in the current scope.
+FastAPI serves PostGIS country GeoJSON and projection-area statistics for all 177 countries. The frontend accesses it through Vite's `/api` development proxy.
 
 ## Environment and Dependencies
 
@@ -53,22 +53,34 @@ The connection settings are centralized in [database.py](database.py). Environme
 
 The country SQL uses `ST_AsGeoJSON(record)`, casts its text result to `json`, aggregates in country-code order, and supplies `[]` for an empty collection. Psycopg decodes the JSON into Python objects; FastAPI serializes them without an extra JSON-encoding step. Coordinates are longitude/latitude in EPSG:4326. Winding is intentionally preserved for D3 (clockwise exteriors), not normalized to RFC 7946's counterclockwise-exterior recommendation.
 
-## Greenland Method
+## Country Method
 
-[greenland_areas.py](greenland_areas.py) queries only `GRL`. Its main guard permits standalone execution without running a query merely when the module is imported:
+[country_areas.py](country_areas.py) generalises the original Greenland-only script to every country. It was renamed from `greenland_areas.py` on 2026-10-27. The pure calculation, `calculate_country_areas()`, takes a Shapely geometry and has no database access, so pytest can test it directly. Database loading and the command-line interface are separate functions in the same module.
+
+1. Read each database geometry at 15 decimal places, plus the stored WGS 84 ellipsoidal area. No database geometry is modified.
+2. Orient an in-memory copy with counterclockwise exteriors, so pyproj's signed geodesic area is positive. Holes keep the opposite winding.
+3. Interpret the same longitude/latitude vertices on a sphere of radius **6,371,007.1809 m**, approximately the WGS 84 authalic radius. This deliberately switches to a different Earth model; it is not a transformation into another measured datum.
+4. Use `Geod(a=RADIUS, f=0)` for the spherical reference area and for great-circle interpolation of every boundary, including holes and every MultiPolygon part.
+5. Densify boundaries to maximum segment lengths of 20, 10 and 5 km. Project them with `+proj=merc` and `+proj=eck4`, using the same `+R`, metre units, central meridian zero and unit scale. `always_xy=True` keeps longitude/latitude order.
+6. Shapely measures the projected polygons in square metres. Each projected area is divided by the spherical reference area. Both relative changes are stored, 20→10 km and 10→5 km. The 5 km result counts as converged when the 10→5 km change is below `1e-5`.
+7. **Failures are recorded, not raised.** `status` is `ok`, or a comma-separated list of: `<proj>_not_converged`, `eck4_ratio_outside_tolerance` (|ratio − 1| ≥ 1e-5), `merc_ratio_not_above_1`, `<proj>_invalid_geometry` (the projected 5 km geometry is not valid) and `<proj>_invalid_area_<n>km`. Invalid *input* geometry, and geometry lying entirely beyond the Mercator limit, still raise `ValueError`.
+
+**Poles (Antarctica).** At ±90° Mercator area is infinite. Geometry beyond ±85.0511° (atan(sinh π), the Web Mercator limit) is clipped. The clip runs only in latitude, with `shapely.clip_by_rect` at x = ±360, so densified edges on ±180° are kept. The clip happens after great-circle densification, and the new clip edge is densified *along the parallel*, because a parallel is not a great circle. The reference area and both projected areas are measured on the same clipped geometry, so the ratio covers one consistent region. The table stores `is_clipped`, `unclipped_spherical_area_m2` and `clipped_area_fraction`. In Natural Earth 1:110m only Antarctica exceeds the limit (it reaches −90°). 92.27% of its spherical area remains after clipping.
+
+**Antimeridian.** Natural Earth already splits Fiji, Russia and Antarctica at ±180°, and `Geod.npts` keeps ±180 on the meridian. A test confirms that a box against 180° gives the same ratios as the same box shifted to 0°.
+
+**Centroid latitude.** φc = asin(ȳ / R), where ȳ is the planar centroid of the 5 km geometry in the spherical cylindrical equal-area projection (`+proj=cea`). That projection preserves area and has y = R sin φ, so φc is asin of the area-weighted mean of sin φ. Longitude does not enter, which makes it safe across the antimeridian. A planar lon/lat centroid would be biased toward the poles, because degree cells shrink there. `sec2_at_centroid` = sec²(φc) is the theoretical Mercator area scale factor on the sphere at that latitude ([Snyder 1987, ch. 7](https://pubs.usgs.gov/pp/1395/report.pdf)).
+
+Greenland goes through exactly the same code path as before. Run against the native database, all 15 fields of the original Greenland response were bit-for-bit equal to the output of the old script, which was saved before the rename. The Compose API, running Linux builds of PROJ/GEOS, differed from the native Windows result only in the last digits (about 1e-15 relative).
+
+Standalone use, from this directory:
 
 ```powershell
-uv run --locked greenland_areas.py
+uv run --locked country_areas.py compute --dry-run --only GRL ATA   # print, no write
+uv run --locked pytest                                               # unit tests
 ```
 
-1. Read the database geometry at 15 decimal places and the stored WGS 84 ellipsoidal area. No database geometry is modified.
-2. Orient an in-memory copy with counterclockwise exteriors so pyproj's signed geodesic area is positive; holes retain the opposite winding.
-3. Interpret the same longitude/latitude vertices on a sphere of radius **6,371,007.1809 m** (approximately the WGS 84 authalic radius). This deliberately changes the Earth model, rather than transforming into a new measured datum.
-4. Use `Geod(a=RADIUS, f=0)` for spherical reference area and great-circle interpolation of every boundary, including holes and every MultiPolygon part.
-5. Densify boundaries to maximum segment lengths of 20, 10, and 5 km. Project them using `+proj=merc` and `+proj=eck4`, the same `+R`, meter units, default central meridian zero, and default unit scale. `always_xy=True` preserves longitude/latitude order.
-6. Shapely measures the projected polygons in square meters. For each projection, divide by the spherical reference area. Retain the 5 km result only if the change from 10 km is below `1e-5` (0.001%). Also check positive finite areas, valid geometry, Eckert IV's ratio within `1e-5` of 1, and Mercator's ratio above 1.
-
-| Measurement               | Area (square kilometers) |   Ratio to spherical area |
+| Measurement (Greenland)   | Area (square kilometers) |   Ratio to spherical area |
 | ------------------------- | -----------------------: | ------------------------: |
 | WGS 84 ellipsoid, PostGIS |            2,206,644.439 | Not the ratio denominator |
 | Spherical reference       |            2,189,750.321 |                         1 |
@@ -77,13 +89,34 @@ uv run --locked greenland_areas.py
 
 These values were observed from the current generalized Greenland geometry. Final relative area changes (10 km to 5 km) were approximately `6.45097e-6` for Mercator and `5.87293e-7` for Eckert IV. Passing these checks is numerical convergence evidence, not a guarantee of surveyed boundary accuracy or an exhaustive error bound.
 
+**Sudan.** All 177 countries converged. Sudan is the only country whose status is not `ok`: `merc_invalid_geometry,eck4_invalid_geometry`. Its generalised ring contains a narrow spike near (24.57° E, 8.23° N): (23.806, 8.666) → (24.567, 8.229) → (23.887, 8.620). The ring is valid as straight lon/lat lines. Once the outgoing and returning edges are treated as great circles, though, they cross. Repairing the projected 5 km polygons with `shapely.make_valid` changed the measured area by 4.95e-7 (Mercator) and 5.26e-7 (Eckert IV) relative, both far below the 1e-5 tolerance. The flag is kept so the result is not hidden; Sudan's ratios are still reported and included in the statistics.
+
+### Tests
+
+[tests/test_country_areas.py](tests/test_country_areas.py) uses pytest ([getting started](https://docs.pytest.org/en/stable/getting-started.html)), installed as a uv [development dependency](https://docs.astral.sh/uv/concepts/projects/dependencies/#development-dependencies). The Docker image is built with `--no-dev`, so pytest is not installed there. The tests cover:
+
+- the octant triangle (0,0), (90,0), (0,90), whose area is exactly πR²/2;
+- the Eckert IV ratio of a 10°×10° box, which is 1 within 1e-5;
+- 0.1° boxes at 0/30/45/60/75°, whose Mercator ratio is sec²φ within 1e-3;
+- a 10–70° box, whose ratio exceeds sec²(φc), as Jensen's inequality requires;
+- antimeridian symmetry;
+- a polar cap reaching −90°, which is clipped and flagged, and whose area equals the zone formula 2πR²(sin φ₂ − sin φ₁) within 1e-5;
+- geometry entirely beyond the limit, which is rejected;
+- a Greenland regression against the static GeoJSON.
+
+[conftest.py](conftest.py) lets the repository-root command in CLAUDE.md find the module:
+
+```powershell
+uv run --locked --project "Project 1/backend" pytest
+```
+
 ### Interpreting the Comparison
 
 The ellipsoid is slightly flattened; the sphere is a different Earth model. Their Greenland areas differ by approximately 16,894 square kilometers (about 0.77% of the ellipsoidal area). That difference is not an Eckert IV projection error.
 
 Mercator preserves local angles but greatly enlarges high-latitude areas. Greenland's projected area is about **16.54 times** its spherical area, or about **1,554% larger**. Eckert IV preserves spherical area: its computed result is only about **0.543 square kilometers** below the spherical reference, a small numerical discrepancy from approximating curved projected edges with line segments. Equal area does not mean equal shape or angles.
 
-These are physical-coordinate projection calculations, not pixel measurements. D3 uses the same families of spherical endpoint projections, but fits every blend independently and has its own adaptive rendering approximation. The backend does not calculate intermediate blends; linear interpolation of the endpoint area ratios would be unjustified. Greenland is below the frontend's Mercator latitude cap. This script must not be generalized to polar or antimeridian-crossing countries without additional handling. Africa is educational context only; no Africa statistic was calculated today.
+These are physical-coordinate projection calculations, not pixel measurements. D3 uses the same families of spherical endpoint projections, but fits every blend independently and has its own adaptive rendering approximation. The backend does not calculate intermediate blends; linear interpolation of the endpoint area ratios would be unjustified. Greenland is below the frontend's Mercator latitude cap. Polar and antimeridian handling is described in the country method above. Africa is educational context only; no Africa statistic was calculated today.
 
 ## Verification and Remaining Work
 
