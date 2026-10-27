@@ -1,6 +1,6 @@
 # TBA4565-Geomatics-Specialization-Course
 
-Learning projects for the TBA4565 Geomatics Specialization Course: two web GIS applications, one GI Science-oriented (Project 1) and one GI Systems-oriented (Project 2).
+Learning projects for the TBA4565 Geomatics Specialization Course: three web GIS applications, one GI Science-oriented (Project 1), one GI Systems-oriented (Project 2) and one 3D GIS-oriented (Project 3).
 
 ## Project 1: Comparing Map Projections
 
@@ -14,7 +14,7 @@ An interactive React/TypeScript map explores Mercator and Eckert IV projection d
 
 ## Project 2: Trondheim 3D
 
-A CesiumJS + React web app for exploring Trondheim in 3D. It shows terrain, OpenStreetMap buildings and DSB public shelters that you can click to inspect. It also has a Gaussian splat showcase view. CI runs lint, format check, tests and build.
+A CesiumJS + React web app for exploring Trondheim in 3D. It shows terrain, OpenStreetMap buildings and DSB public shelters that you can click to inspect. CI runs lint, format check, tests and build.
 
 - [Setup, scripts, data, and attributions](Project%202/README.md)
 
@@ -22,6 +22,18 @@ A CesiumJS + React web app for exploring Trondheim in 3D. It shows terrain, Open
 Copy-Item "Project 2/.env.example" "Project 2/.env"   # then add your Cesium ion token
 npm --prefix "Project 2" ci
 npm --prefix "Project 2" run dev
+```
+
+## Project 3: 3DGS Viewer
+
+A CesiumJS + React web app for georeferenced 3D Gaussian splats, split out of Project 2 on 2026-10-27. It opens directly on a public Gaussian splat of the Microsoft campus in Redmond (USA). A globe gallery of several splats and a "Viewer lab" comparing 3DGS web viewers are planned. CI runs lint, format check, tests and build.
+
+- [Setup, scripts, token exception, and attributions](Project%203/README.md)
+
+```powershell
+Copy-Item "Project 3/.env.example" "Project 3/.env"   # then add your Cesium ion token
+npm --prefix "Project 3" ci
+npm --prefix "Project 3" run dev
 ```
 
 The rest of this README covers Project 1.

@@ -6,9 +6,8 @@ import { flightDuration } from '../utils/motion.js';
  * @param {object} props
  * @param {import('cesium').Camera} [props.camera]
  * @param {Record<string, {label: string}>} props.views - CAMERA_VIEWS from config.js.
- * @param {import('react').ReactNode} [props.children] - extra view buttons (e.g. splat).
  */
-export default function ViewButtons({ camera, views, children }) {
+export default function ViewButtons({ camera, views }) {
   const flyTo = (view) => {
     camera.flyTo({ ...toCameraOptions(view), duration: flightDuration() });
   };
@@ -30,7 +29,6 @@ export default function ViewButtons({ camera, views, children }) {
             {view.label}
           </button>
         ))}
-        {children}
       </div>
     </section>
   );

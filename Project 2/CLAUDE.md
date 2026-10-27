@@ -16,7 +16,6 @@ Learning goals:
    vs ellipsoidal heights)
 3. Professional frontend practices (structure, tooling, testing, CI/CD)
 4. Good AI-assisted development habits
-5. (Minor) Displaying a 3D Gaussian splat tileset in CesiumJS
 
 ## Features (scope)
 
@@ -24,9 +23,6 @@ Learning goals:
 - 3D buildings for Trondheim
 - At least one open Trondheim dataset (from Trondheim kommune, Geonorge/
   Kartverket, Entur or OSM), with click-to-inspect attributes
-- A "3DGS showcase" view: public georeferenced Gaussian splat tileset
-  (Cesium ion asset 4547222, Microsoft Redmond Campus, USA), loaded with
-  Cesium3DTileset.fromIonAssetId. Not in Trondheim; camera flies there.
 - Simple UI: layer toggles and preset camera views
 - Do NOT add features beyond this list without asking.
 
@@ -84,9 +80,6 @@ public/data/ – small static datasets (GeoJSON)
 - Note: Vite embeds VITE\_ variables in the client bundle, so the token is
   public in production. The production token must be a separate token with
   minimal scopes and restricted to the deployed URL in Cesium ion.
-- Exception (deliberate): the splat asset 4547222 is not in the Asset Depot,
-  so only that asset is requested with Cesium's built-in evaluation token
-  (`CESIUM_EVALUATION_TOKEN` in viewer.js). Everything else uses our token.
 - Never run commands that delete files, force-push or rewrite git history
   without asking.
 
@@ -100,8 +93,8 @@ public/data/ – small static datasets (GeoJSON)
   to the relevant docs when introducing something new.
 - If I ask "why does this happen?", explain the cause. Do not fix it unless
   I ask.
-- When behaviour may depend on the CesiumJS version (especially Gaussian
-  splats), check the installed version in package.json and say so.
+- When behaviour may depend on the CesiumJS version, check the installed
+  version in package.json and say so.
 - Point out bad practices or anything that falls short of production quality.
 - Commit messages: Conventional Commits, e.g. "feat: add terrain layer",
   "fix: handle failed tileset load", "chore: add eslint".
@@ -124,6 +117,7 @@ public/data/ – small static datasets (GeoJSON)
   bottom sheet). Camera positions for Nidarosdomen/Bakklandet are estimates
   and may need tuning.
 - React refactor: done (hooks/, components/, state/; plain React, no Resium).
-- Next: 3DGS showcase (ion 4547222) as an extra view button, then Module 5
-  (README with attributions, deployment).
+- 2026-10-27: the 3DGS showcase was split out into Project 3 (`../Project 3/`).
+  It is out of scope here.
+- Next: Module 5 (README with attributions, deployment).
   (Update this section after each module.)

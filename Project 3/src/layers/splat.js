@@ -30,9 +30,32 @@ export async function loadSplat(viewer) {
     return tileset;
   } catch (error) {
     console.error('Gaussian splat failed to load:', error);
-    showMessage('The Gaussian splat showcase could not be loaded.', 'error');
+    showMessage('The Gaussian splat could not be loaded.', 'error');
     return undefined;
   } finally {
     hideLoading();
   }
+}
+
+/**
+ * Move the camera so the whole splat tileset is in view.
+ * @param {import('cesium').Camera} camera
+ * @param {Cesium3DTileset} tileset
+ * @param {number} [duration] - flight time in seconds: 0 jumps, undefined lets
+ *   Cesium pick a duration from the flight distance.
+ */
+export function viewSplat(camera, tileset, duration) {
+  camera.flyToBoundingSphere(tileset.boundingSphere, { duration });
+}
+
+/**
+ * Load the splat and jump the camera straight to it: the app's start view.
+ * Module-level function, so it is a stable loader for useAsyncLayer.
+ * @param {import('cesium').Viewer} viewer
+ * @returns {Promise<Cesium3DTileset | undefined>} the tileset, or undefined if loading failed.
+ */
+export async function openSplat(viewer) {
+  const tileset = await loadSplat(viewer);
+  if (tileset && !viewer.isDestroyed()) viewSplat(viewer.camera, tileset, 0);
+  return tileset;
 }

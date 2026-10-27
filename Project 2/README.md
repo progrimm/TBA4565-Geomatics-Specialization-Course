@@ -1,8 +1,7 @@
 # Trondheim 3D
 
 A CesiumJS web app for exploring Trondheim, Norway, in 3D: global terrain, OpenStreetMap
-buildings and DSB public shelters (tilfluktsrom) with click-to-inspect attributes. A separate
-showcase view loads a georeferenced 3D Gaussian splat tileset.
+buildings and DSB public shelters (tilfluktsrom) with click-to-inspect attributes.
 
 It is a learning project for TBA4565 at NTNU. The scope is deliberately small and the focus is
 on code quality: linting, tests, error handling and CI.
@@ -14,8 +13,6 @@ on code quality: linting, tests, error handling and CI.
 - DSB public shelters in Trondheim as ground-clamped points. Click one to see its shelter
   number, capacity and address
 - Preset camera views: Midtbyen, Nidarosdomen and Bakklandet
-- 3DGS showcase: a Gaussian splat of the Microsoft Redmond campus (USA), loaded on first click,
-  after which the camera flies there
 - Loading and error messages for every layer. If one layer fails, the rest of the app keeps
   working
 - A collapsible control panel that becomes a bottom sheet on mobile. Camera flights respect
@@ -125,28 +122,29 @@ capacity and address. It refuses to overwrite the file if the service returns no
 - Vite embeds `VITE_` variables in the client bundle, so **the token is public in a production
   build**. For deployment, use a separate token with minimal scopes that is restricted to the
   deployed URL in Cesium ion.
-- Deliberate exception: the splat asset (ion 4547222) is public but not in the Cesium ion Asset
-  Depot. Only that asset is requested with Cesium's built-in evaluation token. Cesium then shows
-  a "default token" notice in the credits.
 
 ## Attribution and Licences
 
 On-screen credits come from Cesium's credit display and the shelter layer's credit. The InfoBox
 and credits are kept enabled on purpose.
 
-| Data                                                   | Source                                                  | Licence / terms                                                           |
-| ------------------------------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Cesium World Terrain (ion 1), default imagery          | Cesium ion                                              | [Cesium ion Terms of Service](https://cesium.com/legal/terms-of-service/) |
-| Cesium OSM Buildings (ion 96188)                       | © OpenStreetMap contributors                            | [ODbL](https://opendatacommons.org/licenses/odbl/)                        |
-| Tilfluktsrom – Offentlige (public shelters)            | © DSB (Direktoratet for samfunnssikkerhet og beredskap) | [NLOD 2.0](https://data.norge.no/nlod/en/2.0)                             |
-| Gaussian splat, Microsoft Redmond campus (ion 4547222) | Public Cesium ion asset                                 | Cesium ion terms; credits shown in the viewer                             |
+| Data                                          | Source                                                  | Licence / terms                                                           |
+| --------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Cesium World Terrain (ion 1), default imagery | Cesium ion                                              | [Cesium ion Terms of Service](https://cesium.com/legal/terms-of-service/) |
+| Cesium OSM Buildings (ion 96188)              | © OpenStreetMap contributors                            | [ODbL](https://opendatacommons.org/licenses/odbl/)                        |
+| Tilfluktsrom – Offentlige (public shelters)   | © DSB (Direktoratet for samfunnssikkerhet og beredskap) | [NLOD 2.0](https://data.norge.no/nlod/en/2.0)                             |
 
 CesiumJS is licensed under Apache 2.0.
 
 ## Status
 
 Done: terrain and start view, OSM buildings, DSB shelters with InfoBox, control panel with layer
-toggles and camera presets, React refactor, and the 3DGS showcase.
+toggles and camera presets, and React refactor. The 3D Gaussian splat showcase that used to live
+here was moved to its own app, [Project 3](../Project%203/README.md), on 2026-10-27. After
+that split, lint, format check, tests (6 files, 14 tests) and build pass. A Playwright check
+of the production build at 1600 px and 390 px showed terrain, buildings and the panel without
+the splat button and with no console errors. That check used Cesium's evaluation token, not a
+personal token.
 
 Remaining: public deployment. The Nidarosdomen and Bakklandet camera positions are estimates
 and may need tuning.
