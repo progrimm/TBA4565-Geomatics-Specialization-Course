@@ -26,5 +26,11 @@ export default [
     files: ['*.config.js', 'tests/**/*.js'],
     languageOptions: { globals: { ...globals.node } },
   },
+  {
+    // Node scripts; code inside page.evaluate runs in the browser.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+    rules: { 'no-console': 'off' },
+  },
   prettier,
 ];

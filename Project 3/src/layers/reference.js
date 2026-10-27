@@ -6,6 +6,7 @@ import {
   SplitDirection,
 } from 'cesium';
 import { showMessage } from '../state/messages.js';
+import { settleSplat } from './splat.js';
 
 /**
  * Reference layers for the alignment check: terrain, imagery and OSM buildings
@@ -72,8 +73,9 @@ export function setTilesetOffset(scene, tileset, offset) {
     ? Matrix4.fromTranslation(Cartesian3.fromArray(offset))
     : Matrix4.clone(Matrix4.IDENTITY);
   // Render now (not just request a frame), so the tileset's bounding sphere is
-  // updated before the UI reads it.
+  // updated before the UI reads it; then keep rendering while the splats re-sort.
   scene.render();
+  settleSplat(tileset);
 }
 
 /**

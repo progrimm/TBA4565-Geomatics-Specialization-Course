@@ -7,12 +7,16 @@ import { startTimer, trackTileset } from './stats.js';
 /** How long to keep rendering after a tile load or camera stop (milliseconds). */
 const SETTLE_MS = 3000;
 
+/** @type {WeakMap<Cesium3DTileset, () => void>} per-tileset "keep rendering" triggers */
+const settlers = new WeakMap();
+
 /**
  * Keep rendering for a short while after tiles load and after the camera stops.
  * With requestRenderMode, Cesium only draws a frame when something requests one.
  * In CesiumJS 1.146 the Gaussian splat primitive sorts splats by depth in a web
  * worker, and nothing requests a frame when that sort finishes. Without this, a
- * single-tile splat (e.g. the dam) stays invisible until the camera moves.
+ * single-tile splat (e.g. the dam) stays invisible until the camera moves, and a
+ * splat disappears after its modelMatrix changes (that also triggers a new sort).
  * @param {import('cesium').Scene} scene
  * @param {Cesium3DTileset} tileset
  */
@@ -22,12 +26,22 @@ function renderWhileSorting(scene, tileset) {
     until = performance.now() + SETTLE_MS;
     scene.requestRender();
   };
+  settlers.set(tileset, extend);
   tileset.tileLoad.addEventListener(extend);
   tileset.allTilesLoaded.addEventListener(extend);
   scene.camera.moveEnd.addEventListener(() => tileset.show && extend());
   scene.postRender.addEventListener(() => {
     if (performance.now() < until) scene.requestRender();
   });
+}
+
+/**
+ * Keep rendering for a short while because a tileset changed in a way that makes
+ * the splats re-sort (e.g. a new modelMatrix).
+ * @param {Cesium3DTileset} tileset
+ */
+export function settleSplat(tileset) {
+  settlers.get(tileset)?.();
 }
 
 /**

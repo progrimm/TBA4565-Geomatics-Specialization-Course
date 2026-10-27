@@ -1,0 +1,13 @@
+splat,run,fps,worst_frame_ms,tileset_json_s,first_view_s,tiles_loaded,tileset_memory_mib,js_heap_mib
+"Microsoft campus",1.00,54.00,115.00,0.75,1.75,39.00,52.80,40.10
+"Microsoft campus",2.00,54.00,115.00,0.83,3.01,39.00,52.00,54.20
+"Microsoft campus",3.00,54.00,114.00,0.64,2.30,39.00,52.80,54.20
+"Hines Rowing Center",1.00,39.00,80.00,0.86,7.37,4.00,6.80,45.20
+"Hines Rowing Center",2.00,36.50,99.00,0.71,4.51,4.00,2.10,104.00
+"Hines Rowing Center",3.00,36.00,98.00,0.92,5.51,4.00,6.40,48.10
+"RTE substation",1.00,43.00,84.00,0.63,3.79,4.00,0.00,77.60
+"RTE substation",2.00,36.00,95.00,0.66,3.82,4.00,0.00,110.60
+"RTE substation",3.00,36.00,99.00,0.61,3.87,4.00,0.00,117.30
+"O'Shaughnessy Dam",1.00,41.00,85.00,2.81,41.59,1.00,0.00,31.60
+"O'Shaughnessy Dam",2.00,37.00,101.00,2.18,71.38,1.00,0.00,29.80
+"O'Shaughnessy Dam",3.00,40.00,83.00,2.02,38.01,1.00,0.00,29.80

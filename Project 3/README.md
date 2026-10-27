@@ -1,24 +1,64 @@
 # 3DGS Viewer
 
 A CesiumJS web app for viewing georeferenced 3D Gaussian splats (3DGS) on a 3D globe. It opens
-directly on a Gaussian splat of the Microsoft campus in Redmond (USA), streamed from Cesium ion
-as 3D Tiles.
+on a globe with a marker for each of four public splats in the USA and France. Each one streams
+as 3D Tiles and can be inspected, measured and checked against independent geodata.
 
 It is a learning project for TBA4565 at NTNU (3D GIS). It was split out of
 [Project 2, Trondheim 3D](../Project%202/README.md) on 2026-10-27 and uses the same tooling and
-code structure. The planned features are a globe gallery of several georeferenced splats and a
-"Viewer lab" that compares 3DGS web viewers. See [Status](#status).
+code structure. A "Viewer lab" that compares 3DGS web viewers is still planned. See
+[Status](#status).
 
 ## Features
 
-- Full-page 3D viewer with Cesium World Terrain that opens on the Redmond splat. The splat loads
-  at startup, and the camera jumps to the tileset's bounding sphere, so no coordinates are
-  hard-coded
-- A panel button that flies back to the splat. It shows the loading state and is disabled if the
-  splat fails to load
-- Loading and error messages. If the splat fails, the rest of the app keeps working
-- A collapsible control panel that becomes a bottom sheet on mobile. Camera flights respect
-  `prefers-reduced-motion`
+- **Globe gallery.** The app opens on the whole globe with one marker per splat. Picking a
+  marker or a panel entry loads that splat (lazily, the first time) and flies to its bounding
+  sphere. The panel shows place, capture source, data type and credits. Only the selected
+  splat is shown.
+- **Georeferencing inspector.** Decodes the tileset's root transform into the origin's
+  longitude, latitude and ellipsoidal height, the local axes relative to East-North-Up (ENU),
+  the scale and the bounding sphere. It also explains the coordinate chain (see
+  [Georeferencing](#georeferencing)).
+- **Measurement tool.** Click two points to get the straight 3D distance, the horizontal
+  geodesic distance
+  ([`EllipsoidGeodesic`](https://cesium.com/learn/cesiumjs/ref-doc/EllipsoidGeodesic.html)) and
+  the ellipsoidal height difference. The UI says that splats cannot be picked (see
+  [Findings](#findings-about-cesiumjs-11460)).
+- **Alignment check.** Switches for Cesium World Terrain (versus the bare ellipsoid), imagery,
+  Cesium OSM Buildings and the splat itself. The dam has a switch for the offset that Cesium's
+  Sandcastle example applies. A swipe compares the splat (left) with the reference layers or,
+  for the substation, with a triangle mesh of the same scene (right), through
+  [`Scene.splitPosition`](https://cesium.com/learn/cesiumjs/ref-doc/Scene.html#splitPosition)
+  and `splitDirection`.
+- **Performance panel.** Frame rate and worst frame, tileset memory, JS heap, tiles in memory,
+  and the time to `tileset.json` and to the first view
+  ([`initialTilesLoaded`](https://cesium.com/learn/cesiumjs/ref-doc/Cesium3DTileset.html#initialTilesLoaded)).
+  While the panel is open, rendering is continuous.
+- Loading and error messages per splat. If one splat fails, the rest keeps working. The
+  collapsible panel becomes a bottom sheet on mobile. Camera flights respect
+  `prefers-reduced-motion`.
+
+## The splats
+
+Each splat was located by decoding the root transform of its `tileset.json` on 2026-10-27, and
+identified with OpenStreetMap: Nominatim reverse geocoding plus named OSM features at the
+origin. All four load in CesiumJS 1.146.0.
+
+| Splat                        | Place                                  | Source                                       | Capture                                                                                                                                                        |
+| ---------------------------- | -------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Microsoft campus             | Redmond, Washington, USA               | Cesium ion 4547222                           | Bentley Systems with Cesium: 20,169 photos, ~3.7 km², 3 cm GSD, 110 million splats ([Cesium blog](https://cesium.com/blog/2026/04/27/3d-gaussian-splats-lod/)) |
+| Hines Rowing Center          | Whitemarsh Township, Pennsylvania, USA | Cesium ion 3667783 ("Boathouse")             | Not stated                                                                                                                                                     |
+| RTE substation (splat, mesh) | Boulieu-lès-Annonay, Ardèche, France   | Cesium ion 3667784 (splat), 3443919 (mesh)   | Not stated. OSM: "Poste Source Haute Tension Boulieu Les Annonay", operator RTE                                                                                |
+| O'Shaughnessy Dam            | Dublin, Ohio, USA (Scioto River)       | Bentley iTwin reality data "GSI_DAM_3Dtiles" | Not stated                                                                                                                                                     |
+
+The ion assets come from Cesium's Sandcastle examples "3D Tiles Gaussian Splats with LOD",
+"3D Tiles Gaussian Splatting" and "3D Tiles Gaussian Splatting Comparison". The dam comes from
+"iTwin Gaussian Splats", which loads it with
+[`ITwinData.createTilesetForRealityDataId`](https://cesium.com/learn/cesiumjs/ref-doc/ITwinData.html#.createTilesetForRealityDataId)
+and a public **iTwin share key that expires on 2026-12-01 05:13 UTC** (the JWT `exp` claim,
+checked by a unit test). After that date the dam will fail to load, and the app will show an
+error for that splat only. The dam's `tileset.json` declares `KHR_gaussian_splatting` and
+`KHR_gaussian_splatting_compression_spz_2`.
 
 ## Getting Started
 
@@ -62,6 +102,18 @@ Run these from `Project 3/`.
 | `npm test`             | Run the Vitest unit tests once      |
 | `npm run test:watch`   | Run Vitest in watch mode            |
 
+Measurement scripts (Playwright, run headless on a real GPU):
+
+| Command                                                                                           | Purpose                                                                 |
+| ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `node scripts/alignment-check.mjs shots <splat> <lon> <lat> <m>`                                  | Nadir screenshots with and without the splat (needs `npm run dev`)      |
+| `node scripts/alignment-check.mjs pick <splat> <lon> <lat> <m> <name> sx sy rx ry`                | Horizontal offset between two picked pixels, appended to `offsets.csv`  |
+| `uv run --with numpy --with pillow python scripts/alignment-register.py results/alignment/<name>` | Image registration of a screenshot pair                                 |
+| `node scripts/gallery-performance.mjs [runs]`                                                     | Performance of each splat (needs `npm run build` and `npm run preview`) |
+
+The dev server exposes `window.cesiumViewer` for the alignment script. Production builds do
+not (`import.meta.env.DEV`).
+
 CI ([`.github/workflows/project3-ci.yml`](../.github/workflows/project3-ci.yml)) runs lint,
 format check, tests and build on every push and pull request that touches `Project 3/`.
 
@@ -69,32 +121,165 @@ format check, tests and build on every push and pull request that touches `Proje
 
 ```text
 src/
-  main.jsx        entry point: ion token setup and React root only
+  main.jsx        entry point: ion token and iTwin share key setup, React root
   App.jsx         composes hooks and components
-  config.js       constants: splat asset ID and tileset settings
-  viewer.js       Viewer creation, global scene settings, ion tokens
-  layers/         plain-JS Cesium loaders (terrain, splat), no React
-  hooks/          React hooks bridging React and Cesium (viewer lifecycle, layer state)
-  components/     React UI: panel, splat button, messages
+  config.js       constants: gallery splats, globe view, tileset settings
+  viewer.js       Viewer creation, render mode, ion tokens, iTwin share key
+  layers/         plain-JS Cesium code: terrain, splat/mesh loading, markers,
+                  measurement drawing, reference layers, load statistics
+  hooks/          React hooks bridging React and Cesium (viewer, gallery,
+                  measurement, alignment, performance)
+  components/     React UI: panel, gallery, inspector, tools, swipe line, messages
   state/          framework-independent message store
-  utils/          pure helpers (camera options, HTML escaping, reduced motion)
+  utils/          pure helpers: georeferencing, measurement, formatting, frame
+                  statistics, camera options, HTML escaping, reduced motion
 tests/            Vitest unit tests
+scripts/          Playwright measurement scripts and the registration script
+results/          measured results (alignment screenshots and offsets, performance CSV)
 ```
 
 Main design choices:
 
-- **Standalone copy, not a shared package.** The message store and the camera, HTML and motion
-  helpers are copied from Project 2, so each project builds and deploys on its own. The camera
-  and HTML helpers are not used yet. They are kept, with their tests, for the planned
-  inspector and gallery features.
-- **Plain React, no Resium.** Cesium classes are used directly through refs. Cesium objects are
-  created and changed outside React render.
-- **The start view comes from the data.** A georeferenced 3D Tiles tileset carries a root
-  transform that places it in ECEF (Earth-centred, Earth-fixed) coordinates. Framing the
-  tileset's `boundingSphere` with
-  [`Camera.flyToBoundingSphere`](https://cesium.com/learn/cesiumjs/ref-doc/Camera.html#flyToBoundingSphere)
-  (duration 0) therefore opens on the splat wherever it is on the globe.
-- **`requestRenderMode` is on.** The scene only re-renders when something changes.
+- **Standalone copy, not a shared package.** The message store and the camera, HTML, motion
+  and visibility helpers are copied from Project 2, so each project builds and deploys on its
+  own.
+- **Plain React, no Resium.** Cesium classes are used directly. Cesium objects are created and
+  changed in `layers/` and `viewer.js`, outside React render. Hooks only hold UI state.
+- **Lazy loading, one visible splat.** Splats load on first selection. Hidden tilesets
+  (`show = false`) neither render nor request tiles, so a big splat does not slow down the
+  others.
+- **The view comes from the data.** Each splat is framed by its own `boundingSphere` with
+  [`Camera.flyToBoundingSphere`](https://cesium.com/learn/cesiumjs/ref-doc/Camera.html#flyToBoundingSphere).
+  The marker coordinates in `config.js` are used only before a tileset is loaded.
+- **`requestRenderMode` is on.** The scene only re-renders when something changes. Splats need
+  a workaround, described under Findings.
+
+## Georeferencing
+
+A 3D Tiles tileset stores splat positions in local metres (glTF). The root tile's `transform`
+is a 4×4 matrix (rotation and translation) that maps them into ECEF (EPSG:4978, metres from
+the Earth's centre). On the WGS 84 ellipsoid, ECEF converts to geographic longitude, latitude
+and ellipsoidal height (EPSG:4979). `src/utils/georef.js` decodes the transform. Its tests
+build ENU frames at known places and check that the origin, a rotation about Up and a scale
+come back out.
+
+Decoded on 2026-10-27, through the inspector in the running app:
+
+| Splat             | Origin lat, lon (°)    | Origin h (m, ellipsoidal) | Axes vs ENU             | Scale | Bounding sphere r (m) | Centre h (m) |
+| ----------------- | ---------------------- | ------------------------- | ----------------------- | ----- | --------------------- | ------------ |
+| Microsoft campus  | 47.647850, −122.131900 | 5.00                      | 0.00° about Up, tilt 0° | 1     | 1645                  | 109.22       |
+| Hines Rowing      | 40.072320, −75.291630  | 0.00                      | 0.00°, tilt 0°          | 1     | 147.54                | 6.44         |
+| RTE substation    | 45.265188, 4.668731    | 444.36                    | 0.00°, tilt 0°          | 1     | 58.53                 | 463.42       |
+| O'Shaughnessy Dam | 40.154100, −83.125310  | 0.00                      | 0.00°, tilt 0°          | 1     | 42.64                 | 235.49       |
+
+Every root transform is a plain East-North-Up frame with scale 1. The local x, y and z axes are
+east, north and up. Three origins sit on the ellipsoid itself (h = 0 or 5 m), and the
+geometry's real height is in the local z coordinates. Cesium's
+[`Transforms.eastNorthUpToFixedFrame`](https://cesium.com/learn/cesiumjs/ref-doc/Transforms.html#.eastNorthUpToFixedFrame)
+builds exactly this kind of frame.
+
+**The dam's Sandcastle offset.** Cesium's example shifts the dam by (−1, 9, −8) m. Because
+the shift goes through `modelMatrix`, these are ECEF components, not ENU. The inspector
+converts the shift to ENU at the dam: **E +0.08 m, N −0.28 m, U −12.08 m**. So it is a 12.1 m
+vertical correction that lowers the splat onto Cesium World Terrain, not the "−8 m" its
+comment suggests. Cesium World Terrain heights are ellipsoidal, and the geoid in Ohio lies
+roughly 30 m below the ellipsoid. An error of this size is typical when orthometric and
+ellipsoidal heights are mixed up, but the data does not prove that this is the cause.
+
+## Alignment check
+
+Method (`scripts/alignment-check.mjs` and `scripts/alignment-register.py`, run on 2026-10-27):
+
+1. A straight-down (nadir) camera above each splat, heading north. Two screenshots from the
+   same camera: one with the splat and one without (terrain plus imagery only).
+2. Image registration: inside the splat's footprint (the pixels where the two screenshots
+   differ), the normalised cross-correlation (NCC) of the two gradient images is maximised over
+   pixel shifts of up to ±80 px. Gradients are compared rather than colours, because the
+   imagery and the splat were captured at different times. The sign convention was checked on
+   a synthetically shifted image, which was recovered exactly (5, 3) px.
+3. The best shift is converted to metres by picking the terrain under both pixels
+   (`Scene.pickPosition` with the splat hidden), and expressed in ENU. The ground resolution
+   comes from picking two pixels 100 px apart.
+
+| Splat                                | Camera above ground | Resolution | Best shift (px) | NCC best / at 0 | Splat vs imagery (E, N) | Horizontal |
+| ------------------------------------ | ------------------- | ---------- | --------------- | --------------- | ----------------------- | ---------- |
+| RTE substation                       | 120 m               | 0.087 m/px | (+1, 0)         | 0.201 / 0.199   | +0.09 m, 0.00 m         | 0.09 m     |
+| Microsoft campus                     | 300 m               | 0.216 m/px | (0, 0)          | 0.124 / 0.124   | below one pixel         | < 0.22 m   |
+| Hines Rowing Center                  | 250 m               | 0.181 m/px | (−4, +27)       | 0.088 / 0.046   | −0.72 m, **−4.87 m**    | **4.93 m** |
+| O'Shaughnessy Dam, without offset    | 185 m               | 0.134 m/px | (−7, −8)        | 0.192 / 0.129   | −0.93 m, +1.06 m        | 1.41 m     |
+| O'Shaughnessy Dam, Sandcastle offset | 185 m               | 0.134 m/px | (0, −1)         | 0.214 / 0.201   | 0.00 m, +0.13 m         | 0.13 m     |
+
+Screenshots and `offsets.csv` are in `results/alignment/`. Interpretation:
+
+- The substation, the Microsoft campus and the dam (with its offset) match the imagery within
+  about one pixel (0.1 to 0.2 m) horizontally.
+- The Hines Rowing Center splat lies about **4.9 m south** of the imagery. The shift is visible
+  in the screenshots: the large building's north edge and the road are both displaced.
+- Without its offset, the dam sits 12 m too high. From straight above, the splat then looks
+  magnified, and the registration turns this scale error into an apparent 1.4 m shift. The
+  1.41 m is therefore a symptom of the vertical error, not a horizontal offset.
+- Limits: the reference is Cesium's default imagery, which has its own unknown error, so these
+  are relative offsets, not absolute accuracy. One window per splat was registered, not 3–5
+  separate features as first planned. Elevated objects shift differently in the two images
+  (relief displacement). The registration is limited to whole pixels. Heights were not
+  measured, except through the dam's offset, because splats cannot be picked (below).
+
+## Splat vs mesh
+
+The substation swipe compares Gaussian splats (left) with a photogrammetry triangle mesh of the
+same scene (right). In the screenshot at the default view, the splat shows the thin structures
+more completely and more sharply: the lattice towers, the busbar frames and the overhead
+lines. In the mesh they are partly missing or blurred into the surface. The mesh has hard
+edges and a closed surface, but its textures are softer. The splat shows blurry "floaters" at
+its edges, where few photos covered the scene. These differences come from looking at the
+screenshots, not from a measurement.
+
+## Findings about CesiumJS 1.146.0
+
+Found while building this, and checked in the CesiumJS source in `node_modules/@cesium/engine`:
+
+- **Splats cannot be picked.** `GaussianSplatPrimitive` renders with `depthMask = false` and
+  returns early in the pick pass. `Scene.pickPosition` therefore returns the terrain, buildings
+  or mesh behind a splat. Seen from straight above, that still gives a feature's horizontal
+  position. Heights on a splat cannot be measured in CesiumJS.
+- **No opacity or style.** Splats have no `Cesium3DTileStyle` support and no opacity uniform
+  in 1.146. A swipe and a visibility switch take the place of the planned opacity slider.
+- **`requestRenderMode` and splat sorting.** The splats are sorted by depth in a web worker.
+  When the sort finishes, nothing requests a new frame, so with `requestRenderMode` the dam
+  stayed invisible until the camera moved. The same happened after a `modelMatrix` change.
+  `layers/splat.js` keeps requesting frames for 3 s after every tile load, camera stop and
+  offset change.
+- **`totalMemoryUsageInBytes` undercounts splats.** A splat tile adds its share of the shared
+  splat texture when it loads. If that texture does not exist yet, the share is 0, so the
+  memory can read 0 B even with tiles loaded.
+
+## Performance
+
+Measured with `scripts/gallery-performance.mjs` on 2026-10-27: headless Chromium 156 on Windows 11,
+AMD Radeon 780M (integrated GPU, ANGLE/D3D11), 1600 × 900 viewport, production build served by
+`vite preview`. There were 3 runs per splat, each in a fresh browser context with an empty
+cache. The camera was static at the view the app flies to. The frame rate is the median of 10
+one-second samples taken with continuous rendering. The table shows medians over the 3 runs;
+every run is in `results/gallery-performance.csv`.
+
+| Splat               | Frame rate | Worst frame (max of runs) | tileset.json | First view | Tiles in memory | Tileset memory\* |
+| ------------------- | ---------- | ------------------------- | ------------ | ---------- | --------------- | ---------------- |
+| Microsoft campus    | 54 fps     | 115 ms                    | 0.75 s       | 2.30 s     | 39              | 52.8 MiB         |
+| Hines Rowing Center | 36.5 fps   | 99 ms                     | 0.86 s       | 5.51 s     | 4               | 6.4 MiB          |
+| RTE substation      | 36 fps     | 99 ms                     | 0.63 s       | 3.82 s     | 4               | 0 B\*            |
+| O'Shaughnessy Dam   | 40 fps     | 101 ms                    | 2.18 s       | 41.6 s     | 1               | 0 B\*            |
+
+\* `totalMemoryUsageInBytes` undercounts splats in 1.146 (see Findings), so this column is not
+reliable. The JS heap is in the CSV, but it varied a lot between runs, so it is left out here.
+
+- The 110-million-splat Microsoft campus has the highest frame rate and the fastest first
+  view. Hierarchical LOD streams only the 39 tiles that the view needs. The three small,
+  single-level splats send all their splats to the GPU.
+- The dam is one 11.75 MiB glb tile (SPZ-compressed). It came from Bentley's storage in 38–71 s
+  in the browser, while a direct Node download of the same file took 7.8 s once. The first
+  view therefore depends on the network, not on rendering.
+- Limits: one machine, a static camera, headless Chromium, and the network at the time of the
+  runs. Rendering was continuous while the panel was open, including during loading.
 
 ## Cesium ion Token and Security
 
@@ -103,40 +288,52 @@ Main design choices:
 - Vite embeds `VITE_` variables in the client bundle, so **the token is public in a production
   build**. For deployment, use a separate token with minimal scopes that is restricted to the
   deployed URL in Cesium ion.
-- Deliberate exception: the splat asset (ion 4547222) is public but not in the Cesium ion Asset
-  Depot, so it cannot be added to our own account. Only that asset is requested with Cesium's
-  built-in evaluation token (`CESIUM_EVALUATION_TOKEN` in `src/viewer.js`, captured before our
-  token replaces it). It is passed per request through
+- Deliberate exception: the four gallery ion assets (splats and mesh) are public, but they
+  belong to Cesium's own account and are not in the Asset Depot. They are requested with
+  Cesium's built-in evaluation token (`CESIUM_EVALUATION_TOKEN` in `src/viewer.js`, captured
+  before our token replaces it), which is passed per request through
   [`IonResource.fromAssetId`](https://cesium.com/learn/cesiumjs/ref-doc/IonResource.html#.fromAssetId).
-  Cesium then shows a "default token" notice in the credits. A unit test checks that the
-  evaluation token survives after our own token is configured.
+  Cesium then shows a "default token" notice in the credits. Terrain, imagery and OSM Buildings
+  use our own token. A unit test checks that the evaluation token survives after our own token
+  is configured.
+- Not verified: whether our own token could read the gallery assets. That test sent the token
+  from a standalone script and was blocked in this session, so it was not run.
+- The iTwin share key is in `src/config.js`. It is public (published in Cesium's repository)
+  and grants read access to that one iTwin only.
 
 ## Attribution and Licences
 
-On-screen credits come from Cesium's credit display, which is kept enabled on purpose.
+On-screen credits come from Cesium's credit display, which is kept enabled on purpose. The
+panel and each marker's InfoBox also show each splat's credits.
 
-| Data                                                   | Source                  | Licence / terms                                                           |
-| ------------------------------------------------------ | ----------------------- | ------------------------------------------------------------------------- |
-| Cesium World Terrain (ion 1), default imagery          | Cesium ion              | [Cesium ion Terms of Service](https://cesium.com/legal/terms-of-service/) |
-| Gaussian splat, Microsoft Redmond campus (ion 4547222) | Public Cesium ion asset | Cesium ion terms; credits shown in the viewer                             |
+| Data                                                  | Source                                        | Licence / terms                                                           |
+| ----------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------- |
+| Cesium World Terrain (ion 1), default imagery (ion 2) | Cesium ion                                    | [Cesium ion Terms of Service](https://cesium.com/legal/terms-of-service/) |
+| Cesium OSM Buildings (ion 96188)                      | Cesium ion, © OpenStreetMap contributors      | Cesium ion terms; ODbL for the OSM data                                   |
+| Splats 4547222, 3667783, 3667784 and mesh 3443919     | Public Cesium ion assets (Sandcastle samples) | Cesium ion terms; no separate licence is stated                           |
+| O'Shaughnessy Dam splat                               | Bentley iTwin Platform, shared by Cesium      | Bentley iTwin terms; no separate licence is stated                        |
+| Place identification                                  | OpenStreetMap (Nominatim, Overpass)           | ODbL                                                                      |
 
 CesiumJS is licensed under Apache 2.0.
 
 ## Verification
 
-On 2026-10-27, after the split:
+On 2026-10-27 (session 6, the gallery):
 
-- `npm run lint`, `npm run format:check`, `npm test` (5 files, 9 tests) and `npm run build` pass.
-- Browser check with Playwright (headless Chromium) against `npm run preview`, at 1600 × 900 and
-  390 × 844. The app opens on the Redmond splat, framed in view, with no console errors. The
-  splat button is enabled. On mobile the panel starts collapsed as a bottom sheet.
-- Not verified: the check ran without a `.env` (no own token), so everything used the evaluation
-  token and the "No Cesium ion token configured" warning was shown. Loading with your own token
-  has not been checked yet.
+- `npm run lint`, `npm run format:check`, `npm test` (9 files, 30 tests) and `npm run build`
+  pass.
+- Browser checks with Playwright (headless Chromium 156 on an AMD Radeon 780M through ANGLE/D3D11)
+  against `npm run preview`, at 1600 × 900 and 390 × 844, with our own token in `.env`. Each
+  splat loads and is framed in view. Terrain (ion 1) and imagery (ion 2) were served with our
+  token. There were no console errors. The inspector, measurement tool (76.34 m measured along
+  the dam road), swipe, dam offset and performance panel were each clicked through, and the
+  screenshots were inspected.
+- Not verified: Firefox and Safari, a real phone, keyboard-only use of the new tools, and
+  whether our own ion token can read the gallery assets.
 
 ## Status
 
-Split from Project 2, features pending. The app shows a single splat and a fly-to button.
+Session 6 (globe gallery) is done: gallery, inspector, measurement, alignment check, splat vs
+mesh and the performance panel.
 
-Next: the georeferenced splat gallery (inspector, measurement, alignment check, splat vs mesh,
-performance panel), then the Viewer lab. See `report/SPRINT.md`, sessions 6–8.
+Next: session 7, the Viewer lab (see `report/SPRINT.md`).

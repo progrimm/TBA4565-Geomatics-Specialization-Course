@@ -19,6 +19,8 @@ export function useCesiumViewer() {
     instance.camera.setView(
       toGlobeCameraOptions(GLOBE_VIEW, window.matchMedia(MOBILE_QUERY).matches),
     );
+    // Dev server only (stripped from builds): lets scripts/alignment-check.mjs drive the camera.
+    if (import.meta.env.DEV) window.cesiumViewer = instance;
     setViewer(instance);
     return () => {
       setViewer(undefined);

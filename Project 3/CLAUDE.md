@@ -23,14 +23,13 @@ Learning goals:
 
 ## Features (scope)
 
-- Full-page 3D viewer that opens directly on the Gaussian splat (Cesium ion
-  asset 4547222, Microsoft Redmond Campus, USA), framed by the tileset's own
-  bounding sphere
-- A panel button that flies back to the splat
-- Planned (see `report/SPRINT.md` sessions 6–8): a globe gallery of several
-  georeferenced splats (inspect, measure, alignment check, splat vs mesh,
-  performance panel) and a "Viewer lab" benchmarking Spark, PlayCanvas,
-  Babylon.js and CesiumJS on the same splat, one page per viewer.
+- Globe gallery of four georeferenced splats (Redmond ion 4547222, Hines Rowing
+  Center ion 3667783, RTE substation ion 3667784 + mesh 3443919, O'Shaughnessy
+  Dam via iTwin share key, expires 2026-12-01), lazily loaded, one shown at a time
+- Georeferencing inspector, two-point measurement, alignment check (reference
+  layers, dam offset, swipe splat vs mesh/reference), performance panel
+- Planned (see `report/SPRINT.md` sessions 7–8): a "Viewer lab" benchmarking
+  Spark, PlayCanvas, Babylon.js and CesiumJS on the same splat, one page per viewer.
 - Do NOT add features beyond this list without asking.
 
 ## Tech stack
@@ -84,9 +83,10 @@ tests/ – Vitest unit tests
 - Vite embeds VITE\_ variables in the client bundle, so the token is public in
   production. The production token must be a separate token with minimal
   scopes, restricted to the deployed URL in Cesium ion.
-- Exception (deliberate): the splat asset 4547222 is not in the Asset Depot,
-  so only that asset is requested with Cesium's built-in evaluation token
-  (`CESIUM_EVALUATION_TOKEN` in viewer.js). Everything else uses our token.
+- Exception (deliberate): the gallery ion assets belong to Cesium's account and
+  are not in the Asset Depot, so only they are requested with Cesium's built-in
+  evaluation token (`CESIUM_EVALUATION_TOKEN` in viewer.js). Terrain, imagery
+  and OSM Buildings use our token.
 - Never run commands that delete files, force-push or rewrite git history
   without asking.
 
@@ -111,8 +111,9 @@ tests/ – Vitest unit tests
 
 ## Current status
 
-- 2026-10-27: split from Project 2, features pending. The app opens on the
-  Redmond splat (ion 4547222) with Cesium World Terrain; the panel has one
-  button that flies back to it.
-- Next: session 6, georeferenced splat gallery (see `report/SPRINT.md`).
-  (Update this section after each step.)
+- 2026-10-27: split from Project 2.
+- 2026-10-27: session 6 done (gallery, inspector, measurement, alignment check,
+  splat vs mesh swipe, performance panel; results in README and `results/`).
+  CesiumJS 1.146 quirks: splats are not pickable, have no opacity/style, need
+  extra frames after sorting in requestRenderMode (layers/splat.js).
+- Next: session 7, Viewer lab (see `report/SPRINT.md`).
