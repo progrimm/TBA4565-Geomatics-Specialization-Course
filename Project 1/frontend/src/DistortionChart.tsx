@@ -1,5 +1,11 @@
 import { scaleLinear, scaleLog } from 'd3-scale'
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react'
 import type { CountryAreas } from './countryAreas'
 
 const margin = { top: 16, right: 16, bottom: 44, left: 52 }
@@ -21,9 +27,24 @@ type Props = {
   countries: CountryAreas[]
   selectedCode: string
   onSelect: (code: string) => void
+  describedBy?: string
 }
 
-function DistortionChart({ countries, selectedCode, onSelect }: Props) {
+const keySteps: Record<string, (index: number, last: number) => number> = {
+  ArrowRight: (index, last) => Math.min(last, index + 1),
+  ArrowUp: (index, last) => Math.min(last, index + 1),
+  ArrowLeft: (index) => Math.max(0, index - 1),
+  ArrowDown: (index) => Math.max(0, index - 1),
+  Home: () => 0,
+  End: (_, last) => last,
+}
+
+function DistortionChart({
+  countries,
+  selectedCode,
+  onSelect,
+  describedBy,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(800)
   const [hoveredCode, setHoveredCode] = useState<string | null>(null)
@@ -47,6 +68,11 @@ function DistortionChart({ countries, selectedCode, onSelect }: Props) {
     .domain([1, maxRatio * 1.25])
     .range([height - margin.bottom, margin.top])
   const [, yMax] = y.domain()
+  // About one latitude label per 80 px of plot width, between 3 and 6.
+  const latitudeTickCount = Math.min(
+    6,
+    Math.max(3, Math.floor((width - margin.left - margin.right) / 80)),
+  )
 
   const curve = Array.from({ length: 341 }, (_, index) => -85 + index * 0.5)
     .filter((latitude) => sec2(latitude) <= yMax)
@@ -58,25 +84,27 @@ function DistortionChart({ countries, selectedCode, onSelect }: Props) {
   const selected = countries.find((c) => c.country_code === selectedCode)
   const hovered = countries.find((c) => c.country_code === hoveredCode)
   const tooltipCountry = hovered ?? selected
-  const byLatitude = [...countries].sort(
-    (a, b) => a.centroid_latitude_deg - b.centroid_latitude_deg,
+  const byLatitude = useMemo(
+    () =>
+      [...countries].sort(
+        (a, b) => a.centroid_latitude_deg - b.centroid_latitude_deg,
+      ),
+    [countries],
+  )
+  const selectedIndex = byLatitude.findIndex(
+    (c) => c.country_code === selectedCode,
   )
 
-  // Arrow keys step through countries from south to north; Home/End jump.
+  // The chart is an ARIA slider over countries ordered south to north, so
+  // screen readers pass the arrow and Home/End keys through and announce
+  // aria-valuetext. Modified keys stay with the browser and assistive tech.
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    const index = byLatitude.findIndex((c) => c.country_code === selectedCode)
-    const last = byLatitude.length - 1
-    const next = {
-      ArrowRight: Math.min(last, index + 1),
-      ArrowUp: Math.min(last, index + 1),
-      ArrowLeft: Math.max(0, index - 1),
-      ArrowDown: Math.max(0, index - 1),
-      Home: 0,
-      End: last,
-    }[event.key]
-    if (next === undefined) return
+    const step = keySteps[event.key]
+    if (!step || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
+      return
     event.preventDefault()
     setHoveredCode(null)
+    const next = step(Math.max(0, selectedIndex), byLatitude.length - 1)
     onSelect(byLatitude[next].country_code)
   }
 
@@ -94,8 +122,16 @@ function DistortionChart({ countries, selectedCode, onSelect }: Props) {
       className="chart-frame"
       ref={containerRef}
       tabIndex={0}
-      role="group"
-      aria-label="Distortion chart. Use the arrow keys to step through countries by latitude."
+      role="slider"
+      aria-label="Country, ordered by centroid latitude"
+      aria-describedby={describedBy}
+      aria-valuemin={1}
+      aria-valuemax={byLatitude.length}
+      aria-valuenow={selectedIndex >= 0 ? selectedIndex + 1 : undefined}
+      aria-valuetext={
+        selected &&
+        `${selected.admin}, ${latitudeFormat(selected.centroid_latitude_deg)}, Mercator ${ratioFormat.format(selected.projections.merc.area_ratio)} times, sec² prediction ${ratioFormat.format(selected.sec2_at_centroid)} times`
+      }
       onKeyDown={handleKeyDown}
     >
       <svg
@@ -108,7 +144,7 @@ function DistortionChart({ countries, selectedCode, onSelect }: Props) {
         onPointerLeave={() => setHoveredCode(null)}
       >
         <g className="chart-grid">
-          {(width < 600 ? [-60, -30, 0, 30, 60] : x.ticks(6)).map((tick) => (
+          {x.ticks(latitudeTickCount).map((tick) => (
             <g key={`x${tick}`} transform={`translate(${x(tick)},0)`}>
               <line y1={margin.top} y2={height - margin.bottom} />
               <text y={height - margin.bottom + 18} textAnchor="middle">
@@ -165,10 +201,6 @@ function DistortionChart({ countries, selectedCode, onSelect }: Props) {
           )
         })}
       </svg>
-      <p className="visually-hidden" aria-live="polite">
-        {selected &&
-          `${selected.admin}, ${latitudeFormat(selected.centroid_latitude_deg)}, Mercator ${ratioFormat.format(selected.projections.merc.area_ratio)} times, sec² prediction ${ratioFormat.format(selected.sec2_at_centroid)} times`}
-      </p>
       {tooltipCountry && (
         <div
           className="chart-tooltip"

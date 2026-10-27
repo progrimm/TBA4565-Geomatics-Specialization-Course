@@ -2,7 +2,9 @@
 # Use with a separate project name so Compose creates a new, empty volume:
 #   docker compose -p projection-replay --env-file "Project 1/.env" \
 #     -f "Project 1/compose.yaml" -f "Project 1/compose.replay.yaml" ...
-# Only the published host ports change; services, images and data are the same.
+# Only the project name and the published host ports change; services, images
+# and data are the same. The name keeps the replay separate even without -p.
+name: projection-replay
 services:
   db:
     ports: !override

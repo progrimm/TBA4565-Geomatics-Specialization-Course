@@ -60,13 +60,13 @@ D3 calculates on a sphere; the database's geodesic areas use the WGS 84 ellipsoi
 
 - **Keyboard path.** Tab order: blend slider → Circles checkbox → Country `<select>` → chart → Method → Natural Earth link. Each stop shows a 2 px ink outline (`:focus-visible`).
   - The `<select>` selects any country. Map paths are mouse/touch targets only, because the map SVG is a single `role="img"`.
-  - The focused chart (`role="group"`) takes ArrowRight/ArrowUp to the next country north by centroid latitude, ArrowLeft/ArrowDown to the next south, and Home/End to the southernmost (Antarctica) and northernmost (Greenland). The keys don't scroll the page.
-  - A visually hidden `aria-live` line announces the selected country's latitude, Mercator ratio and sec² prediction. The hover tooltip itself is `aria-hidden`.
+  - The focused chart is an [ARIA slider](https://www.w3.org/WAI/ARIA/apg/patterns/slider/) over the countries ordered by centroid latitude. ArrowRight/ArrowUp moves to the next country north, ArrowLeft/ArrowDown to the next south, and Home/End to the southernmost (Antarctica) and northernmost (Greenland). A slider is a widget role, so screen readers in browse mode (NVDA, JAWS) pass these keys to the page; a plain `role="group"` would keep them for the virtual cursor. Keys with Alt, Ctrl, Meta or Shift are ignored, so browser and assistive-technology shortcuts keep working, and the keys don't scroll the page.
+  - [`aria-valuetext`](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-valuetext) announces the selected country's latitude, Mercator ratio and sec² prediction. Selections made from the list or the map are announced once, by the list, not again by the chart. `aria-describedby` points to the chart's description, and the hover tooltip is `aria-hidden`.
 - **Contrast.**
   - Text: the 19 checked text styles measured from computed colours at runtime have a minimum of 5.30:1 (muted grey on the page background), above the WCAG AA 4.5:1.
   - Non-text: chart points use an 80% fill (3.79:1 against the background) with a full-opacity outline (5.72:1). The sec²φ curve is 5.76:1. The selected map country has a 2 px dark border, 4.51:1 against the land fill; the gold fill alone is only 1.49:1.
-- **Narrow screens.** At 320 px there is no horizontal overflow. Below 600 px the chart uses five latitude ticks (60°S–60°N) so the labels don't collide.
-- **Network errors.** If a request cannot reach the server, the alert now reads "… the server could not be reached" instead of the browser's "Failed to fetch".
+- **Narrow screens.** At 320 px there is no horizontal overflow. The number of latitude labels follows the plot width (about one per 80 px, between 3 and 6 requested ticks), so they don't collide: 50°S/0°/50°N at 320 px, 20° steps from about 700 px.
+- **Network errors.** If the server cannot be reached, the alert reads "… the server could not be reached". That covers a rejected `fetch`, and also HTTP 502/504 from the Nginx or Vite proxy when the API itself is down. The original error is kept as the error's [`cause`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error/cause). Other statuses still show `HTTP <code>`.
 
 ## Country Results During Morphing
 
@@ -99,14 +99,16 @@ On 2026-10-27, for the all-country selection and chart, the agent ran these chec
 - **Screenshots** at 1600 and 390 px were inspected. One bug was fixed after inspection: the tooltip was covering the point it described. It is now placed beside the point.
 - `npm audit` reports 4 high-severity findings, all in development tooling (vite 8.2.0–8.2.2, brace-expansion, source-map-js, zod). `npm audit --omit=dev` reports 0. They were not introduced by `d3-scale`, and no fix was applied.
 
-On 2026-10-27 (accessibility pass) build and lint passed, and an ad hoc Playwright run passed 31/31 checks at 1600, 390 and 320 px:
+On 2026-10-27 (accessibility pass, re-run after the code review) build and lint passed, and an ad hoc Playwright run passed 34/34 checks at 1600, 390 and 320 px:
 
 - tab order, with a 2 px outline at every stop;
 - the select changes country with ArrowDown;
 - chart End/Home/arrows (Greenland/Antarctica/Falkland Islands) with the live announcement, without scrolling the page;
 - text contrast ≥ 4.5:1;
 - no element past the viewport edge and no page errors;
-- the network-failure message.
+- the chart exposes `role=slider` with `aria-valuenow` and `aria-valuetext`;
+- Alt/Shift-modified keys are ignored;
+- the network-failure message. A separate check showed a mocked HTTP 502 producing the same message.
 
 The earlier 39-check interaction run passed again. Screenshots were inspected: the focused chart at 1600 and 320 px, and the full page at 320 px. The 320 px screenshot showed overlapping latitude labels, which were fixed with fewer ticks and rechecked.
 

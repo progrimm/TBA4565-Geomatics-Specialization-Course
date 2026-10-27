@@ -397,9 +397,10 @@ function App() {
       <section className="chart-study" aria-labelledby="chart-title">
         <div className="chart-heading">
           <h2 id="chart-title">Distortion vs latitude</h2>
-          <p>
+          <p id="chart-description">
             Mercator area ratio of each country at its area-weighted centroid
-            latitude, against the theoretical scale sec²φ.
+            latitude, against the theoretical scale sec²φ. Focus the chart and
+            use the arrow keys to step through countries.
           </p>
         </div>
         {areaError ? (
@@ -412,6 +413,7 @@ function App() {
               countries={areaList}
               selectedCode={selectedCode}
               onSelect={setSelectedCode}
+              describedBy="chart-description"
             />
             <ul className="chart-legend">
               <li className="legend-point">Country</li>

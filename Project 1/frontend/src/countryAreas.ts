@@ -25,11 +25,16 @@ export async function fetchJson<ResponseData>(
   url: string,
   label: string,
 ): Promise<ResponseData> {
+  const unreachable = `${label}: the server could not be reached`
   let response: Response
   try {
     response = await fetch(url)
-  } catch {
-    throw new Error(`${label}: the server could not be reached`)
+  } catch (error) {
+    throw new Error(unreachable, { cause: error })
+  }
+  // 502/504 come from the Nginx or Vite proxy when the API itself is down.
+  if (response.status === 502 || response.status === 504) {
+    throw new Error(unreachable, { cause: `HTTP ${response.status}` })
   }
   if (!response.ok) {
     throw new Error(`${label}: HTTP ${response.status}`)

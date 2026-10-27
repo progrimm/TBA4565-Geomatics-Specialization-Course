@@ -245,7 +245,7 @@ Verified on 2026-10-27:
 Verified on 2026-10-27. The replay starts from an empty volume and runs the whole sequence: bootstrap, then the area precompute, then the app. It runs beside the existing stack and does not touch it.
 
 - **Separate project name.** `-p projection-replay` makes Compose create a new volume, `projection-replay_projection_db_data`. The existing `project1_projection_db_data` volume and its containers were not stopped, modified or deleted.
-- **Overlay file.** [compose.replay.yaml](../compose.replay.yaml) only moves the published ports to 5434 (db), 8001 (api) and 8081 (web). It uses Compose's `!override` tag, so the two stacks don't collide.
+- **Overlay file.** [compose.replay.yaml](../compose.replay.yaml) only moves the published ports to 5434 (db), 8001 (api) and 8081 (web). It uses Compose's [`!override` merge tag](https://docs.docker.com/reference/compose-file/merge/#replace-value), so the two stacks don't collide. It also sets the top-level [`name: projection-replay`](https://docs.docker.com/reference/compose-file/version-and-name/#name-top-level-element), so the overlay cannot target the default `project1` stack even when `-p` is forgotten. That was added after the code review; `docker compose config` without `-p` resolves to `projection-replay`.
 
 From the repository root (PowerShell):
 

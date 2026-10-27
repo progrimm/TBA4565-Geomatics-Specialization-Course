@@ -22,7 +22,7 @@ Project scope and tutoring rules: [README.md](README.md).
   - pytest: 12 passed;
   - frontend lint and build pass;
   - CI workflow linted with actionlint;
-  - Playwright: 39 interaction checks and 31 accessibility checks at 1600/390/320 px, with screenshots inspected;
+  - Playwright: 39 interaction checks and 34 accessibility checks at 1600/390/320 px, with screenshots inspected;
   - a fresh-volume Compose replay matched the CSV to within 1.1e-13.
 - **Remaining:** static Pages mode; CI not yet observed on GitHub; browser tests not committed; native-setup replay; generic HTTP 500s for other database failures. See [Limitations](README.md#limitations).
 - **Next action:** wire static data mode for GitHub Pages at `/projection-lab/`, then write the report from `results/summary.md` and the chart.
@@ -172,7 +172,7 @@ Project scope and tutoring rules: [README.md](README.md).
 
 ### 2026-10-27: Continuous Integration (completion step 1)
 
-- Added [project1-ci.yml](../.github/workflows/project1-ci.yml), modelled on Project 2's workflow and path-filtered to `Project 1/**` plus the workflow file. It runs on pushes to `main` and on pull requests, as two jobs:
+- Added [project1-ci.yml](../.github/workflows/project1-ci.yml) ([workflow syntax](https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions), [setup-node](https://github.com/actions/setup-node)), modelled on Project 2's workflow and path-filtered to `Project 1/**` plus the workflow file. It runs on pushes to `main` and on pull requests, as two jobs:
   - `frontend`: Node 24 with the npm cache; `npm ci`, `npm run lint`, `npm run build` in `Project 1/frontend`.
   - `backend`: [astral-sh/setup-uv](https://github.com/astral-sh/setup-uv) with Python 3.14 and the uv cache; `uv sync --locked`, `uv run --locked pytest` in `Project 1/backend`. The tests are pure calculations, so CI needs no database.
 - **Local verification:**
@@ -235,6 +235,25 @@ Project scope and tutoring rules: [README.md](README.md).
 - **Project 1 README:** updated status and build order, plus a new [Limitations](README.md#limitations) section listing what is still open or approximate.
 - **This file:** rewrote the checkpoint. Phase 5 was still unticked even though Compose was done; it is now ticked.
 - **Check:** `grep -i "greenland-only|limited to Greenland"` over the READMEs returns nothing.
+
+### 2026-10-27: Code Review Fixes (completion review)
+
+- Ran `/code-review` over the completion commits (`d56bea5~1..HEAD`). It returned 9 findings, and all 9 were addressed:
+  1. **Real CSS bug.** The chart styles from 2026-10-27 step 5 had been duplicated inside `@media (max-width: 600px)`, because a string replacement matched `.study-footer {` twice. The duplicate was removed.
+  2. **Screen readers.** The chart was `role="group"`, so NVDA and JAWS in browse mode would swallow its arrow keys. It is now an ARIA slider with `aria-valuenow`/`aria-valuetext`. That also removed a separate `aria-live` region, which announced list and map selections twice.
+  3. **Modifier keys.** Alt, Ctrl, Meta and Shift combinations now pass through instead of changing the country.
+  4. **Proxy errors.** HTTP 502/504 from the proxy now show "the server could not be reached", and errors keep their `cause`.
+  5. **Replay safety.** `compose.replay.yaml` sets `name: projection-replay`, so forgetting `-p` cannot recreate the main stack. Checked with `docker compose config`.
+  6. **Tick density.** Latitude tick density now follows the plot width instead of a hard-coded list behind a 600 px breakpoint.
+  7. **Sorting.** The latitude-sorted list is memoised instead of being re-sorted on every hover.
+  8. **Docs links.** Official documentation links were added for Compose `!override`/`name`, the ARIA slider pattern, `aria-valuetext`, `Error.cause` and the GitHub Actions workflow syntax and setup-node.
+- **Verification:**
+  - lint and build passed;
+  - Playwright accessibility checks passed 34/34, now including the slider role and value text plus ignored modified keys;
+  - interaction checks passed 39/39 again;
+  - a mocked 502 shows the unreachable message;
+  - the 700 px and 320 px chart screenshots were inspected;
+  - pytest: 12 passed.
 
 ## Updating Future Checkpoints
 
