@@ -3,6 +3,32 @@ import { SPLAT_TILESET_SETTINGS } from '../config.js';
 import { showMessage } from '../state/messages.js';
 import { CESIUM_EVALUATION_TOKEN } from '../viewer.js';
 
+/** How long to keep rendering after a tile load or camera stop (milliseconds). */
+const SETTLE_MS = 3000;
+
+/**
+ * Keep rendering for a short while after tiles load and after the camera stops.
+ * With requestRenderMode, Cesium only draws a frame when something requests one.
+ * In CesiumJS 1.146 the Gaussian splat primitive sorts splats by depth in a web
+ * worker, and nothing requests a frame when that sort finishes. Without this, a
+ * single-tile splat (e.g. the dam) stays invisible until the camera moves.
+ * @param {import('cesium').Scene} scene
+ * @param {Cesium3DTileset} tileset
+ */
+function renderWhileSorting(scene, tileset) {
+  let until = 0;
+  const extend = () => {
+    until = performance.now() + SETTLE_MS;
+    scene.requestRender();
+  };
+  tileset.tileLoad.addEventListener(extend);
+  tileset.allTilesLoaded.addEventListener(extend);
+  scene.camera.moveEnd.addEventListener(() => tileset.show && extend());
+  scene.postRender.addEventListener(() => {
+    if (performance.now() < until) scene.requestRender();
+  });
+}
+
 /**
  * Load a public Cesium ion 3D Tiles asset with Cesium's evaluation token.
  * The gallery assets belong to Cesium's own ion account and are not in the Asset
@@ -55,6 +81,7 @@ async function addTileset(viewer, { label, load }) {
       return undefined;
     }
     viewer.scene.primitives.add(tileset);
+    renderWhileSorting(viewer.scene, tileset);
     return tileset;
   } catch (error) {
     console.error(`${label} failed to load:`, error);
