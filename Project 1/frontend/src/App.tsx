@@ -270,7 +270,7 @@ function App() {
               <p className="data-status" role="status">
                 {loadError ??
                   (countries
-                    ? `${countries.features.length} countries · select one to compare`
+                    ? `${countries.features.length} countries · click a country or use the list`
                     : 'Loading map...')}
               </p>
               <span className="circle-legend">3° circles</span>

@@ -1,5 +1,5 @@
 import { scaleLinear, scaleLog } from 'd3-scale'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import type { CountryAreas } from './countryAreas'
 
 const margin = { top: 16, right: 16, bottom: 44, left: 52 }
@@ -58,6 +58,28 @@ function DistortionChart({ countries, selectedCode, onSelect }: Props) {
   const selected = countries.find((c) => c.country_code === selectedCode)
   const hovered = countries.find((c) => c.country_code === hoveredCode)
   const tooltipCountry = hovered ?? selected
+  const byLatitude = [...countries].sort(
+    (a, b) => a.centroid_latitude_deg - b.centroid_latitude_deg,
+  )
+
+  // Arrow keys step through countries from south to north; Home/End jump.
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const index = byLatitude.findIndex((c) => c.country_code === selectedCode)
+    const last = byLatitude.length - 1
+    const next = {
+      ArrowRight: Math.min(last, index + 1),
+      ArrowUp: Math.min(last, index + 1),
+      ArrowLeft: Math.max(0, index - 1),
+      ArrowDown: Math.max(0, index - 1),
+      Home: 0,
+      End: last,
+    }[event.key]
+    if (next === undefined) return
+    event.preventDefault()
+    setHoveredCode(null)
+    onSelect(byLatitude[next].country_code)
+  }
+
   const pointX = (c: CountryAreas) => x(c.centroid_latitude_deg)
   const pointY = (c: CountryAreas) => y(c.projections.merc.area_ratio)
   // Draw the selected point last so it stays on top.
@@ -68,7 +90,14 @@ function DistortionChart({ countries, selectedCode, onSelect }: Props) {
   )
 
   return (
-    <div className="chart-frame" ref={containerRef}>
+    <div
+      className="chart-frame"
+      ref={containerRef}
+      tabIndex={0}
+      role="group"
+      aria-label="Distortion chart. Use the arrow keys to step through countries by latitude."
+      onKeyDown={handleKeyDown}
+    >
       <svg
         className="distortion-chart"
         viewBox={`0 0 ${width} ${height}`}
@@ -79,7 +108,7 @@ function DistortionChart({ countries, selectedCode, onSelect }: Props) {
         onPointerLeave={() => setHoveredCode(null)}
       >
         <g className="chart-grid">
-          {x.ticks(6).map((tick) => (
+          {(width < 600 ? [-60, -30, 0, 30, 60] : x.ticks(6)).map((tick) => (
             <g key={`x${tick}`} transform={`translate(${x(tick)},0)`}>
               <line y1={margin.top} y2={height - margin.bottom} />
               <text y={height - margin.bottom + 18} textAnchor="middle">
@@ -136,6 +165,10 @@ function DistortionChart({ countries, selectedCode, onSelect }: Props) {
           )
         })}
       </svg>
+      <p className="visually-hidden" aria-live="polite">
+        {selected &&
+          `${selected.admin}, ${latitudeFormat(selected.centroid_latitude_deg)}, Mercator ${ratioFormat.format(selected.projections.merc.area_ratio)} times, sec² prediction ${ratioFormat.format(selected.sec2_at_centroid)} times`}
+      </p>
       {tooltipCountry && (
         <div
           className="chart-tooltip"

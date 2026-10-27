@@ -56,6 +56,18 @@ D3 calculates on a sphere; the database's geodesic areas use the WGS 84 ellipsoi
   - No chart library was added. `d3-scale` is one of the d3 modules, and it and its types were installed with npm.
 - **Reading the chart.** Small countries sit on the curve. Countries spanning many degrees of latitude sit above it, because the ratio is the area-weighted mean of sec²φ, and sec²φ is convex. See [results/summary.md](../results/summary.md).
 
+## Accessibility
+
+- **Keyboard path.** Tab order: blend slider → Circles checkbox → Country `<select>` → chart → Method → Natural Earth link. Each stop shows a 2 px ink outline (`:focus-visible`).
+  - The `<select>` selects any country. Map paths are mouse/touch targets only, because the map SVG is a single `role="img"`.
+  - The focused chart (`role="group"`) takes ArrowRight/ArrowUp to the next country north by centroid latitude, ArrowLeft/ArrowDown to the next south, and Home/End to the southernmost (Antarctica) and northernmost (Greenland). The keys don't scroll the page.
+  - A visually hidden `aria-live` line announces the selected country's latitude, Mercator ratio and sec² prediction. The hover tooltip itself is `aria-hidden`.
+- **Contrast.**
+  - Text: the 19 checked text styles measured from computed colours at runtime have a minimum of 5.30:1 (muted grey on the page background), above the WCAG AA 4.5:1.
+  - Non-text: chart points use an 80% fill (3.79:1 against the background) with a full-opacity outline (5.72:1). The sec²φ curve is 5.76:1. The selected map country has a 2 px dark border, 4.51:1 against the land fill; the gold fill alone is only 1.49:1.
+- **Narrow screens.** At 320 px there is no horizontal overflow. Below 600 px the chart uses five latitude ticks (60°S–60°N) so the labels don't collide.
+- **Network errors.** If a request cannot reach the server, the alert now reads "… the server could not be reached" instead of the browser's "Failed to fetch".
+
 ## Country Results During Morphing
 
 Both endpoint results stay visible. At 0% Mercator is marked current; at 100% Eckert IV is marked current. At intermediate positions neither row is current and the panel explicitly says the blend area is not calculated. Ratios are never interpolated or inferred from screen size. Area values are displayed in square kilometers and rounded for readability; API values retain square-meter precision.
@@ -86,6 +98,17 @@ On 2026-10-27, for the all-country selection and chart, the agent ran these chec
   - a malformed statistics payload shows `Country statistics are invalid`.
 - **Screenshots** at 1600 and 390 px were inspected. One bug was fixed after inspection: the tooltip was covering the point it described. It is now placed beside the point.
 - `npm audit` reports 4 high-severity findings, all in development tooling (vite 8.2.0–8.2.2, brace-expansion, source-map-js, zod). `npm audit --omit=dev` reports 0. They were not introduced by `d3-scale`, and no fix was applied.
+
+On 2026-10-27 (accessibility pass) build and lint passed, and an ad hoc Playwright run passed 31/31 checks at 1600, 390 and 320 px:
+
+- tab order, with a 2 px outline at every stop;
+- the select changes country with ArrowDown;
+- chart End/Home/arrows (Greenland/Antarctica/Falkland Islands) with the live announcement, without scrolling the page;
+- text contrast ≥ 4.5:1;
+- no element past the viewport edge and no page errors;
+- the network-failure message.
+
+The earlier 39-check interaction run passed again. Screenshots were inspected: the focused chart at 1600 and 320 px, and the full page at 320 px. The 320 px screenshot showed overlapping latitude labels, which were fixed with fewer ticks and rechecked.
 
 ## Data Source
 

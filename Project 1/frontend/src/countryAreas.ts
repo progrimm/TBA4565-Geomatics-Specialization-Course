@@ -25,7 +25,12 @@ export async function fetchJson<ResponseData>(
   url: string,
   label: string,
 ): Promise<ResponseData> {
-  const response = await fetch(url)
+  let response: Response
+  try {
+    response = await fetch(url)
+  } catch {
+    throw new Error(`${label}: the server could not be reached`)
+  }
   if (!response.ok) {
     throw new Error(`${label}: HTTP ${response.status}`)
   }

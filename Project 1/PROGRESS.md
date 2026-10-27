@@ -204,6 +204,24 @@ Project scope and tutoring rules: [README.md](README.md).
   - Playwright opened the disclosure with the keyboard (Enter on the focused summary) at 1600 and 390 px, with all six terms present and no horizontal overflow;
   - footer screenshots at both widths were inspected and are readable in two columns and in one column respectively.
 
+### 2026-10-27: Accessibility and Robustness (completion step 4)
+
+- **Changes:**
+  - The chart is a keyboard tab stop: arrows step through countries by latitude, and Home/End jump to the ends. A hidden `aria-live` line announces the selection.
+  - `:focus-visible` outline on the chart.
+  - The selected map country's border is now 2 px, and chart-point fill opacity went from 0.65 to 0.8: the fill alone was 2.84:1 and is now 3.79:1.
+  - Fewer latitude ticks below 600 px.
+  - A clearer network-error message.
+  - The map caption reads "click a country or use the list". Details are in the [frontend guide](frontend/README.md#accessibility).
+- **Verification:**
+  - lint and build passed;
+  - Playwright passed 31/31 accessibility checks at 1600/390/320 px, including a minimum text contrast of 5.30:1 measured from computed colours, no overflow at 320 px, and a visible focus outline on all six tab stops;
+  - the earlier interaction suite passed 39/39 again;
+  - screenshots were inspected.
+- The first 320 px screenshot showed the x-axis labels colliding (the tick-count fix above).
+- A test bug: the tab loop counted focus leaving the page (`BODY`) as a stop without an outline. The test was fixed; the app was not changed for it.
+- Not done: no screen-reader software (NVDA, VoiceOver) was used. The map itself is not keyboard-navigable; the select is the keyboard route.
+
 ## Updating Future Checkpoints
 
 After each completed step, update the current checkpoint and append a short dated entry containing:
