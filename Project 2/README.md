@@ -12,7 +12,9 @@ on code quality: linting, tests, error handling and CI.
 - Cesium OSM Buildings (3D Tiles), toggleable
 - DSB public shelters in Trondheim as ground-clamped points. Click one to see its shelter
   number, capacity and address
-- Preset camera views: Midtbyen, Nidarosdomen and Bakklandet
+- Preset camera views: Midtbyen (Torvet), Nidarosdomen (west front) and Bakklandet (the wharf
+  row by Gamle Bybro). Each view centres its landmark on screen (see
+  [Camera views](#camera-views))
 - Loading and error messages for every layer. If one layer fails, the rest of the app keeps
   working
 - A collapsible control panel that becomes a bottom sheet on mobile. Camera flights respect
@@ -98,10 +100,39 @@ Main design choices:
 
 - The app works in WGS84. Longitude and latitude are in degrees and **heights are ellipsoidal**,
   not NN2000. In Trondheim the geoid is about 40 m above the ellipsoid, so ellipsoidal height is
-  roughly NN2000 height + 40 m. The camera heights in `config.js` follow this convention.
+  roughly NN2000 height + 40 m. The camera target heights in `config.js` follow this convention.
 - The shelter source data is in EUREF89 / UTM zone 32N (EPSG:25832). It is converted to WGS84
   with proj4 at data-prep time, treating EUREF89 as equal to WGS84 (the difference is under a
   metre).
+
+### Camera views
+
+Each preset in `config.js` stores a **target** (the landmark) plus a heading, pitch and range.
+`utils/camera.js` places the camera `range` metres from the target, opposite the viewing
+direction. It builds the offset in the target's local East-North-Up frame and converts it to
+ECEF with
+[`Transforms.eastNorthUpToFixedFrame`](https://cesium.com/learn/cesiumjs/ref-doc/Transforms.html#.eastNorthUpToFixedFrame).
+The landmark is then in the centre of the screen by construction. The old presets stored a camera
+position and were estimated by eye.
+
+| View         | Target (OpenStreetMap, via Nominatim)                      | Ground, NN2000 (Kartverket DTM 1 m) | Target height, ellipsoidal | Heading / pitch / range |
+| ------------ | ---------------------------------------------------------- | ----------------------------------- | -------------------------- | ----------------------- |
+| Midtbyen     | Torvet, relation 4681742: 63.4303661 N, 10.3953233 E       | 9.6 m                               | 50 m (ground + 40)         | 0° / −45° / 2000 m      |
+| Nidarosdomen | Nidarosdomen, way 417245741: 63.4269308 N, 10.3969145 E    | 13.8 m                              | 74 m (ground + 20 m + 40)  | 90° / −15° / 350 m      |
+| Bakklandet   | Nedre Bakklandet, way 22652739: 63.4288329 N, 10.4032895 E | 2.7 m                               | 51 m (ground + 8 m + 40)   | 110° / −20° / 400 m     |
+
+Coordinates come from the [Nominatim](https://nominatim.openstreetmap.org/) search API
+(© OpenStreetMap contributors, ODbL). Ground heights come from Kartverket's height API
+(`ws.geonorge.no/hoydedata/v1/punkt`, `dtm1` source, CC BY 4.0). Both were looked up on
+2026-10-27. The +40 m geoid offset is the approximation described above, not a geoid-model
+value.
+
+Checked with Playwright screenshots (a crosshair overlay marks the screen centre) at 1600 × 900
+and 390 × 844. Torvet, the cathedral's west front and the Bakklandet wharf row sit under the
+crosshair. An earlier Bakklandet target, Gamle Bybro looking south-east, was replaced because
+it centred the bridge and left the Bakklandet wharves small at the edge. The Midtbyen view was
+also fixed: the old camera stood above Torvet looking north, so the start view showed the
+harbour instead of the city centre.
 
 ### Shelters
 
@@ -146,5 +177,8 @@ of the production build at 1600 px and 390 px showed terrain, buildings and the 
 the splat button and with no console errors. That check used Cesium's evaluation token, not a
 personal token.
 
-Remaining: public deployment. The Nidarosdomen and Bakklandet camera positions are estimates
-and may need tuning.
+Camera views (2026-10-27): all three presets now target real landmark coordinates and were
+checked by screenshot (see [Camera views](#camera-views)). Lint, format check, tests (6 files,
+19 tests) and build pass. As in the split check, the screenshots used Cesium's evaluation token.
+
+Remaining: public deployment.

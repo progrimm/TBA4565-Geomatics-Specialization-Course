@@ -6,37 +6,41 @@
 export const CESIUM_TOKEN = import.meta.env.VITE_CESIUM_TOKEN;
 
 /**
- * Preset camera views.
- * Coordinates: WGS84 longitude/latitude in degrees, height in metres above the
- * WGS84 ellipsoid (not NN2000). In Trondheim the geoid is ~40 m above the
- * ellipsoid, so ellipsoidal height ≈ NN2000 height + 40 m.
+ * Preset camera views. Each view looks at a target point from `range` metres
+ * away, in the direction given by `heading` (degrees clockwise from north) and
+ * `pitch` (degrees, negative = looking down), so the target is centred on screen.
+ * Target coordinates: WGS84 longitude/latitude in degrees from OpenStreetMap
+ * (Nominatim). Target height in metres above the WGS84 ellipsoid (not NN2000):
+ * Kartverket NN2000 ground height (DTM 1 m) plus an aim height above ground,
+ * + 40 m because in Trondheim the geoid is ~40 m above the ellipsoid.
  */
 export const CAMERA_VIEWS = {
+  // Torvet (OSM relation 4681742), ground 9.6 m NN2000. Looking north over Midtbyen.
   trondheimCentre: {
     label: 'Midtbyen',
-    longitude: 10.3951,
-    latitude: 63.4305,
-    height: 1500,
+    target: { longitude: 10.3953233, latitude: 63.4303661, height: 50 },
     heading: 0,
     pitch: -45,
+    range: 2000,
   },
-  // Camera ~400 m south of the cathedral (10.3969, 63.4269), looking north.
+  // Nidarosdomen (OSM way 417245741), ground 13.8 m NN2000, aim 20 m up the
+  // building. Looking east at the west front.
   nidarosdomen: {
     label: 'Nidarosdomen',
-    longitude: 10.3969,
-    latitude: 63.4233,
-    height: 250,
-    heading: 0,
-    pitch: -20,
+    target: { longitude: 10.3969145, latitude: 63.4269308, height: 74 },
+    heading: 90,
+    pitch: -15,
+    range: 350,
   },
-  // Camera west of Gamle Bybro (10.4024, 63.4283), looking south-east over Bakklandet.
+  // Nedre Bakklandet (OSM way 22652739), the street behind the Bakklandet wharves
+  // just north of Gamle Bybro. Ground 2.7 m NN2000, aim 8 m up. Looking east-south-east
+  // across the river at the wharf row, with Gamle Bybro on the right.
   bakklandet: {
     label: 'Bakklandet',
-    longitude: 10.3975,
-    latitude: 63.43,
-    height: 200,
-    heading: 128,
+    target: { longitude: 10.4032895, latitude: 63.4288329, height: 51 },
+    heading: 110,
     pitch: -20,
+    range: 400,
   },
 };
 
