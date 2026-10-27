@@ -93,7 +93,16 @@ Standalone use, from this directory:
 ```powershell
 uv run --locked country_areas.py compute --dry-run --only GRL ATA   # print, no write
 uv run --locked pytest                                               # unit tests
+uv run --locked country_areas.py export                              # table -> results/ and static JSON
 ```
+
+`export` reads `public.country_area_stats`, through the `projection_api` role by default, and writes three files:
+
+- [../results/country_areas.csv](../results/country_areas.csv): one row per country, with the table columns at full float precision.
+- [../frontend/public/data/country_areas.json](../frontend/public/data/country_areas.json): the same records in the API response shape, prepared for a later static GitHub Pages mode. The frontend does not use it yet.
+- [../results/summary.md](../results/summary.md): every number in it is computed from the rows. It covers median and maximum inflation, the five most and least inflated countries, the Eckert IV residual, how far each ratio sits from sec²(φc), and the reasons for the gap.
+
+The 2026-10-27 export was made from the native database. Its headline numbers were cross-checked against an independent SQL query: n = 176 excluding ATA, median 1.2063, maximum 16.5433, minimum 1.0007, median ratio/sec² 1.0010, minimum 1.000010, 156 within 1% and 169 within 10%, Eckert IV worst 2.486e-6. They matched.
 
 | Measurement (Greenland)   | Area (square kilometers) |   Ratio to spherical area |
 | ------------------------- | -----------------------: | ------------------------: |

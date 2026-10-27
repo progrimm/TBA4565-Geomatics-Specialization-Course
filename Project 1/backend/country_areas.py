@@ -353,6 +353,7 @@ def summarize(rows):
     eck4_worst = max(stats, key=lambda row: abs(row["eck4_ratio"] - 1))
     within_1pct = sum(1 for gap in gaps if gap < 1.01)
     within_10pct = sum(1 for gap in gaps if gap < 1.10)
+    largest_gap_span = min(row["max_lat_deg"] - row["min_lat_deg"] for row in by_gap[:5])
 
     lines = [
         "# Country area distortion: summary",
@@ -370,6 +371,8 @@ def summarize(rows):
         f"- Countries not `ok`: {len(failures)}"
         + (
             ". " + "; ".join(f"{row['adm0_a3']} ({row['status']})" for row in failures)
+            + ". Flagged countries are still included in the statistics below; see the "
+            "backend README for the diagnosis."
             if failures
             else " (every country converged to below 1e-5 between 10 km and 5 km "
             "for both projections, and every Eckert IV ratio is within 1e-5 of 1)."
@@ -407,7 +410,7 @@ def summarize(rows):
         "",
         "## Mercator ratio compared with sec²(φ) at the centroid",
         "",
-        f"- Median ratio / sec²(φc): {ratio(median(gaps))}; minimum {ratio(min(gaps))}; "
+        f"- Median ratio / sec²(φc): {ratio(median(gaps))}; minimum {min(gaps):.6f}; "
         f"maximum {ratio(by_gap[0]['merc_ratio_over_sec2'])} ({by_gap[0]['admin']}).",
         f"- Countries where sec²(φc) is within 1% of the measured ratio: {within_1pct} of "
         f"{len(stats)}; within 10%: {within_10pct} of {len(stats)}.",
@@ -427,9 +430,11 @@ def summarize(rows):
         "inequality the mean of sec²φ is at least sec²(φc), so the ratio / sec²(φc) values "
         "above are ≥ 1 except for numerical noise. The gap is close to zero for small "
         "countries and grows with a country's latitude spread, because the poleward part of "
-        "the country gains far more area than the equatorward part loses. Multi-part "
-        "countries (for example with territories far from the mainland) have the largest "
-        "spreads, and their centroid can fall in a latitude where the country has no land.",
+        "the country gains far more area than the equatorward part loses. Each of the five "
+        f"largest gaps above belongs to a country spanning at least {largest_gap_span:.1f}° "
+        "of latitude, several of them because of remote parts (for example Svalbard for "
+        "Norway, Alaska and Hawaii for the United States). For such countries the centroid "
+        "can even fall at a latitude where the country has little or no land.",
         "",
     ]
     return "\n".join(lines)

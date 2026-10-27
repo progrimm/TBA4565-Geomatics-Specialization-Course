@@ -136,6 +136,19 @@ Project scope and tutoring rules: [README.md](README.md).
 - **Native, via TestClient:** 177 records. GRL matched all 15 original fields exactly. `grl` returned 200, `XXX` 404, and a simulated missing table 503.
 - **Compose, after `up -d --build --wait api`:** 177 records directly and 177 through Nginx. The GRL values were identical to the Compose response before the change. pytest: 12 passed.
 
+### 2026-10-27: Results Export (sprint step 4)
+
+- `country_areas.py export` read the native table and wrote [results/country_areas.csv](results/country_areas.csv) (177 rows plus a header), [frontend/public/data/country_areas.json](frontend/public/data/country_areas.json) (177 records in the API shape, for a later static mode, not used yet) and [results/summary.md](results/summary.md).
+- Results, excluding the clipped ATA (n = 176):
+  - The median Mercator ratio is 1.2063. The maximum is 16.5433 (Greenland), the minimum 1.0007 (Gabon).
+  - Norway (9.3798) is second, because Svalbard reaches 80.7°N.
+  - Eckert IV's largest |ratio − 1| is 2.486e-6 (Luxembourg).
+  - Measured ratio / sec²(φc): median 1.0010, minimum 1.000010, maximum 1.5964 (Norway). sec²(φc) predicts within 1% for 156 countries and within 10% for 169.
+  - ATA's clipped ratio is 25.5238, with 92.27% of its area kept.
+- An independent SQL aggregate over the table reproduced every one of those headline numbers.
+- The minimum ratio/sec² of 1.000010 being ≥ 1 is consistent with Jensen's inequality, as derived in the summary.
+- The summary prose was adjusted so that its claims are computed: the minimum latitude span among the five largest gaps (22.6°) comes from the data, not a fixed sentence.
+
 ## Updating Future Checkpoints
 
 After each completed step, update the current checkpoint and append a short dated entry containing:
