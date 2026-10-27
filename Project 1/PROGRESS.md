@@ -4,21 +4,21 @@ Project scope and tutoring rules: [README.md](README.md).
 
 ## Current Checkpoint
 
-- Last updated: 2026-09-21.
-- Phase: 4 local workflow verified for the explicitly agreed Greenland-only statistics scope. This is not a claim of production readiness or worldwide statistics. Phases 1-3 remain complete; Phase 5 is not started.
+- Last updated: 2026-10-27 (sprint; agent implements directly per the root CLAUDE.md override).
+- Phase: 4 extended from Greenland-only to all 177 countries, and Phase 6's country panel delivered locally, with a distortion-vs-latitude chart. Phase 5 (Compose) was already done (see README). This is not a claim of production readiness; static GitHub Pages mode is not built.
 - Frontend: React/TypeScript/Vite and D3 render API-backed Natural Earth countries on one morphing SVG map with graticule, world outline, 30 finite geographic circles, and a keyboard-accessible slider. Greenland is highlighted; an independent API request supplies the responsive area comparison panel. Only endpoint projections are marked current; intermediate blends have no calculated area.
 - Native tools: PostgreSQL 18.6, PostGIS 3.6.2, GDAL 3.13.3 via OSGeo4W; QGIS installed, version not recorded.
 - Database: `localhost:5432`, database `projection_lab`, table `public.countries`; 177 MultiPolygon/4326 features, primary key, GiST index, and stored generated `geodesic_area_m2`.
-- Backend: Python 3.14.7, FastAPI 0.141.1, Psycopg 3.3.6, pyproj, and Shapely; uv manifest/lockfile and ignored local virtual environment. GET endpoints: `/health`, `/countries/count`, `/countries`, `/countries/GRL/areas`.
+- Backend: Python 3.14.7, FastAPI 0.141.1, Psycopg 3.3.6, pyproj, Shapely and pytest (dev). GET endpoints: `/health`, `/countries/count`, `/countries`, `/countries/areas`, `/countries/{adm0_a3}/areas` (GRL still works). Statistics are precomputed by `country_areas.py compute` into `public.country_area_stats` on both the native and Compose databases.
 - Frontend verification: learner confirmed API loading, 177 features, blend endpoints/midpoint, circles, and API outage/recovery; build/lint passed. After the panel update, agent-run build/lint and Playwright checks passed at 1600, 1024, 768, 390, and 320 pixels, all at blends 0/0.5/1; valid country/Greenland paths, correct active rows, no horizontal overflow, 0/30 circles, independent HTTP 503 and malformed-statistics handling, and no page exceptions. Desktop/mobile screenshots were inspected.
 - Database verification: after USA/Sudan repairs, 177 rows with zero null, empty, or invalid geometries; all 177 areas populated, positive, and finite. Greenland approximately 2,206,644.4394 square kilometers. Berlin returned Germany/DEU; its observed plan used the GiST index.
 - Integration status: browser `/api/*` requests go through Vite to FastAPI on port 8000, then PostGIS. The static GeoJSON remains only as the original import source/asset; it is not a runtime fallback. All 177 database geometries passed `ST_IsPolygonCW`, and repaired geometries now reach the frontend. Export winding is D3-oriented rather than RFC 7946-normalized.
 - Role verification: learner created `projection_api`, set its password privately, granted CONNECT/USAGE/SELECT, verified administrative flags off, no table-level INSERT/UPDATE/DELETE/TRUNCATE or CREATE in public, and a separate login returning `projection_api | projection_lab | 177`. These checks are not an exhaustive privilege audit. Psycopg uses the external password file; no agent inspected credentials.
 - Greenland verification: spherical reference 2,189,750.321 km2; WGS 84 ellipsoidal reference 2,206,644.439 km2; Mercator projected 36,225,613.004 km2 (ratio 16.54326187); Eckert IV projected 2,189,749.778 km2 (ratio 0.99999975). Learner ran the standalone convergence checks; agent verified the live endpoint. Radius 6,371,007.1809 m, great-circle boundary densification 20/10/5 km, final relative changes below 1e-5 for both projections.
 - Reproduction status: [database guide and SQL scripts](database/README.md) recorded with explicit agent-edit authorization. Static checks only for these new artifacts; complete fresh-database replay remains unverified. No live database was changed by the agent.
-- Remaining work: generic HTTP 500 handling for database/calculation failures, automated regression tests, production API routing, fresh-database replay, and future connection/configuration hardening. No Docker configuration. Generalized country statistics and intermediate-blend calculations are outside the current agreed scope.
+- Remaining work: static Pages mode (Vite `base`, reading `country_areas.json`), generic HTTP 500 handling for other database failures, a fresh-volume Compose replay (`bootstrap` + `areas`), and a committed browser test suite.
 - Important constraints: finite circles approximate infinitesimal indicatrices; intermediate blends generally preserve neither angles nor area; Mercator latitude is clamped at approximately +/-85.05 degrees. Refitting each blend means screen areas are not on a common scale. D3 uses spherical geometry; PostGIS geography areas use the WGS 84 ellipsoid and generalized boundaries. Database repairs do not modify the static source.
-- Next proposed action: agree whether to harden the current local API before starting Phase 5. Do not start Docker, additional-country statistics, or a general selection panel without confirmation.
+- Next proposed action: wire static data mode for GitHub Pages at `/projection-lab/`, then use [results/summary.md](results/summary.md) and the chart in the report.
 - Teaching pace: larger coherent implementation/verification batches and complete code requested on 2026-09-21; keep docs-first explanations and learner execution by default. Direct frontend results integration and today's documentation edits were explicitly authorized; this does not authorize the next phase.
 
 ## Phase Tracker
@@ -28,7 +28,7 @@ Project scope and tutoring rules: [README.md](README.md).
 - [x] Phase 3: PostGIS setup, Natural Earth import, and geodesic areas (interactive workflow verified; new script replay pending).
 - [x] Phase 4 local milestone: FastAPI GeoJSON, Greenland-only distortion statistics, and frontend integration, verified for the agreed scope. Hardening and broader statistics are not claimed complete.
 - [ ] Phase 5: Docker Compose for database and API.
-- [ ] Phase 6 (stretch): country area comparison panel and deployment polish.
+- [x] Phase 6: country area comparison panel (all countries) and distortion-vs-latitude chart, verified locally on 2026-10-27. Deployment polish remains.
 
 ## Learning Log
 
@@ -148,6 +148,21 @@ Project scope and tutoring rules: [README.md](README.md).
 - An independent SQL aggregate over the table reproduced every one of those headline numbers.
 - The minimum ratio/sec² of 1.000010 being ≥ 1 is consistent with Jensen's inequality, as derived in the summary.
 - The summary prose was adjusted so that its claims are computed: the minimum latitude span among the five largest gaps (22.6°) comes from the data, not a fixed sentence.
+
+### 2026-10-27: Country Selection and Distortion Chart (sprint step 5)
+
+- **App.tsx:**
+  - One `<path>` per country; a click or tap selects it, with Greenland as the default.
+  - The country panel is generalised from the Greenland panel. It has a keyboard-accessible `<select>`, notes for clipping and for check flags, a sec²(φ)-at-centroid row, and the ratio divided by that prediction.
+  - Statistics come from a single `/api/countries/areas` request.
+  - The slider, the circles, keyboard support and independent loading/error states are kept.
+- New [DistortionChart.tsx](frontend/src/DistortionChart.tsx) (a scatter using d3-scale with a log y-axis and the sec²φ curve, hover tooltip, click to select) and [countryAreas.ts](frontend/src/countryAreas.ts).
+- d3-scale had not been installed (only d3-geo, d3-geo-projection and d3-array were). `d3-scale@4` and `@types/d3-scale@4` were added; no chart library.
+- **Verification:**
+  - build and lint passed;
+  - an ad hoc Playwright run at 1600 px (mouse) and 390 px (touch) passed 39/39 checks, listed in the [frontend guide](frontend/README.md#verification-recorded);
+  - screenshots were inspected. They showed the tooltip covering its own point, which was fixed and rechecked.
+- `npm audit` shows 4 high findings, all in dev tooling. They predate this change, and `--omit=dev` reports 0.
 
 ## Updating Future Checkpoints
 

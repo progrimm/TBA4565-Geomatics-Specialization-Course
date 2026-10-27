@@ -8,23 +8,36 @@ The learning process matters as much as the finished app: rebuild hands-on codin
 
 ## Current State
 
-Phases 1-3 are complete. As of 2026-09-21, Phase 4's local integration and Greenland-only statistics are implemented:
+Phases 1-3 are complete. Phase 4's local integration was done on 2026-09-21. On 2026-10-27, during the sprint, the statistics were extended from Greenland to **all 177 countries**. The question for the report is:
+
+> How much does the Mercator projection inflate country areas, how does that depend on latitude, and how well does the theoretical Mercator area scale factor sec²(φ) predict it compared with an equal-area projection (Eckert IV)?
+
+Headline results from [results/summary.md](results/summary.md), excluding the clipped Antarctica (n = 176):
+
+- The median Mercator area ratio is **1.2063**. The maximum is **16.5433** (Greenland), followed by Norway at 9.3798 (Svalbard); the minimum is 1.0007 (Gabon).
+- Eckert IV stays within **2.5e-6** of 1 for every country.
+- sec²(φ) at the area-weighted centroid predicts the Mercator ratio within 1% for 156 countries and within 10% for 169. It always *underestimates*: the median ratio/sec² is 1.0010 and the maximum 1.5964 (Norway). The reason is Jensen's inequality, because sec²φ is convex in sin φ.
+- All 177 countries converged. Sudan carries a geometry flag whose effect on area is about 5e-7, so it does not change the results. Antarctica is clipped at ±85.0511° and excluded from the statistics.
+
+The components:
 
 - The frontend renders 177 Natural Earth country features on one responsive SVG map, with a Mercator/Eckert IV blend slider, graticule, world outline, loading/error states, and a toggle for 30 equal-radius geographic circles.
 - Native PostgreSQL/PostGIS stores those countries as MultiPolygon geometries in EPSG:4326. USA and Sudan self-intersections were repaired; all 177 geometries are valid, nonempty, and non-null.
 - A stored generated column calculates WGS 84 ellipsoidal areas. All 177 values are positive and finite. A Berlin point-in-country query returned Germany and demonstrated the GiST spatial index in an execution plan.
+- [backend/country_areas.py](backend/country_areas.py) computes the spherical reference area, the Mercator and Eckert IV areas and ratios, the 20/10/5 km convergence, the centroid latitude and sec²(φ) once per country. It stores them in `public.country_area_stats` and exports [results/country_areas.csv](results/country_areas.csv), [results/summary.md](results/summary.md) and a static JSON file. A pytest suite covers the pure calculation.
+- The frontend lets you click or tap any country to see its panel. A **Distortion vs latitude** chart plots all countries' Mercator ratios against centroid latitude on a log axis, with the sec²φ curve overlaid.
 
-The frontend loads database-backed GeoJSON through FastAPI. In native development, Vite proxies `/api` requests to the API. In Docker Compose, Nginx serves the production frontend and proxies those requests to FastAPI. A restricted `projection_api` role has verified read access to 177 countries. FastAPI exposes health, count, country GeoJSON, and Greenland area endpoints. The map highlights Greenland and shows ellipsoidal/spherical references and endpoint projection results alongside the morph slider. Intermediate blend areas are not calculated or interpolated.
+The frontend loads database-backed GeoJSON through FastAPI. In native development, Vite proxies `/api` requests to the API. In Docker Compose, Nginx serves the production frontend and proxies those requests to FastAPI. A restricted `projection_api` role has verified read access to 177 countries. FastAPI exposes health, count and country GeoJSON endpoints, plus `/countries/areas` and `/countries/{adm0_a3}/areas`, which read the precomputed table. The original `/countries/GRL/areas` still works. Intermediate blend areas are not calculated or interpolated.
 
-Calculation scope is deliberately Greenland-only. Docker Compose is implemented and locally verified for PostGIS, FastAPI, and the production frontend. An explicit setup-profile bootstrap imports the versioned GeoJSON, prepares geometries and areas, and creates the restricted API role. The bootstrap was verified against the current container database; it refuses to overwrite an existing countries table. This does not establish a complete independent fresh-volume replay or production security hardening.
+Docker Compose is implemented and locally verified for PostGIS, FastAPI, and the production frontend. An explicit setup-profile bootstrap imports the versioned GeoJSON, prepares geometries and areas, and creates the restricted API role. The bootstrap was verified against the current container database; it refuses to overwrite an existing countries table. This does not establish a complete independent fresh-volume replay or production security hardening.
 
 See the [frontend guide](frontend/README.md) to run the map, the [backend guide](backend/README.md) for endpoints and measurement details, the [database guide](database/README.md) for setup and read-only checks, and the [progress log](PROGRESS.md) for verification evidence. The database guide separates fresh setup from checks safe to run on the existing prepared database.
 
 ## Stack
 
-- Frontend: React and TypeScript with Vite; D3.js with d3-geo and d3-geo-projection calculates SVG map paths.
+- Frontend: React and TypeScript with Vite; D3.js with d3-geo and d3-geo-projection calculates SVG map paths; d3-scale drives the latitude chart.
 - Database: PostgreSQL 18 with PostGIS 3.6, storing Natural Earth country geometries and generated geodesic areas. The database can run natively or in Docker Compose.
-- Spatial tools: GDAL 3.13.3/ogr2ogr for importing data (OSGeo4W locally or the GDAL bootstrap image); QGIS installed. pyproj and Shapely calculate Greenland projection areas and convergence checks.
+- Spatial tools: GDAL 3.13.3/ogr2ogr for importing data (OSGeo4W locally or the GDAL bootstrap image); QGIS installed. pyproj and Shapely calculate country projection areas, clipping and convergence checks; pytest tests them.
 - Backend: Python 3.14, FastAPI, and Psycopg; uv manages the virtual environment and locked dependencies. Database passwords remain outside the repository.
 - Containers: Docker Compose runs PostGIS, FastAPI, and an Nginx frontend; a named volume persists database data.
 
@@ -42,15 +55,15 @@ See the [frontend guide](frontend/README.md) to run the map, the [backend guide]
 1. **Complete:** static Mercator and Eckert IV maps using local Natural Earth GeoJSON. The original side-by-side view established rendering before the single-map redesign.
 2. **Complete:** finite-circle approximation of Tissot's indicatrix, a projection morph slider, and the single-map educational layout.
 3. **Complete:** native PostgreSQL/PostGIS setup, ogr2ogr import, geometry validation/repair, stored geodesic areas, and a verified spatial-index query.
-4. **Complete for the agreed local Greenland-only scope:** restricted database login, FastAPI GeoJSON, API-backed map, winding/rendering checks, pyproj/Shapely endpoint statistics, and integrated Greenland results. See the progress log for verification and remaining hardening; production readiness and worldwide statistics are not implied.
+4. **Complete:** restricted database login, FastAPI GeoJSON, API-backed map, winding/rendering checks, pyproj/Shapely endpoint statistics, and integrated Greenland results. Extended to all 177 countries on 2026-10-27. See the progress log for verification and remaining hardening; production readiness is not implied.
 5. **Complete and locally verified:** containerize PostGIS, FastAPI, and the production frontend with Docker Compose, including an explicit guarded data bootstrap, persistent storage, and private local configuration.
-6. **Stretch:** country click/hover panel comparing ellipsoidal and projected areas, followed by deployment polish.
+6. **Complete locally (2026-10-27):** click or tap any country to see its area panel, plus the distortion-vs-latitude chart. Deployment polish (static GitHub Pages mode) is still open; `frontend/public/data/country_areas.json` is already generated for it.
 
-The implemented area ratio is projected square meters divided by spherical reference square meters, using radius 6,371,007.1809 m for both. The stored WGS 84 ellipsoidal area is reported separately. Great-circle boundary densification at 20/10/5 km checks convergence. Greenland's Mercator ratio is approximately 16.5433 and Eckert IV's approximately 1; see the [method and result table](backend/README.md#greenland-method).
+The implemented area ratio is projected square meters divided by spherical reference square meters, using radius 6,371,007.1809 m for both. The stored WGS 84 ellipsoidal area is reported separately. Great-circle boundary densification at 20/10/5 km checks convergence. Greenland's Mercator ratio is approximately 16.5433 and Eckert IV's approximately 1. See the [method](backend/README.md#country-method), including how poles (Antarctica), the antimeridian and the centroid latitude are handled.
 
 D3 uses a sphere while PostGIS geography uses the WGS 84 ellipsoid. The 3-degree circles are finite approximations, the morph is raw-coordinate interpolation, and intermediate blends generally preserve neither angles nor area. Mercator latitude is clamped at approximately +/-85.05 degrees, not geographically clipped. Each blend is fitted independently, so screen area is not directly comparable across slider positions. The panel marks only the exact endpoints as current; neither endpoint ratio describes an intermediate blend.
 
-Country areas describe this generalized dataset, including database repairs, not authoritative national measurements. The learner authorized Greenland-only statistics; broader country calculations remain out of scope.
+Country areas describe this generalized dataset, including database repairs, not authoritative national measurements. The all-country extension was requested on 2026-10-27 under the sprint override in the root CLAUDE.md. That override also supersedes the tutoring agreement below until 2026-10-30.
 
 ## Starting Experience
 

@@ -7,61 +7,29 @@ import {
   geoProjection,
 } from 'd3-geo'
 import { geoEckert4Raw } from 'd3-geo-projection'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FeatureCollection, MultiPolygon, Polygon } from 'geojson'
+import DistortionChart from './DistortionChart'
+import { fetchJson, validateAreas, type CountryAreas } from './countryAreas'
 
 const width = 1000
 const height = 650
 const padding = 16
 const graticule = geoGraticule10()
 
-type ProjectionArea = {
-  area_m2: number
-  area_ratio: number
-}
-type GreenlandAreas = {
-  country_code: string
-  spherical_reference_area_m2: number
-  ellipsoidal_area_m2: number
-  projections: { merc: ProjectionArea; eck4: ProjectionArea }
-}
-
 const areaFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 })
 const ratioFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 4 })
+const percentFormat = new Intl.NumberFormat('en-US', {
+  style: 'percent',
+  maximumFractionDigits: 2,
+})
 const formatArea = (area: number) => `${areaFormat.format(area / 1e6)} km²`
+const formatLatitude = (latitude: number) =>
+  `${Math.abs(latitude).toFixed(2)}°${latitude >= 0 ? 'N' : 'S'}`
 const projections = [
   { key: 'merc', name: 'Mercator', amount: 0 },
   { key: 'eck4', name: 'Eckert IV', amount: 1 },
 ] as const
-
-async function fetchJson<ResponseData>(
-  url: string,
-  label: string,
-): Promise<ResponseData> {
-  const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error(`${label}: HTTP ${response.status}`)
-  }
-  return response.json()
-}
-
-function validateAreas(data: GreenlandAreas) {
-  const values = [
-    data?.spherical_reference_area_m2,
-    data?.ellipsoidal_area_m2,
-    data?.projections?.merc?.area_m2,
-    data?.projections?.merc?.area_ratio,
-    data?.projections?.eck4?.area_m2,
-    data?.projections?.eck4?.area_ratio,
-  ]
-  if (
-    data?.country_code !== 'GRL' ||
-    !values.every((value) => Number.isFinite(value) && value > 0)
-  ) {
-    throw new Error('Greenland statistics are invalid')
-  }
-  return data
-}
 
 const circleGenerator = geoCircle().radius(3).precision(2)
 const latitudes = [-60, -30, 0, 30, 60]
@@ -109,38 +77,61 @@ function createMorphProjection(amount: number) {
   )
 }
 
+type Countries = FeatureCollection<Polygon | MultiPolygon>
+const countryCode = (feature: Countries['features'][number]): string =>
+  feature.properties?.adm0_a3 ?? ''
+
 function App() {
-  const [countries, setCountries] = useState<FeatureCollection<
-    Polygon | MultiPolygon
-  > | null>(null)
+  const [countries, setCountries] = useState<Countries | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [showDistortion, setShowDistortion] = useState<boolean>(true)
   const [morphAmount, setMorphAmount] = useState<number>(1)
-  const [greenlandAreas, setGreenlandAreas] = useState<GreenlandAreas | null>(
-    null,
-  )
+  const [countryAreas, setCountryAreas] = useState<Map<
+    string,
+    CountryAreas
+  > | null>(null)
   const [areaError, setAreaError] = useState<string | null>(null)
+  const [selectedCode, setSelectedCode] = useState<string>('GRL')
 
-  const morphProjection = createMorphProjection(morphAmount)
-  const morphPath = geoPath(morphProjection)
+  const morphPath = useMemo(
+    () => geoPath(createMorphProjection(morphAmount)),
+    [morphAmount],
+  )
+  const countryPaths = useMemo(
+    () =>
+      countries?.features.map((feature) => ({
+        code: countryCode(feature),
+        name: String(feature.properties?.admin ?? countryCode(feature)),
+        d: morphPath(feature) ?? undefined,
+      })) ?? [],
+    [countries, morphPath],
+  )
   const morphGridPath = morphPath(graticule)
   const morphOutlinePath = morphPath({ type: 'Sphere' })
-  const morphCountriesPath = countries ? morphPath(countries) : null
-  const greenland = countries?.features.find(
-    (feature) => feature.properties?.adm0_a3 === 'GRL',
+  const selectedPath = countryPaths.find(({ code }) => code === selectedCode)
+  const selectedAreas = countryAreas?.get(selectedCode)
+  const selectedName =
+    selectedAreas?.admin ?? selectedPath?.name ?? selectedCode
+  const areaList = useMemo(
+    () =>
+      countryAreas
+        ? [...countryAreas.values()].sort((a, b) =>
+            a.admin.localeCompare(b.admin),
+          )
+        : [],
+    [countryAreas],
   )
-  const greenlandPath = greenland ? morphPath(greenland) : null
 
   useEffect(() => {
     let ignore = false
     async function loadAreas() {
       try {
-        const data = await fetchJson<GreenlandAreas>(
-          '/api/countries/GRL/areas',
-          'Greenland request failed',
+        const data = await fetchJson<CountryAreas[]>(
+          '/api/countries/areas',
+          'Country statistics request failed',
         )
         const areas = validateAreas(data)
-        if (!ignore) setGreenlandAreas(areas)
+        if (!ignore) setCountryAreas(areas)
       } catch (error) {
         if (!ignore)
           setAreaError(
@@ -159,7 +150,7 @@ function App() {
 
     async function loadCountries() {
       try {
-        const data = await fetchJson<FeatureCollection<Polygon | MultiPolygon>>(
+        const data = await fetchJson<Countries>(
           '/api/countries',
           'Country request failed',
         )
@@ -248,13 +239,23 @@ function App() {
               width={width}
               height={height}
               role="img"
-              aria-label={`${projectionName} world map${showDistortion ? ' with distortion circles' : ''}`}
+              aria-label={`${projectionName} world map${showDistortion ? ' with distortion circles' : ''}, ${selectedName} selected`}
             >
               <path className="ocean" d={morphOutlinePath ?? undefined} />
-              <path className="countries" d={morphCountriesPath ?? undefined} />
-              <path className="greenland" d={greenlandPath ?? undefined}>
-                <title>Greenland</title>
-              </path>
+              <g className="countries">
+                {countryPaths.map(({ code, name, d }) => (
+                  <path
+                    key={code}
+                    className="country"
+                    data-code={code}
+                    d={d}
+                    onClick={() => setSelectedCode(code)}
+                  >
+                    <title>{name}</title>
+                  </path>
+                ))}
+              </g>
+              <path className="selected-country" d={selectedPath?.d} />
               <path className="graticule" d={morphGridPath ?? undefined} />
               {showDistortion &&
                 distortionCircles.map((circle) => (
@@ -269,14 +270,31 @@ function App() {
               <p className="data-status" role="status">
                 {loadError ??
                   (countries
-                    ? `${countries.features.length} countries`
+                    ? `${countries.features.length} countries · select one to compare`
                     : 'Loading map...')}
               </p>
               <span className="circle-legend">3° circles</span>
             </figcaption>
           </figure>
-          <aside className="greenland-study" aria-labelledby="greenland-title">
-            <h2 id="greenland-title">Greenland</h2>
+          <aside className="country-study" aria-labelledby="country-title">
+            <h2 id="country-title">{selectedName}</h2>
+            <label className="country-picker">
+              <span>Country</span>
+              <select
+                value={selectedCode}
+                disabled={!countryAreas}
+                onChange={(event) => setSelectedCode(event.currentTarget.value)}
+              >
+                {areaList.length === 0 && (
+                  <option value={selectedCode}>{selectedName}</option>
+                )}
+                {areaList.map((country) => (
+                  <option key={country.country_code} value={country.country_code}>
+                    {country.admin}
+                  </option>
+                ))}
+              </select>
+            </label>
             <p className="area-context" aria-live="polite">
               {morphAmount === 0
                 ? 'Mercator'
@@ -286,19 +304,40 @@ function App() {
             </p>
             {areaError ? (
               <p role="alert">{areaError}</p>
-            ) : !greenlandAreas ? (
-              <p role="status">Loading Greenland areas...</p>
+            ) : !countryAreas ? (
+              <p role="status">Loading country areas...</p>
+            ) : !selectedAreas ? (
+              <p role="status">No statistics for {selectedName}.</p>
             ) : (
               <>
+                {selectedAreas.clipping.is_clipped && (
+                  <p className="area-flag">
+                    Clipped at ±
+                    {selectedAreas.clipping.latitude_limit_deg.toFixed(2)}°,
+                    where Mercator area becomes unbounded.{' '}
+                    {percentFormat.format(
+                      selectedAreas.clipping.clipped_area_fraction,
+                    )}{' '}
+                    of the area is kept; ratios use the clipped region.
+                  </p>
+                )}
+                {selectedAreas.status !== 'ok' && (
+                  <p className="area-flag">
+                    Check flag: {selectedAreas.status.replaceAll(',', ', ')}
+                  </p>
+                )}
                 <dl className="reference-areas">
                   <div>
                     <dt>WGS 84 ellipsoid</dt>
-                    <dd>{formatArea(greenlandAreas.ellipsoidal_area_m2)}</dd>
+                    <dd>{formatArea(selectedAreas.ellipsoidal_area_m2)}</dd>
                   </div>
                   <div>
-                    <dt>Sphere · reference</dt>
+                    <dt>
+                      Sphere · reference
+                      {selectedAreas.clipping.is_clipped ? ' (clipped)' : ''}
+                    </dt>
                     <dd>
-                      {formatArea(greenlandAreas.spherical_reference_area_m2)}
+                      {formatArea(selectedAreas.spherical_reference_area_m2)}
                     </dd>
                   </div>
                 </dl>
@@ -313,7 +352,7 @@ function App() {
                   <tbody>
                     {projections.map(({ key, name, amount }) => {
                       const active = morphAmount === amount
-                      const result = greenlandAreas.projections[key]
+                      const result = selectedAreas.projections[key]
                       return (
                         <tr
                           key={key}
@@ -332,13 +371,56 @@ function App() {
                         </tr>
                       )
                     })}
+                    <tr>
+                      <th scope="row">
+                        sec²(φ) at centroid
+                        <span className="projected-area">
+                          φ = {formatLatitude(selectedAreas.centroid_latitude_deg)}
+                        </span>
+                      </th>
+                      <td>
+                        {ratioFormat.format(selectedAreas.sec2_at_centroid)}×
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
-                <p className="area-note">Endpoint values, not screen areas.</p>
+                <p className="area-note">
+                  Mercator is{' '}
+                  {ratioFormat.format(selectedAreas.merc_ratio_over_sec2)}× the
+                  centroid prediction. Endpoint values, not screen areas.
+                </p>
               </>
             )}
           </aside>
         </div>
+      </section>
+      <section className="chart-study" aria-labelledby="chart-title">
+        <div className="chart-heading">
+          <h2 id="chart-title">Distortion vs latitude</h2>
+          <p>
+            Mercator area ratio of each country at its area-weighted centroid
+            latitude, against the theoretical scale sec²φ.
+          </p>
+        </div>
+        {areaError ? (
+          <p role="alert">{areaError}</p>
+        ) : !countryAreas ? (
+          <p role="status">Loading chart...</p>
+        ) : (
+          <>
+            <DistortionChart
+              countries={areaList}
+              selectedCode={selectedCode}
+              onSelect={setSelectedCode}
+            />
+            <ul className="chart-legend">
+              <li className="legend-point">Country</li>
+              <li className="legend-clipped">Clipped at ±85.05°</li>
+              <li className="legend-flagged">Check flag</li>
+              <li className="legend-curve">sec²φ</li>
+            </ul>
+          </>
+        )}
       </section>
       <footer className="study-footer">
         <details className="method-notes">
@@ -349,9 +431,15 @@ function App() {
             equal area.
           </p>
           <p>
+            Mercator's local area scale is sec²φ, so a country's ratio is the
+            area-weighted mean of sec²φ. Because sec²φ is convex, that mean is
+            above sec²φ at the centroid, most of all for countries spanning many
+            degrees of latitude.
+          </p>
+          <p>
             Blends have no calculated area and generally preserve neither angles
             nor area. Each view is fitted independently. Mercator latitude is
-            capped at ±85.05°.
+            capped at ±85.05°; Antarctica is clipped there for its statistics.
           </p>
           <p>
             The 3° circles approximate Tissot's indicatrix. Boundaries are
