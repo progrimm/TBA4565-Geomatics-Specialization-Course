@@ -36,7 +36,7 @@ The API image is built from this directory's Dockerfile using Python 3.14 and th
 docker compose --env-file "Project 1/.env" -f "Project 1/compose.yaml" up -d --build web
 ```
 
-Compose waits for PostGIS to be healthy before starting the API, and the frontend waits for the API health check. The API listens on port 8000 inside the Compose network and is also published locally at <http://127.0.0.1:8000>. For the full bootstrap and end-to-end workflow, see the [Project 1 guide](../README.md#run-the-map).
+Compose waits for PostGIS to be healthy before starting the API, and the frontend waits for the API health check. The API listens on port 8000 inside the Compose network and is also published locally at <http://127.0.0.1:8000>. For the full bootstrap and end-to-end workflow, see the [Project 1 guide](../../README.md#run-the-map).
 
 The connection settings are centralized in [database.py](database.py). Environment variables override the local defaults: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and optional `DB_PASSWORD`. This lets the HTTP endpoints and the country calculation CLI use the same settings. The CLI writes the table as `postgres`, by setting `DB_USER=postgres`. See the [database guide](../database/README.md#7-precomputed-country-area-statistics).
 

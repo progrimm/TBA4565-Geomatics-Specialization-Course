@@ -29,7 +29,7 @@ docker compose --env-file "Project 1/.env" -f "Project 1/compose.yaml" up -d --b
 
 Open <http://127.0.0.1:8080>. The Compose named volume preserves database contents when containers stop or are recreated. `docker compose down` retains the volume; `docker compose down -v` deletes it and all database contents. The current container database and API role were verified with 177 valid countries and read-only API privileges. A full independent fresh-volume replay has not been performed.
 
-For the frontend and API details, see the [project guide](../README.md#run-the-map), [backend guide](../backend/README.md#run-in-docker-compose), and [frontend guide](../frontend/README.md#run-the-full-app-in-docker).
+For the frontend and API details, see the [project guide](../../README.md#run-the-map), [backend guide](../backend/README.md#run-in-docker-compose), and [frontend guide](../frontend/README.md#run-the-full-app-in-docker).
 
 ## Current State and Evidence
 

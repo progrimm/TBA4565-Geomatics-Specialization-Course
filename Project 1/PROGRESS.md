@@ -94,7 +94,7 @@ Project scope and tutoring rules: [README.md](README.md).
 
 ### 2026-09-21: Greenland Projection Calculations
 
-- Learner implemented [greenland_areas.py](backend/greenland_areas.py) using pyproj and Shapely. Coordinates are interpreted on a common sphere for Mercator/Eckert IV comparisons; stored WGS 84 ellipsoidal area is reported separately. Great-circle densification includes holes and all polygon parts. In-memory orientation ensures positive signed reference area; the database remains unchanged.
+- Learner implemented `greenland_areas.py` (renamed to [country_areas.py](backend/country_areas.py) on 2026-10-27) using pyproj and Shapely. Coordinates are interpreted on a common sphere for Mercator/Eckert IV comparisons; stored WGS 84 ellipsoidal area is reported separately. Great-circle densification includes holes and all polygon parts. In-memory orientation ensures positive signed reference area; the database remains unchanged.
 - Standalone output verified 20/10/5 km refinements. At 5 km the Mercator relative change was `6.4509686e-6`; Eckert IV's was `5.8729288e-7`. Both meet the `1e-5` tolerance, and Eckert IV is within that tolerance of unit area ratio. Corrected the per-projection dictionary lookup so the second projection's first iteration does not access a missing previous value.
 - Refactored top-level computation into `calculate_greenland_areas()` with a main guard and explicit numerical exceptions, then exposed `/countries/GRL/areas`. Learner reported success; agent read the live endpoint and confirmed the values in the checkpoint. No generalized country endpoint was added; the learner explicitly retained Greenland-only scope.
 

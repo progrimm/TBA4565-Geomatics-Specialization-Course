@@ -21,7 +21,7 @@ Open the Local URL printed by Vite. Use `npm run build` for TypeScript checking 
 
 The Compose frontend uses a multi-stage Docker build: Node builds the Vite app, then Nginx serves the static output. Nginx proxies `/api/*` to the FastAPI service and removes the `/api` prefix, matching the Vite development proxy. No API or database URL is compiled into the frontend.
 
-From the repository root, follow the [Compose setup](../README.md#run-the-map), then open <http://127.0.0.1:8080>. The database and API are also published locally at ports `5433` and `8000`, respectively, for development tools and direct checks. The frontend container waits for the API health check before starting.
+From the repository root, follow the [Compose setup](../../README.md#run-the-map), then open <http://127.0.0.1:8080>. The database and API are also published locally at ports `5433` and `8000`, respectively, for development tools and direct checks. The frontend container waits for the API health check before starting.
 
 The frontend Dockerfile uses the committed `package-lock.json` with `npm ci`. `.dockerignore` excludes local dependencies and generated build output.
 
