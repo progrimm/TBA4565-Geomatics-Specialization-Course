@@ -2,3 +2,5 @@ dist
 node_modules
 coverage
 package-lock.json
+# Generated, minified on purpose (large).
+public/data/walking-network.json

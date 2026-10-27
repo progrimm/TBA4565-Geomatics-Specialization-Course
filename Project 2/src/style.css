@@ -245,6 +245,13 @@ body {
   padding: 0;
 }
 
+.analysis__credit,
+.analysis .analysis__hint:last-child {
+  margin: var(--space-2) 0 0;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
 .analysis__result {
   display: grid;
   grid-template-columns: auto 1fr;

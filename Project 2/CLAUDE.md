@@ -24,8 +24,9 @@ Learning goals:
 - At least one open Trondheim dataset (from Trondheim kommune, Geonorge/
   Kartverket, Entur or OSM), with click-to-inspect attributes
 - Simple UI: layer toggles and preset camera views
-- "Nearest shelter" analysis: click the ground to get the nearest shelter, its
-  geodesic distance (EllipsoidGeodesic) and capacity, with a line to it; shelter
+- "Nearest shelter" analysis: click the ground to get the shelter with the
+  shortest walk along the OSM network (Dijkstra in the browser, no routing API),
+  its walking and geodesic distance and capacity, with the route drawn; shelter
   totals (count, capacity) in the panel
 - Do NOT add features beyond this list without asking.
 
@@ -54,7 +55,7 @@ state/ – small framework-independent stores (messages)
 utils/ – pure helper functions (e.g. coordinate conversion)
 scripts/ – Node data-prep scripts (e.g. fetch-shelters.js)
 tests/ – Vitest unit tests for utils, stores and data parsing
-public/data/ – small static datasets (GeoJSON)
+public/data/ – static datasets (shelters GeoJSON, walking network JSON)
 
 ## Code standards
 
@@ -127,5 +128,10 @@ public/data/ – small static datasets (GeoJSON)
 - 2026-10-27: nearest-shelter analysis done (utils/nearest.js with GeographicLib
   reference fixture, layers/nearest.js, hooks/useNearestShelter.js,
   components/NearestShelter.jsx). Browser-checked at 1600 and 390 px.
+- 2026-10-27: walking routes. scripts/fetch-network.js (Overpass) →
+  public/data/walking-network.json (compact, utils/osmNetwork.js); graph,
+  snapping and Dijkstra in utils/network.js; hooks/useWalkingNetwork.js. Falls
+  back to straight lines if the network fails. GraphHopper was rejected (public
+  API key, daily quota).
 - Next: Module 5 (README with attributions, deployment), then hardening.
   (Update this section after each module.)

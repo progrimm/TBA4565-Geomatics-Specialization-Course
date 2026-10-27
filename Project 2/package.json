@@ -15,7 +15,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "data:shelters": "node scripts/fetch-shelters.js"
+    "data:shelters": "node scripts/fetch-shelters.js",
+    "data:network": "node scripts/fetch-network.js"
   },
   "dependencies": {
     "cesium": "1.146.0",

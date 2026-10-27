@@ -15,10 +15,11 @@ on code quality: linting, tests, error handling and CI.
 - Preset camera views: Midtbyen (Torvet), Nidarosdomen (west front) and Bakklandet (the wharf
   row by Gamle Bybro). Each view centres its landmark on screen (see
   [Camera views](#camera-views))
-- Nearest shelter: click anywhere on the ground to find the nearest public shelter. The panel
-  shows its number, address, capacity and geodesic distance, and the map draws a line to it.
-  The panel also shows the total number of shelters and their total capacity (see
-  [Nearest shelter](#nearest-shelter))
+- Nearest shelter: click anywhere on the ground to find the public shelter with the shortest
+  **walk** along OpenStreetMap streets and paths. The map draws the route. The panel shows the
+  shelter's number, address and capacity, the walking distance and the straight-line distance.
+  It also shows the total number of shelters and their total capacity. Routing runs entirely in
+  the browser, with no API key and no server (see [Nearest shelter](#nearest-shelter))
 - Loading and error messages for every layer. If one layer fails, the rest of the app keeps
   working
 - A collapsible control panel that becomes a bottom sheet on mobile. Camera flights respect
@@ -55,17 +56,18 @@ load.
 
 Run these from `Project 2/`.
 
-| Command                 | Purpose                                                 |
-| ----------------------- | ------------------------------------------------------- |
-| `npm run dev`           | Start the Vite dev server                               |
-| `npm run build`         | Production build to `dist/`                             |
-| `npm run preview`       | Serve the production build locally                      |
-| `npm run lint`          | ESLint, including React hooks rules                     |
-| `npm run format`        | Format all files with Prettier                          |
-| `npm run format:check`  | Check formatting without writing                        |
-| `npm test`              | Run the Vitest unit tests once                          |
-| `npm run test:watch`    | Run Vitest in watch mode                                |
-| `npm run data:shelters` | Re-download the shelter dataset (see [Data](#shelters)) |
+| Command                 | Purpose                                                                   |
+| ----------------------- | ------------------------------------------------------------------------- |
+| `npm run dev`           | Start the Vite dev server                                                 |
+| `npm run build`         | Production build to `dist/`                                               |
+| `npm run preview`       | Serve the production build locally                                        |
+| `npm run lint`          | ESLint, including React hooks rules                                       |
+| `npm run format`        | Format all files with Prettier                                            |
+| `npm run format:check`  | Check formatting without writing                                          |
+| `npm test`              | Run the Vitest unit tests once                                            |
+| `npm run test:watch`    | Run Vitest in watch mode                                                  |
+| `npm run data:shelters` | Re-download the shelter dataset (see [Data](#shelters))                   |
+| `npm run data:network`  | Re-download the walking network (see [Walking network](#walking-network)) |
 
 CI ([`.github/workflows/project2-ci.yml`](../.github/workflows/project2-ci.yml)) runs lint,
 format check, tests and build on every push and pull request that touches `Project 2/`.
@@ -82,10 +84,10 @@ src/
   hooks/          React hooks bridging React and Cesium (viewer lifecycle, layer state)
   components/     React UI: panel, view buttons, layer toggles, messages
   state/          framework-independent message store
-  utils/          pure helpers (CRS conversion, camera options, HTML escaping, nearest shelter)
+  utils/          pure helpers (CRS conversion, camera options, HTML escaping, distances, routing)
 scripts/          Node data-prep scripts
 tests/            Vitest unit tests and fixtures
-public/data/      small static datasets (GeoJSON)
+public/data/      static datasets (shelters GeoJSON, walking network)
 ```
 
 Main design choices:
@@ -146,25 +148,98 @@ the ground. The camera ray through the clicked pixel is intersected with the ter
 longitude and latitude. Clicks on shelters still open the InfoBox, and clicks on the sky are
 ignored.
 
-`utils/nearest.js` computes the **geodesic distance** from that point to every shelter. A
-geodesic is the shortest path along the WGS84 ellipsoid surface, here computed with
-[`EllipsoidGeodesic`](https://cesium.com/learn/cesiumjs/ref-doc/EllipsoidGeodesic.html), which
-uses Vincenty's method. The function returns the nearest shelter. Heights are ignored, so the
-distance is the map distance, not a 3D straight line and not a walking route. A linear scan is
-enough for the 12 shelters in the dataset. The line is a ground-clamped polyline entity
-(`clampToGround`, default `ArcType.GEODESIC`), draped on terrain and buildings.
+**Network analysis (`utils/network.js`).** The walking network is a graph: every OSM node is a
+graph node, and every way segment is an undirected edge. Each edge is weighted by its geodesic
+length on the WGS84 ellipsoid
+([`EllipsoidGeodesic`](https://cesium.com/learn/cesiumjs/ref-doc/EllipsoidGeodesic.html),
+Vincenty's method). A click is answered in three steps:
 
-Tests (`tests/nearest.test.js`) compare the distances with reference values from
+1. **Snapping.** The clicked point is joined to its nearest network node, and each shelter to
+   its own nearest node. The shelters are snapped once, when the network loads.
+2. **Dijkstra's algorithm** runs from the clicked point's node with all shelter nodes as
+   targets. It stops at the first target it reaches, so the result is the shelter that is
+   nearest _on foot_. That is not always the one nearest in a straight line.
+3. **The walking distance** is the straight connector from the click to the network, plus the
+   network path, plus the connector from the network to the shelter.
+
+The route is drawn as a ground-clamped polyline (`clampToGround`) draped on terrain and
+buildings. The panel also shows the straight-line geodesic distance for comparison. If the
+network fails to load, or no shelter is reachable from the clicked part of the network (for
+example on an island), the app falls back to the straight-line nearest shelter.
+
+Why in the browser: GraphHopper was considered and rejected. A routing API needs a key, which
+would be public in the static bundle and could exhaust the free daily quota. Precomputing the
+network keeps the app static, makes it work on GitHub Pages without secrets, and makes the
+algorithm unit-testable.
+
+**Tests.** `tests/nearest.test.js` compares geodesic distances with reference values from
 [GeographicLib](https://geographiclib.sourceforge.io/) 2.1.1 (Karney's algorithm), stored in
-`tests/fixtures/nearest-shelters.json`. They also check the textbook WGS84 values for 1° of
+`tests/fixtures/nearest-shelters.json`. It also checks the textbook WGS84 values for 1° of
 longitude on the equator (111 319.4908 m) and the meridian arc from 0° to 1° latitude
-(110 574.3886 m). All agree to within 0.5 mm. Edge cases covered: an empty list, a click
-exactly on a shelter (distance 0) and the list order.
+(110 574.3886 m). All agree to within 0.5 mm. `tests/network.test.js` uses a hand-made network
+(`tests/fixtures/overpass-river.json`): a river with one bridge, where the shelter nearest in a
+straight line (≈ 100 m away, across the river) is not the nearest on foot. Its tests check:
 
-Browser check (Playwright, 1600 × 900 and 390 × 844, evaluation token): the panel shows
-"12 public shelters · 5,268 places in total", which matches the GeoJSON. A click on Torvet in the
-start view returned shelter no. 6870 (Westermannsveita 4), 196 m away, capacity 630, and drew
-the line. Clicking a shelter point opened its InfoBox and did not run the search.
+- the routed path and its length
+- the connectors
+- a click on a target node (distance 0)
+- unreachable shelters
+- decoding of the compact file format
+
+**Measured** (Node 24 on the development machine, `public/data/walking-network.json` from
+2026-10-27):
+
+- Parsing the network took 15 ms and building the graph 197 ms (164 294 nodes). Snapping the
+  12 shelters took 6 ms. One click took 1–3 ms.
+- From Torvet the nearest shelter is no. 6870 either way: 199 m in a straight line, 276 m on
+  foot.
+- On a 30 × 30 grid of points over the shelters' bounding box, the shelter nearest on foot
+  differed from the one nearest in a straight line at 168 of 884 reachable points (19 %). The
+  grid includes points in the fjord and river, which snap to the nearest shore. No shelter was
+  reachable from 16 of the 900 points. The median ratio of walking to straight-line distance
+  was 1.34 and the 90th percentile 1.68.
+
+These timings come from Node, not the browser.
+
+**Browser check** (Playwright, dev server with a personal Cesium token, 1600 × 900 and
+390 × 844):
+
+- The panel shows "12 public shelters · 5,268 places in total" and the OSM credit.
+- A click at Torvet gave shelter no. 6870, with a 266 m walk and 196 m in a straight line.
+- A click near Øya gave shelter no. 30671 (Nedre Bakklandet), with a 1.05 km walk and 844 m in
+  a straight line. The drawn route follows the streets and crosses Gamle Bybro.
+- Clicking a building opened its InfoBox and did not run the search.
+- No console errors.
+
+**Limitations:**
+
+- The network is an OSM snapshot. Missing or wrongly tagged paths change the result.
+- One-way rules are ignored, which is correct for pedestrians. Barriers, stairs and opening
+  hours are not considered.
+- Snapping uses the nearest node, not the nearest point on an edge. The connectors are straight
+  lines and can cross buildings or water.
+- Two shelters that snap to the same node are merged into the first one.
+- Loading adds a 3.5 MB file (1.4 MB gzipped).
+
+### Walking network
+
+`public/data/walking-network.json` is committed. To regenerate it from the Overpass API:
+
+```powershell
+npm run data:network
+```
+
+The script requests all OSM ways with a walkable `highway` tag inside the shelters' bounding
+box plus a margin of about 1 km. The tags are footway, path, pedestrian, steps, living_street,
+residential, service, unclassified, road, track, cycleway, and tertiary, secondary and primary
+roads with their links, plus trunk_link. Motorways and trunk roads are excluded, and so are ways
+tagged `foot=no|private` or `access=no|private`.
+
+The file stores node coordinates as integer micro-degrees (1e-6°, about 0.1 m) relative to a
+south-west origin, and each way as a list of node indices (`utils/osmNetwork.js`). This halves
+the size compared with decimal degrees. The 2026-10-27 extract has 164 294 nodes and 32 944
+ways (OSM data timestamp 2026-10-27T10:35:02Z). The script refuses to overwrite the file if
+Overpass returns no ways.
 
 ### Shelters
 
@@ -188,7 +263,8 @@ capacity and address. It refuses to overwrite the file if the service returns no
 
 ## Attribution and Licences
 
-On-screen credits come from Cesium's credit display and the shelter layer's credit. The InfoBox
+On-screen credits come from Cesium's credit display, the shelter layer's credit and the OSM
+credit under the nearest-shelter result. The InfoBox
 and credits are kept enabled on purpose.
 
 | Data                                          | Source                                                  | Licence / terms                                                           |
@@ -196,6 +272,7 @@ and credits are kept enabled on purpose.
 | Cesium World Terrain (ion 1), default imagery | Cesium ion                                              | [Cesium ion Terms of Service](https://cesium.com/legal/terms-of-service/) |
 | Cesium OSM Buildings (ion 96188)              | © OpenStreetMap contributors                            | [ODbL](https://opendatacommons.org/licenses/odbl/)                        |
 | Tilfluktsrom – Offentlige (public shelters)   | © DSB (Direktoratet for samfunnssikkerhet og beredskap) | [NLOD 2.0](https://data.norge.no/nlod/en/2.0)                             |
+| Walking network (OSM ways via Overpass API)   | © OpenStreetMap contributors                            | [ODbL](https://opendatacommons.org/licenses/odbl/)                        |
 
 CesiumJS is licensed under Apache 2.0.
 
@@ -214,8 +291,12 @@ checked by screenshot (see [Camera views](#camera-views)). Lint, format check, t
 19 tests) and build pass. As in the split check, the screenshots used Cesium's evaluation token.
 
 Nearest shelter (2026-10-27): implemented and checked (see [Nearest shelter](#nearest-shelter)).
-Lint, format check, tests (7 files, 31 tests) and build pass. Limitations: the distance is a
-straight geodesic, not a walking route. On mobile the result is only visible when the bottom
-sheet is open. The search also runs when the shelter layer is hidden.
+Lint, format check, tests (7 files, 31 tests) and build pass.
+
+Walking routes (2026-10-27): the nearest shelter is now found by walking distance on the OSM
+network, computed in the browser (see [Nearest shelter](#nearest-shelter)). Lint, format check,
+tests (8 files, 42 tests) and build pass, and the route was checked in the browser at 1600 px
+and 390 px. Open limitations: on mobile the result is only visible when the bottom sheet is
+open, and the search also runs when the shelter layer is hidden.
 
 Remaining: public deployment.

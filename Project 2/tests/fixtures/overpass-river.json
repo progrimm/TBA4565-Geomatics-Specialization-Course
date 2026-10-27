@@ -1,0 +1,19 @@
+{
+  "_comment": "Hand-made Overpass-style network (not real OSM data). A river runs north-south between lon 10.4000 (west bank) and 10.4020 (east bank); the only bridge is at lat 63.4330. Way 4 is an isolated island path. Way 5 references a node that is missing from the response.",
+  "elements": [
+    { "type": "node", "id": 1, "lat": 63.43, "lon": 10.4 },
+    { "type": "node", "id": 2, "lat": 63.431, "lon": 10.4 },
+    { "type": "node", "id": 3, "lat": 63.433, "lon": 10.4 },
+    { "type": "node", "id": 4, "lat": 63.429, "lon": 10.4 },
+    { "type": "node", "id": 5, "lat": 63.427, "lon": 10.4 },
+    { "type": "node", "id": 6, "lat": 63.433, "lon": 10.402 },
+    { "type": "node", "id": 7, "lat": 63.43, "lon": 10.402 },
+    { "type": "node", "id": 8, "lat": 63.42, "lon": 10.41 },
+    { "type": "node", "id": 9, "lat": 63.4205, "lon": 10.41 },
+    { "type": "way", "id": 101, "nodes": [5, 4, 1, 2, 3] },
+    { "type": "way", "id": 102, "nodes": [3, 6] },
+    { "type": "way", "id": 103, "nodes": [6, 7] },
+    { "type": "way", "id": 104, "nodes": [8, 9] },
+    { "type": "way", "id": 105, "nodes": [9, 999] }
+  ]
+}

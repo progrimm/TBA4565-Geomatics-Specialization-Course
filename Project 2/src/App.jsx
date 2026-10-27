@@ -4,6 +4,7 @@ import { addShelters } from './layers/shelters.js';
 import { useCesiumViewer } from './hooks/useCesiumViewer.js';
 import { useAsyncLayer } from './hooks/useAsyncLayer.js';
 import { useNearestShelter } from './hooks/useNearestShelter.js';
+import { useWalkingNetwork } from './hooks/useWalkingNetwork.js';
 import ControlPanel from './components/ControlPanel.jsx';
 import ViewButtons from './components/ViewButtons.jsx';
 import LayerToggle from './components/LayerToggle.jsx';
@@ -14,7 +15,8 @@ export default function App() {
   const [viewer, containerRef] = useCesiumViewer();
   const buildings = useAsyncLayer(viewer, addBuildings);
   const shelters = useAsyncLayer(viewer, addShelters);
-  const analysis = useNearestShelter(viewer, shelters);
+  const network = useWalkingNetwork();
+  const analysis = useNearestShelter(viewer, shelters, network);
 
   return (
     <>
@@ -36,7 +38,7 @@ export default function App() {
             />
           </ul>
         </section>
-        <NearestShelter status={shelters.status} {...analysis} />
+        <NearestShelter status={shelters.status} networkStatus={network.status} {...analysis} />
       </ControlPanel>
       <Messages />
     </>

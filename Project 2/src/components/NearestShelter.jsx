@@ -1,6 +1,11 @@
+import { NEAREST } from '../config.js';
 import { formatDistance, summarizeShelters } from '../utils/nearest.js';
 
 const STATUS_TEXT = { loading: 'Loading shelters…', error: 'Shelter data is unavailable.' };
+const NETWORK_TEXT = {
+  loading: 'Walking network loading: straight-line distances for now.',
+  error: 'Walking network unavailable: straight-line distances only.',
+};
 const numberFormat = new Intl.NumberFormat('en-GB');
 
 /**
@@ -8,10 +13,11 @@ const numberFormat = new Intl.NumberFormat('en-GB');
  * instruction, and the result of the last ground click.
  * @param {object} props
  * @param {'loading' | 'ready' | 'error'} props.status - shelter layer status.
+ * @param {'loading' | 'ready' | 'error'} props.networkStatus - walking network status.
  * @param {import('../utils/nearest.js').Shelter[]} props.shelters
- * @param {{shelter: import('../utils/nearest.js').Shelter, distance: number}} [props.nearest]
+ * @param {import('../hooks/useNearestShelter.js').NearestResult} [props.nearest]
  */
-export default function NearestShelter({ status, shelters, nearest }) {
+export default function NearestShelter({ status, networkStatus, shelters, nearest }) {
   const { count, capacity } = summarizeShelters(shelters);
 
   return (
@@ -32,7 +38,13 @@ export default function NearestShelter({ status, shelters, nearest }) {
                 <dd>
                   No. {nearest.shelter.romnr}, {nearest.shelter.adresse}
                 </dd>
-                <dt>Distance</dt>
+                {nearest.walk && (
+                  <>
+                    <dt>Walk</dt>
+                    <dd>{formatDistance(nearest.walk.distance)} along streets and paths</dd>
+                  </>
+                )}
+                <dt>Straight</dt>
                 <dd>{formatDistance(nearest.distance)} (geodesic)</dd>
                 <dt>Capacity</dt>
                 <dd>{numberFormat.format(nearest.shelter.plasser)} people</dd>
@@ -41,6 +53,11 @@ export default function NearestShelter({ status, shelters, nearest }) {
               <p className="analysis__hint">Click the ground to find the nearest shelter.</p>
             )}
           </div>
+          {networkStatus === 'ready' ? (
+            <p className="analysis__credit">{NEAREST.network.credit}</p>
+          ) : (
+            <p className="analysis__hint">{NETWORK_TEXT[networkStatus]}</p>
+          )}
         </div>
       ) : (
         <p className="analysis__hint">{STATUS_TEXT[status]}</p>

@@ -38,20 +38,26 @@ export function onGroundClick(viewer, onClick) {
 }
 
 /**
- * Draw the clicked point and a ground-clamped geodesic line to its nearest shelter.
+ * Draw the clicked point and a ground-clamped line to its nearest shelter: the
+ * walking route if there is one, otherwise a straight geodesic line.
  * @param {import('cesium').Viewer} viewer
  * @param {import('../utils/nearest.js').LonLat} point - clicked point, WGS84 degrees.
- * @param {{shelter: import('../utils/nearest.js').Shelter, distance: number}} nearest
+ * @param {import('../hooks/useNearestShelter.js').NearestResult} nearest
  * @returns {() => void} call to remove the drawing.
  */
-export function drawNearestLine(viewer, point, { shelter, distance }) {
+export function drawNearestLine(viewer, point, { shelter, distance, walk }) {
   const { color, lineWidth, pointSize, outlineColor, outlineWidth } = NEAREST.style;
   const cesiumColor = Color.fromCssColorString(color);
+  const lonLats = walk?.coordinates ?? [
+    [point.longitude, point.latitude],
+    [shelter.longitude, shelter.latitude],
+  ];
 
   const entity = viewer.entities.add({
     name: `Nearest shelter: no. ${shelter.romnr}`,
     description: toDescriptionTable([
-      ['Distance (geodesic)', formatDistance(distance)],
+      ...(walk ? [['Walking distance', formatDistance(walk.distance)]] : []),
+      ['Straight-line distance (geodesic)', formatDistance(distance)],
       ['Capacity (people)', shelter.plasser],
       ['Address', shelter.adresse],
     ]),
@@ -65,13 +71,8 @@ export function drawNearestLine(viewer, point, { shelter, distance }) {
       disableDepthTestDistance: Number.POSITIVE_INFINITY,
     },
     polyline: {
-      positions: Cartesian3.fromDegreesArray([
-        point.longitude,
-        point.latitude,
-        shelter.longitude,
-        shelter.latitude,
-      ]),
-      // Draped on terrain and 3D Tiles; the default ArcType.GEODESIC follows the geodesic.
+      positions: Cartesian3.fromDegreesArray(lonLats.flat()),
+      // Draped on terrain and 3D Tiles; the default ArcType.GEODESIC joins vertices by geodesics.
       clampToGround: true,
       width: lineWidth,
       material: cesiumColor,
