@@ -24,6 +24,9 @@ Learning goals:
 - At least one open Trondheim dataset (from Trondheim kommune, Geonorge/
   Kartverket, Entur or OSM), with click-to-inspect attributes
 - Simple UI: layer toggles and preset camera views
+- "Nearest shelter" analysis: click the ground to get the nearest shelter, its
+  geodesic distance (EllipsoidGeodesic) and capacity, with a line to it; shelter
+  totals (count, capacity) in the panel
 - Do NOT add features beyond this list without asking.
 
 ## Tech stack
@@ -121,5 +124,8 @@ public/data/ – small static datasets (GeoJSON)
 - React refactor: done (hooks/, components/, state/; plain React, no Resium).
 - 2026-10-27: the 3DGS showcase was split out into Project 3 (`../Project 3/`).
   It is out of scope here.
-- Next: Module 5 (README with attributions, deployment).
+- 2026-10-27: nearest-shelter analysis done (utils/nearest.js with GeographicLib
+  reference fixture, layers/nearest.js, hooks/useNearestShelter.js,
+  components/NearestShelter.jsx). Browser-checked at 1600 and 390 px.
+- Next: Module 5 (README with attributions, deployment), then hardening.
   (Update this section after each module.)

@@ -15,6 +15,10 @@ on code quality: linting, tests, error handling and CI.
 - Preset camera views: Midtbyen (Torvet), Nidarosdomen (west front) and Bakklandet (the wharf
   row by Gamle Bybro). Each view centres its landmark on screen (see
   [Camera views](#camera-views))
+- Nearest shelter: click anywhere on the ground to find the nearest public shelter. The panel
+  shows its number, address, capacity and geodesic distance, and the map draws a line to it.
+  The panel also shows the total number of shelters and their total capacity (see
+  [Nearest shelter](#nearest-shelter))
 - Loading and error messages for every layer. If one layer fails, the rest of the app keeps
   working
 - A collapsible control panel that becomes a bottom sheet on mobile. Camera flights respect
@@ -78,7 +82,7 @@ src/
   hooks/          React hooks bridging React and Cesium (viewer lifecycle, layer state)
   components/     React UI: panel, view buttons, layer toggles, messages
   state/          framework-independent message store
-  utils/          pure helpers (CRS conversion, camera options, HTML escaping)
+  utils/          pure helpers (CRS conversion, camera options, HTML escaping, nearest shelter)
 scripts/          Node data-prep scripts
 tests/            Vitest unit tests and fixtures
 public/data/      small static datasets (GeoJSON)
@@ -134,6 +138,34 @@ it centred the bridge and left the Bakklandet wharves small at the edge. The Mid
 also fixed: the old camera stood above Torvet looking north, so the start view showed the
 harbour instead of the city centre.
 
+### Nearest shelter
+
+A left click that hits no object (no shelter, building or drawn line) is treated as a click on
+the ground. The camera ray through the clicked pixel is intersected with the terrain
+([`Globe.pick`](https://cesium.com/learn/cesiumjs/ref-doc/Globe.html#pick)), which gives a WGS84
+longitude and latitude. Clicks on shelters still open the InfoBox, and clicks on the sky are
+ignored.
+
+`utils/nearest.js` computes the **geodesic distance** from that point to every shelter. A
+geodesic is the shortest path along the WGS84 ellipsoid surface, here computed with
+[`EllipsoidGeodesic`](https://cesium.com/learn/cesiumjs/ref-doc/EllipsoidGeodesic.html), which
+uses Vincenty's method. The function returns the nearest shelter. Heights are ignored, so the
+distance is the map distance, not a 3D straight line and not a walking route. A linear scan is
+enough for the 12 shelters in the dataset. The line is a ground-clamped polyline entity
+(`clampToGround`, default `ArcType.GEODESIC`), draped on terrain and buildings.
+
+Tests (`tests/nearest.test.js`) compare the distances with reference values from
+[GeographicLib](https://geographiclib.sourceforge.io/) 2.1.1 (Karney's algorithm), stored in
+`tests/fixtures/nearest-shelters.json`. They also check the textbook WGS84 values for 1° of
+longitude on the equator (111 319.4908 m) and the meridian arc from 0° to 1° latitude
+(110 574.3886 m). All agree to within 0.5 mm. Edge cases covered: an empty list, a click
+exactly on a shelter (distance 0) and the list order.
+
+Browser check (Playwright, 1600 × 900 and 390 × 844, evaluation token): the panel shows
+"12 public shelters · 5,268 places in total", which matches the GeoJSON. A click on Torvet in the
+start view returned shelter no. 6870 (Westermannsveita 4), 196 m away, capacity 630, and drew
+the line. Clicking a shelter point opened its InfoBox and did not run the search.
+
 ### Shelters
 
 `public/data/shelters.geojson` is committed. To regenerate it from DSB's WFS service:
@@ -180,5 +212,10 @@ personal token.
 Camera views (2026-10-27): all three presets now target real landmark coordinates and were
 checked by screenshot (see [Camera views](#camera-views)). Lint, format check, tests (6 files,
 19 tests) and build pass. As in the split check, the screenshots used Cesium's evaluation token.
+
+Nearest shelter (2026-10-27): implemented and checked (see [Nearest shelter](#nearest-shelter)).
+Lint, format check, tests (7 files, 31 tests) and build pass. Limitations: the distance is a
+straight geodesic, not a walking route. On mobile the result is only visible when the bottom
+sheet is open. The search also runs when the shelter layer is hidden.
 
 Remaining: public deployment.

@@ -1,4 +1,11 @@
-import { Color, GeoJsonDataSource, HeightReference } from 'cesium';
+import {
+  Cartographic,
+  Math as CesiumMath,
+  Color,
+  GeoJsonDataSource,
+  HeightReference,
+  JulianDate,
+} from 'cesium';
 import { SHELTERS } from '../config.js';
 import { showMessage } from '../state/messages.js';
 import { toDescriptionTable } from '../utils/html.js';
@@ -28,6 +35,27 @@ function styleShelter(entity) {
     // Draw on top of terrain and buildings so points are never hidden.
     disableDepthTestDistance: Number.POSITIVE_INFINITY,
   };
+}
+
+/**
+ * Plain shelter records (position + attributes) for analysis code in utils/.
+ * @param {GeoJsonDataSource} dataSource - loaded by addShelters.
+ * @returns {import('../utils/nearest.js').Shelter[]} WGS84 lon/lat in degrees.
+ */
+export function toShelterRecords(dataSource) {
+  // GeoJSON points have constant positions, so any time works.
+  const time = JulianDate.now();
+  return dataSource.entities.values.map((entity) => {
+    const { longitude, latitude } = Cartographic.fromCartesian(entity.position.getValue(time));
+    const { romnr, plasser, adresse } = entity.properties.getValue(time);
+    return {
+      longitude: CesiumMath.toDegrees(longitude),
+      latitude: CesiumMath.toDegrees(latitude),
+      romnr,
+      plasser,
+      adresse,
+    };
+  });
 }
 
 /**

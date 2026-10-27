@@ -1,0 +1,40 @@
+{
+  "source": "Reference distances computed with GeographicLib 2.1.1 (geographiclib-geodesic, Karney 2013) on the WGS84 ellipsoid, 2026-10-27. Shelters are the first four features of public/data/shelters.geojson.",
+  "point": { "name": "Torvet", "longitude": 10.3953233, "latitude": 63.4303661 },
+  "shelters": [
+    {
+      "longitude": 10.3990299,
+      "latitude": 63.4310289,
+      "romnr": 6870,
+      "plasser": 630,
+      "adresse": "Westermannsveita 4 Tidl. Nordre gate 1"
+    },
+    {
+      "longitude": 10.4159861,
+      "latitude": 63.3944644,
+      "romnr": 11848,
+      "plasser": 200,
+      "adresse": "Siriusveien 10"
+    },
+    {
+      "longitude": 10.3458111,
+      "latitude": 63.372677,
+      "romnr": 12325,
+      "plasser": 200,
+      "adresse": "Øvre Flatåsveg 2 A"
+    },
+    {
+      "longitude": 10.3332241,
+      "latitude": 63.3731916,
+      "romnr": 12330,
+      "plasser": 45,
+      "adresse": "Øvre Flatåsveg 16"
+    }
+  ],
+  "distances": {
+    "6870": 199.2548,
+    "11848": 4132.8812,
+    "12325": 6890.1266,
+    "12330": 7088.5782
+  }
+}

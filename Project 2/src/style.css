@@ -224,6 +224,42 @@ body {
   opacity: 0.5;
 }
 
+/* ---------- Nearest-shelter analysis ---------- */
+.analysis {
+  padding: 0 var(--space-3);
+  font-size: 0.85rem;
+}
+
+.analysis__totals {
+  margin: 0 0 var(--space-2);
+}
+
+.analysis__hint {
+  margin: 0;
+  padding: 0 var(--space-3);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.analysis .analysis__hint {
+  padding: 0;
+}
+
+.analysis__result {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+}
+
+.analysis__result dt {
+  color: var(--text-muted);
+}
+
+.analysis__result dd {
+  margin: 0;
+}
+
 /* ---------- Messages (toasts) ---------- */
 #messages {
   position: absolute;

@@ -72,3 +72,17 @@ export const SHELTERS = {
     outlineWidth: 2,
   },
 };
+
+/**
+ * "Nearest shelter" analysis: the clicked point and the line to its nearest shelter.
+ * Both are clamped to the ground (terrain and 3D Tiles), so no heights are needed.
+ */
+export const NEAREST = {
+  style: {
+    color: '#22d3ee',
+    lineWidth: 4, // pixels
+    pointSize: 10, // pixels
+    outlineColor: '#000000',
+    outlineWidth: 2,
+  },
+};
