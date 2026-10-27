@@ -129,6 +129,13 @@ Project scope and tutoring rules: [README.md](README.md).
 - Verification query on both databases: 177 rows, 176 `ok`, SDN flagged (see step 1), ATA clipped. Greenland's Mercator ratio was 16.543261873210085 natively and 16.543261873210074 from the Linux container.
 - Not verified: a fresh-volume bootstrap replay.
 
+### 2026-10-27: Country Area Endpoints (sprint step 3)
+
+- [main.py](backend/main.py) now serves `GET /countries/areas` (all 177 countries) and `GET /countries/{adm0_a3}/areas` (one country, case-insensitive), both read from the precomputed table. Nothing is calculated per request. An unknown code returns 404, and a missing or empty table returns 503.
+- The response is a superset of the old Greenland response, so `/countries/GRL/areas` keeps working through the generic route.
+- **Native, via TestClient:** 177 records. GRL matched all 15 original fields exactly. `grl` returned 200, `XXX` 404, and a simulated missing table 503.
+- **Compose, after `up -d --build --wait api`:** 177 records directly and 177 through Nginx. The GRL values were identical to the Compose response before the change. pytest: 12 passed.
+
 ## Updating Future Checkpoints
 
 After each completed step, update the current checkpoint and append a short dated entry containing:

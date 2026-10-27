@@ -1,10 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from psycopg.errors import UndefinedTable
 
 from database import connect_database
 
-from shapely.geometry import shape
-
-from country_areas import calculate_country_areas, load_countries, to_response
+from country_areas import read_table, to_response
 
 app = FastAPI()
 
@@ -43,7 +42,26 @@ def get_countries():
         return row[0]
 
 
-@app.get("/countries/GRL/areas")
-def get_greenland_areas():
-    code, admin, geojson, ellipsoidal = load_countries(["GRL"])[0]
-    return to_response(calculate_country_areas(code, admin, shape(geojson), ellipsoidal))
+def read_area_stats(code=None):
+    try:
+        rows = read_table(code)
+    except UndefinedTable:
+        rows = None
+    if rows is None or (code is None and not rows):
+        raise HTTPException(
+            503, "Country area statistics have not been computed; run country_areas.py compute"
+        )
+    return rows
+
+
+@app.get("/countries/areas")
+def get_country_areas():
+    return [to_response(row) for row in read_area_stats()]
+
+
+@app.get("/countries/{adm0_a3}/areas")
+def get_country_area(adm0_a3: str):
+    rows = read_area_stats(adm0_a3.upper())
+    if not rows:
+        raise HTTPException(404, f"No area statistics for country code {adm0_a3!r}")
+    return to_response(rows[0])

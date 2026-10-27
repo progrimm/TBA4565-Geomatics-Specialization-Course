@@ -38,7 +38,7 @@ docker compose --env-file "Project 1/.env" -f "Project 1/compose.yaml" up -d --b
 
 Compose waits for PostGIS to be healthy before starting the API, and the frontend waits for the API health check. The API listens on port 8000 inside the Compose network and is also published locally at <http://127.0.0.1:8000>. For the full bootstrap and end-to-end workflow, see the [Project 1 guide](../README.md#run-the-map).
 
-The connection settings are centralized in [database.py](database.py). Environment variables override the local defaults: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and optional `DB_PASSWORD`. This lets both HTTP endpoints and the Greenland calculation use the same database settings.
+The connection settings are centralized in [database.py](database.py). Environment variables override the local defaults: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and optional `DB_PASSWORD`. This lets the HTTP endpoints and the country calculation CLI use the same settings. The CLI writes the table as `postgres`, by setting `DB_USER=postgres`. See the [database guide](../database/README.md#7-precomputed-country-area-statistics).
 
 ## Endpoints
 
@@ -47,9 +47,24 @@ The connection settings are centralized in [database.py](database.py). Environme
 | `/health`              | `{"status":"ok"}`; process health only, no database check                                            |
 | `/countries/count`     | `{"count":177}` from a database query                                                                |
 | `/countries`           | FeatureCollection with 177 Features; properties `admin`, `adm0_a3`, `geodesic_area_m2`               |
-| `/countries/GRL/areas` | Greenland spherical/ellipsoidal areas, projection areas/ratios, CRS strings and convergence metadata |
+| `/countries/areas`     | List of 177 country area records, ordered by `adm0_a3`, read from `public.country_area_stats`        |
+| `/countries/{adm0_a3}/areas` | One record (case-insensitive code). 404 for an unknown code. `/countries/GRL/areas` still works through this route |
 
 [main.py](main.py) uses synchronous `def` database routes, which FastAPI dispatches through its thread pool. Each request opens a connection with a five-second connection timeout and closes it through a context manager. This timeout is not a query or computation timeout. No connection pool or cache is configured.
+
+The area endpoints only read precomputed rows; they never calculate during a request. A missing or empty table returns HTTP 503 with a hint to run `country_areas.py compute`. Each record is a **superset of the original Greenland response**: the same keys (`country_code`, `sphere_radius_m`, `spherical_reference_area_m2`, `ellipsoidal_area_m2`, `max_segment_length_m`, `boundary_model`, `ratio_reference`, and per projection `area_m2`, `area_ratio`, `relative_change_from_10km`, `crs`), plus these:
+
+- `admin`
+- `unclipped_spherical_area_m2`
+- `relative_change_20_to_10km`
+- `centroid_latitude_deg`
+- `latitude_range_deg`
+- `sec2_at_centroid`
+- `merc_ratio_over_sec2`
+- `clipping` (`is_clipped`, `latitude_limit_deg`, `clipped_area_fraction`)
+- `status`
+
+Path parameters and errors follow the FastAPI docs on [path parameters](https://fastapi.tiangolo.com/tutorial/path-params/) and [handling errors](https://fastapi.tiangolo.com/tutorial/handling-errors/).
 
 The country SQL uses `ST_AsGeoJSON(record)`, casts its text result to `json`, aggregates in country-code order, and supplies `[]` for an empty collection. Psycopg decodes the JSON into Python objects; FastAPI serializes them without an extra JSON-encoding step. Coordinates are longitude/latitude in EPSG:4326. Winding is intentionally preserved for D3 (clockwise exteriors), not normalized to RFC 7946's counterclockwise-exterior recommendation.
 
@@ -120,9 +135,26 @@ These are physical-coordinate projection calculations, not pixel measurements. D
 
 ## Verification and Remaining Work
 
-On 2026-09-21 the learner verified the dedicated login, 177-row Python query, all four HTTP endpoints, SQL GeoJSON structure/winding, and frontend API integration. The agent also read the live Greenland response and confirmed the values above. The standalone calculation raises explicit exceptions on failed numerical checks; it has no committed automated test suite yet.
+On 2026-09-21 the learner verified the dedicated login, the 177-row Python query, the original four HTTP endpoints, SQL GeoJSON structure and winding, and the frontend API integration.
 
-Database failures and calculation exceptions still return generic HTTP 500 responses. Error handling, connection management, and automated regression coverage remain hardening work. The Compose production frontend uses Nginx for static files and API routing. There is no general country-statistics endpoint or intermediate-blend calculation. A complete independent fresh-volume bootstrap replay remains unverified.
+The agent ran these checks on 2026-10-27:
+
+- **Native database, via FastAPI's TestClient:**
+  - `/countries/areas` returned 200 with 177 records (AFG … ZWE).
+  - `/countries/GRL/areas` matched all 15 fields of the saved pre-change Greenland response exactly.
+  - `/countries/grl/areas` returned 200; `/countries/XXX/areas` returned 404.
+  - A simulated missing table returned 503.
+- **Compose, over HTTP after rebuilding `api`:**
+  - 177 records, and 177 through Nginx at `:8080/api/countries/areas`.
+  - GRL Mercator 16.543261873210074 and Eckert IV 0.9999997520352765, identical to the Compose response before the change.
+  - `grl` returned 200 and `XXX` 404.
+- `uv run --locked --project "Project 1/backend" pytest`: 12 passed.
+
+Remaining work:
+
+- Other database failures still return a generic HTTP 500.
+- There is no connection pool and no intermediate-blend calculation.
+- A complete fresh-volume bootstrap replay (`bootstrap` + `areas`) remains unverified.
 
 ## Official References
 
@@ -131,4 +163,7 @@ Database failures and calculation exceptions still return generic HTTP 500 respo
 - [Psycopg usage](https://www.psycopg.org/psycopg3/docs/basic/usage.html) and [JSON adaptation](https://www.psycopg.org/psycopg3/docs/basic/adapt.html#json-adaptation)
 - [PostGIS ST_AsGeoJSON](https://postgis.net/docs/ST_AsGeoJSON.html)
 - [pyproj Geod](https://pyproj4.github.io/pyproj/stable/api/geod.html) and [Transformer](https://pyproj4.github.io/pyproj/stable/api/transformer.html)
-- [Shapely transform](https://shapely.readthedocs.io/en/stable/reference/shapely.transform.html)
+- [Shapely transform](https://shapely.readthedocs.io/en/stable/reference/shapely.transform.html) and [clip_by_rect](https://shapely.readthedocs.io/en/stable/reference/shapely.clip_by_rect.html)
+- PROJ [Mercator](https://proj.org/en/stable/operations/projections/merc.html), [Eckert IV](https://proj.org/en/stable/operations/projections/eck4.html) and [cylindrical equal area](https://proj.org/en/stable/operations/projections/cea.html)
+- [pytest](https://docs.pytest.org/en/stable/getting-started.html) and [uv development dependencies](https://docs.astral.sh/uv/concepts/projects/dependencies/#development-dependencies)
+- Snyder, *Map Projections: A Working Manual* ([USGS PP 1395](https://pubs.usgs.gov/pp/1395/report.pdf)), for the Mercator scale factor sec φ

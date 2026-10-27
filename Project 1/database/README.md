@@ -220,8 +220,8 @@ The [API query](../backend/main.py) casts each Feature's text to `json`, aggrega
 Native (OSGeo4W Shell or PowerShell, from the repository root; the passwords come from `pgpass.conf`):
 
 ```powershell
-& "C:\Program Files\PostgreSQL8in\psql.exe" -X -w -h localhost -p 5432 -U postgres -d projection_lab -f "Project 1/database/04_create_country_area_stats.sql"
-$env:DB_USER = "postgres"; uv run --locked --project "Project 1/backend" "Project 1/backend/country_areas.py" compute; Remove-Item Env:DB_USER
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -X -w -h localhost -p 5432 -U postgres -d projection_lab -f "Project 1/database/04_create_country_area_stats.sql"
+Set-Location "Project 1/backend"; $env:DB_USER = "postgres"; uv run --locked country_areas.py compute; Remove-Item Env:DB_USER; Set-Location ../..
 ```
 
 Compose: on a fresh volume, `bootstrap` now also runs `04`. Run the `areas` setup service after bootstrap. It uses the backend image as `postgres`, with the password taken from `.env`:

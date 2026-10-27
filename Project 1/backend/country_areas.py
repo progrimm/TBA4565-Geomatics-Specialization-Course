@@ -297,11 +297,14 @@ def write_table(rows):
                 )
 
 
-def read_table():
+def read_table(code=None):
+    query = f"SELECT {', '.join(COLUMNS)} FROM public.country_area_stats"
+    parameters = []
+    if code is not None:
+        query += " WHERE adm0_a3 = %s"
+        parameters.append(code)
     with connect_database() as connection:
-        cursor = connection.execute(
-            f"SELECT {', '.join(COLUMNS)} FROM public.country_area_stats ORDER BY adm0_a3"
-        )
+        cursor = connection.execute(query + " ORDER BY adm0_a3", parameters)
         return [dict(zip(COLUMNS, record)) for record in cursor.fetchall()]
 
 
