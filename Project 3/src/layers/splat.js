@@ -2,6 +2,7 @@ import { Cesium3DTileset, IonResource, ITwinData } from 'cesium';
 import { SPLAT_TILESET_SETTINGS } from '../config.js';
 import { showMessage } from '../state/messages.js';
 import { CESIUM_EVALUATION_TOKEN } from '../viewer.js';
+import { startTimer, trackTileset } from './stats.js';
 
 /** How long to keep rendering after a tile load or camera stop (milliseconds). */
 const SETTLE_MS = 3000;
@@ -32,7 +33,7 @@ function renderWhileSorting(scene, tileset) {
 /**
  * Load a public Cesium ion 3D Tiles asset with Cesium's evaluation token.
  * The gallery assets belong to Cesium's own ion account and are not in the Asset
- * Depot, so our token cannot read them (as in Cesium's tutorials).
+ * Depot, so they are requested with the evaluation token, as in Cesium's tutorials.
  * Cesium3DTileset.fromIonAssetId cannot take a per-asset token, so its two
  * steps are done here explicitly.
  * @param {number} assetId
@@ -73,6 +74,7 @@ function loadSource(source) {
  */
 async function addTileset(viewer, { label, load }) {
   const hideLoading = showMessage(`Loading ${label}…`);
+  const elapsed = startTimer();
   try {
     const tileset = await load();
     // The viewer may have been destroyed while loading (e.g. React StrictMode remount).
@@ -82,6 +84,7 @@ async function addTileset(viewer, { label, load }) {
     }
     viewer.scene.primitives.add(tileset);
     renderWhileSorting(viewer.scene, tileset);
+    trackTileset(tileset, elapsed);
     return tileset;
   } catch (error) {
     console.error(`${label} failed to load:`, error);

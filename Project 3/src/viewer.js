@@ -54,3 +54,16 @@ export function createViewer(container, { terrain }) {
     fullscreenButton: false,
   });
 }
+
+/**
+ * Switch between on-demand rendering (requestRenderMode) and continuous rendering.
+ * @param {import('cesium').Scene} scene
+ * @param {boolean} onDemand
+ * @returns {boolean} the previous setting, to restore later.
+ */
+export function setRequestRenderMode(scene, onDemand) {
+  const previous = scene.requestRenderMode;
+  scene.requestRenderMode = onDemand;
+  scene.requestRender();
+  return previous;
+}

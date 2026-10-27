@@ -8,6 +8,7 @@ import MeasureTool from './components/MeasureTool.jsx';
 import Messages from './components/Messages.jsx';
 import AlignmentTool from './components/AlignmentTool.jsx';
 import SplitLine from './components/SplitLine.jsx';
+import PerformancePanel from './components/PerformancePanel.jsx';
 
 export default function App() {
   const [viewer, containerRef] = useCesiumViewer();
@@ -28,6 +29,7 @@ export default function App() {
         {tileset && <Inspector tileset={tileset} />}
         <MeasureTool viewer={viewer} />
         <AlignmentTool splat={tileset && gallery.selected} alignment={alignment} />
+        <PerformancePanel viewer={viewer} tileset={tileset} />
       </ControlPanel>
       {alignment.swipe && tileset && <SplitLine position={alignment.splitPosition} />}
       <Messages />
