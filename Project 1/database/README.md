@@ -1,6 +1,6 @@
 # Database Setup and Verification
 
-PostgreSQL/PostGIS supplies country geometry and ellipsoidal areas to FastAPI through a restricted role. The browser reads the API, never the database directly. The database can run as a native Windows installation or in Docker Compose. Phase 4 also calculates Greenland-only projection statistics in Python.
+PostgreSQL/PostGIS supplies country geometry and ellipsoidal areas to FastAPI through a restricted role. The browser reads the API, never the database directly. The database can run as a native Windows installation or in Docker Compose. Projection-area statistics for all 177 countries are calculated once in Python and stored in `public.country_area_stats`.
 
 ## Docker Compose Workflow
 
@@ -213,13 +213,42 @@ Germany exported as a MultiPolygon and then a Feature with the three selected pr
 
 The [API query](../backend/main.py) casts each Feature's text to `json`, aggregates in country-code order, and wraps the result in a FeatureCollection. The learner's compact SQL check returned `FeatureCollection | 177 | object | Feature`; the empty-array fallback was not separately tested against an empty database. API-backed rendering, including the repaired geometries, was subsequently learner-verified at both projection endpoints and the midpoint.
 
+## 7. Precomputed Country Area Statistics
+
+[04_create_country_area_stats.sql](04_create_country_area_stats.sql) creates `public.country_area_stats` and grants `SELECT` on it to `projection_api`. It has one row per country: spherical, clipped and ellipsoidal areas, Mercator and Eckert IV areas and ratios, the 20→10 and 10→5 km convergence changes, centroid latitude, latitude range, sec²(φc), the clipping flag and fraction, and `status`. The table is filled by the backend CLI, connected as an administrator, because the API role is read-only. Each run replaces every row inside one transaction. Calculation happens once, not per request.
+
+Native (OSGeo4W Shell or PowerShell, from the repository root; the passwords come from `pgpass.conf`):
+
+```powershell
+& "C:\Program Files\PostgreSQL8in\psql.exe" -X -w -h localhost -p 5432 -U postgres -d projection_lab -f "Project 1/database/04_create_country_area_stats.sql"
+$env:DB_USER = "postgres"; uv run --locked --project "Project 1/backend" "Project 1/backend/country_areas.py" compute; Remove-Item Env:DB_USER
+```
+
+Compose: on a fresh volume, `bootstrap` now also runs `04`. Run the `areas` setup service after bootstrap. It uses the backend image as `postgres`, with the password taken from `.env`:
+
+```powershell
+docker compose --env-file "Project 1/.env" -f "Project 1/compose.yaml" --profile setup run --build --rm areas
+```
+
+For the already-bootstrapped Compose database, `04` was piped once through `docker compose exec -T db psql`, because the bootstrap refuses to run against an existing database.
+
+Verified on 2026-10-27:
+
+- `04` was run on both databases (`CREATE TABLE`, `GRANT`). `has_table_privilege` gives `projection_api` SELECT = `t`, INSERT = `f`.
+- `compute` wrote 177 rows to each database: native via Windows Python, Compose via the `areas` container.
+- A query showed `177 | 176 ok | SDN:merc_invalid_geometry,eck4_invalid_geometry | clipped ATA`.
+- The native query ran as `projection_api`.
+- Greenland's Mercator ratio is `16.543261873210085` on native and `16.543261873210074` from the Linux container, which differ only in the last digits.
+
+A complete fresh-volume replay of bootstrap plus `areas` was **not** performed.
+
 ## Measurement Limits and Next Work
 
 EPSG:4326 geometry area is planar and measured in square degrees. Casting to geography does not reproject coordinates; `ST_Area(geom::geography)` measures on the WGS 84 spheroid in square meters. Divide by 1,000,000 for square kilometers. Stored generated values are recalculated by PostgreSQL when their geometry changes; never update them directly.
 
 These are ellipsoidal areas of generalized and, for two features, repaired boundaries. They are not surveyed national statistics. D3 uses spherical geometry, so its equal-area projection is not an exact ellipsoidal reference. The frontend now renders the database's repaired geometries; the original static import source remains unchanged.
 
-Greenland statistics use a separate spherical denominator and pyproj/Shapely; see the [backend measurement method](../backend/README.md#greenland-method). QGIS database visualization, a full privilege audit, and a fresh-database script replay remain unverified. No database mutations were performed by the agent during the 2026-09-21 frontend/documentation update.
+Greenland statistics use a separate spherical denominator and pyproj/Shapely; see the [backend measurement method](../backend/README.md#country-method). QGIS database visualization, a full privilege audit, and a fresh-database script replay remain unverified. No database mutations were performed by the agent during the 2026-09-21 frontend/documentation update.
 
 ## Official References
 

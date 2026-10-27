@@ -35,3 +35,4 @@ ogr2ogr -f PostgreSQL \
 
 psql_admin --file=/database/01_prepare_countries.sql
 psql_admin --file=/database/03_create_api_role.sql
+psql_admin --file=/database/04_create_country_area_stats.sql

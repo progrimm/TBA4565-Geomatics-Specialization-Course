@@ -120,6 +120,15 @@ Project scope and tutoring rules: [README.md](README.md).
 - Added pytest as a uv dev dependency, plus `tests/test_country_areas.py` (12 tests). `uv run --locked --project "Project 1/backend" pytest` reports `12 passed`.
 - `/countries/GRL/areas` temporarily computes live through the new module. Checked with FastAPI's TestClient: HTTP 200, Mercator 16.543261873210085, Eckert IV 0.9999997520352772. The precomputed table follows in step 2.
 
+### 2026-10-27: Precomputed Statistics Table (sprint step 2)
+
+- Added [04_create_country_area_stats.sql](database/04_create_country_area_stats.sql), which creates `public.country_area_stats` and grants SELECT to `projection_api`.
+- The agent ran it on the native database (5432) and on the Compose database (5433, through `docker compose exec`). It returned `CREATE TABLE` / `GRANT` both times. The API role has SELECT `t` and INSERT `f`.
+- `country_areas.py compute`, run as `postgres`, wrote 177 rows to each database. Passwords came from pgpass and `.env` and were never printed.
+- Compose: `bootstrap/import.sh` now runs `04`, and the new `setup`-profile service `areas` runs `compute` in the backend image. `docker compose --profile setup run --build --rm areas` reported `Wrote 177 rows`.
+- Verification query on both databases: 177 rows, 176 `ok`, SDN flagged (see step 1), ATA clipped. Greenland's Mercator ratio was 16.543261873210085 natively and 16.543261873210074 from the Linux container.
+- Not verified: a fresh-volume bootstrap replay.
+
 ## Updating Future Checkpoints
 
 After each completed step, update the current checkpoint and append a short dated entry containing:

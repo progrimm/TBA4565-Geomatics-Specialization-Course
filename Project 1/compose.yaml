@@ -36,6 +36,22 @@ services:
       - ./frontend/public/data/ne_110m_admin_0_countries.geojson:/data/ne_110m_admin_0_countries.geojson:ro
       - ./database:/database:ro
 
+  areas:
+    profiles: ["setup"]
+    build:
+      context: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: projection_lab
+      DB_USER: postgres
+      DB_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in Project 1/.env}"
+    command: ["python", "country_areas.py", "compute"]
+
   api:
     build:
       context: ./backend
