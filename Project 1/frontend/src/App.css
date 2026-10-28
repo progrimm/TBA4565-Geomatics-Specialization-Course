@@ -466,6 +466,10 @@ a:focus-visible {
   line-height: 1.5;
 }
 
+.static-note {
+  margin: 0;
+}
+
 .study-footer a {
   color: var(--ink);
   flex-shrink: 0;

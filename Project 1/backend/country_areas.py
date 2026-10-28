@@ -34,6 +34,7 @@ PROJECT_DIR = Path(__file__).resolve().parent.parent
 CSV_PATH = PROJECT_DIR / "results" / "country_areas.csv"
 SUMMARY_PATH = PROJECT_DIR / "results" / "summary.md"
 JSON_PATH = PROJECT_DIR / "frontend" / "public" / "data" / "country_areas.json"
+GEOJSON_PATH = PROJECT_DIR / "frontend" / "public" / "data" / "countries.geojson"
 
 COLUMNS = (
     "adm0_a3",
@@ -261,6 +262,28 @@ def to_response(row):
     }
 
 
+def read_countries():
+    """The /countries FeatureCollection; the static GeoJSON export uses the same query."""
+    with connect_database() as connection:
+        row = connection.execute("""
+            SELECT json_build_object(
+                'type', 'FeatureCollection',
+                'features', COALESCE(
+                    json_agg(
+                        ST_AsGeoJSON(country.*, geom_column => 'geom')::json
+                        ORDER BY country.adm0_a3
+                    ),
+                    '[]'::json
+                )
+            )
+            FROM (
+                SELECT admin, adm0_a3, geodesic_area_m2, geom
+                FROM public.countries
+            ) AS country;
+            """).fetchone()
+        return row[0]
+
+
 def load_countries(codes=None):
     query = """
         SELECT adm0_a3, admin, ST_AsGeoJSON(geom, 15)::json, geodesic_area_m2
@@ -322,6 +345,11 @@ def write_json(rows, path=JSON_PATH):
         json.dumps([to_response(row) for row in rows], indent=1) + "\n",
         encoding="utf-8",
     )
+
+
+def write_geojson(collection, path=GEOJSON_PATH):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(collection, separators=(",", ":")) + "\n", encoding="utf-8")
 
 
 def summarize(rows):
@@ -451,6 +479,9 @@ def main():
     )
     compute_parser.add_argument("--only", nargs="+", metavar="ADM0_A3")
     commands.add_parser("export", help="write CSV, JSON and summary from the table")
+    commands.add_parser(
+        "export-geometry", help="write the /countries GeoJSON for the static Pages build"
+    )
     arguments = parser.parse_args()
 
     if arguments.command == "compute":
@@ -470,6 +501,10 @@ def main():
             return
         write_table(rows)
         print(f"Wrote {len(rows)} rows to public.country_area_stats")
+    elif arguments.command == "export-geometry":
+        collection = read_countries()
+        write_geojson(collection)
+        print(f"Exported {len(collection['features'])} countries to {GEOJSON_PATH}")
     else:
         rows = read_table()
         write_csv(rows)

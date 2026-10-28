@@ -3,6 +3,8 @@ import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Relative base: the same build works at / (Docker) and /projection-lab/ (Pages).
+  base: './',
   plugins: [react()],
   server: {
     proxy: {

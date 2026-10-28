@@ -3,7 +3,7 @@ from psycopg.errors import UndefinedTable
 
 from database import connect_database
 
-from country_areas import read_table, to_response
+from country_areas import read_countries, read_table, to_response
 
 app = FastAPI()
 
@@ -22,24 +22,7 @@ def get_country_count():
 
 @app.get("/countries")
 def get_countries():
-    with connect_database() as connection:
-        row = connection.execute("""
-            SELECT json_build_object(
-                'type', 'FeatureCollection',
-                'features', COALESCE(
-                    json_agg(
-                        ST_AsGeoJSON(country.*, geom_column => 'geom')::json
-                        ORDER BY country.adm0_a3
-                    ),
-                    '[]'::json
-                )
-            )
-            FROM (
-                SELECT admin, adm0_a3, geodesic_area_m2, geom
-                FROM public.countries
-            ) AS country;
-            """).fetchone()
-        return row[0]
+    return read_countries()
 
 
 def read_area_stats(code=None):

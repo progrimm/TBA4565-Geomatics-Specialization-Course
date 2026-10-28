@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { FeatureCollection, MultiPolygon, Polygon } from 'geojson'
 import DistortionChart from './DistortionChart'
 import { fetchJson, validateAreas, type CountryAreas } from './countryAreas'
+import { countriesUrl, countryAreasUrl, isStatic } from './dataSource'
 
 const width = 1000
 const height = 650
@@ -127,7 +128,7 @@ function App() {
     async function loadAreas() {
       try {
         const data = await fetchJson<CountryAreas[]>(
-          '/api/countries/areas',
+          countryAreasUrl,
           'Country statistics request failed',
         )
         const areas = validateAreas(data)
@@ -151,7 +152,7 @@ function App() {
     async function loadCountries() {
       try {
         const data = await fetchJson<Countries>(
-          '/api/countries',
+          countriesUrl,
           'Country request failed',
         )
 
@@ -479,6 +480,12 @@ function App() {
             </div>
           </dl>
         </details>
+        {isStatic && (
+          <p className="static-note">
+            Static snapshot: geometries and areas exported from the FastAPI +
+            PostGIS version.
+          </p>
+        )}
         <a href="https://www.naturalearthdata.com/downloads/110m-cultural-vectors/110m-admin-0-countries/">
           Natural Earth · 1:110m
         </a>
