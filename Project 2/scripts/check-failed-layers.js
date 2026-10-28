@@ -56,7 +56,7 @@ for (const { name, block } of CASES) {
   const afterClick = await readState(page);
   await page.screenshot({ path: join(OUT_DIR, `${name}.png`) });
 
-  console.log(JSON.stringify({ name, loaded, nearestAfterClick: afterClick.nearest, pageErrors }));
+  console.warn(JSON.stringify({ name, loaded, nearestAfterClick: afterClick.nearest, pageErrors }));
   await context.close();
 }
 await browser.close();

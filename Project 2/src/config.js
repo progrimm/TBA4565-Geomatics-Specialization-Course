@@ -54,7 +54,8 @@ export const MOBILE_QUERY = '(max-width: 640px)';
 export const TILESET_SETTINGS = {
   // Cesium OSM Buildings (ion asset 96188). Licence: ODbL, © OpenStreetMap contributors.
   buildings: {
-    maximumScreenSpaceError: 16,
+    // VITE_BUILDINGS_SSE overrides it for scripts/benchmark-buildings.js only.
+    maximumScreenSpaceError: Number(import.meta.env.VITE_BUILDINGS_SSE) || 16,
   },
 };
 

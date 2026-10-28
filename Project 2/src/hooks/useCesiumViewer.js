@@ -17,6 +17,10 @@ export function useCesiumViewer() {
     const instance = createViewer(element, { terrain: createTerrain() });
     instance.camera.setView(toCameraOptions(CAMERA_VIEWS.trondheimCentre));
     setViewer(instance);
+    // Benchmark builds only (scripts/benchmark-buildings.js); removed from normal builds.
+    if (import.meta.env.VITE_BENCHMARK === 'true') {
+      import('../benchmark.js').then(({ installBenchmark }) => installBenchmark(instance));
+    }
     return () => {
       setViewer(undefined);
       instance.destroy(); // frees the WebGL context, tilesets and data sources
