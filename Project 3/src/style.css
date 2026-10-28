@@ -5,6 +5,9 @@
   --text-muted: #a3a9b4;
   --accent: #f5a623;
   --accent-contrast: #1a1203;
+  /* Shared with the homepage and the other apps' home links (NTNU blue). */
+  --home-blue: #00509e;
+  --home-blue-dark: #003c77;
   --error: #e5484d;
 
   --surface: rgb(18 20 24 / 72%);
@@ -380,14 +383,24 @@ body {
 /* ---------- Opening files ---------- */
 .panel__home {
   display: inline-block;
-  margin-bottom: var(--space-2);
-  color: var(--text-muted);
+  margin-bottom: var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  border-radius: 999px;
+  background: var(--home-blue);
+  color: #fff;
   font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.4;
   text-decoration: none;
 }
 
 .panel__home:hover {
-  color: var(--accent);
+  background: var(--home-blue-dark);
+}
+
+.panel__home:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
 .open-button {

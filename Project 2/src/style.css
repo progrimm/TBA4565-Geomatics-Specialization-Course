@@ -5,6 +5,9 @@
   --text-muted: #a3a9b4;
   --accent: #f5a623;
   --accent-contrast: #1a1203;
+  /* Shared with the homepage and the other apps' home links (NTNU blue). */
+  --home-blue: #00509e;
+  --home-blue-dark: #003c77;
   --error: #e5484d;
 
   /* 85 %: muted text keeps 4.5:1 contrast (WCAG AA) even over a white map behind the glass. */
@@ -60,6 +63,28 @@ body {
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
   box-sizing: border-box;
+}
+
+.panel__home {
+  display: inline-block;
+  margin-bottom: var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  border-radius: 999px;
+  background: var(--home-blue);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.panel__home:hover {
+  background: var(--home-blue-dark);
+}
+
+.panel__home:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
 .panel__header {
@@ -341,9 +366,10 @@ body {
     border-bottom: 0;
   }
 
-  /* Keep attribution visible above the collapsed sheet (~65 px tall). */
+  /* Keep attribution visible above the collapsed sheet (~103 px tall with the home link).
+     !important because Viewer.resize() writes an inline `bottom` (Cesium 1.146.0). */
   .cesium-viewer-bottom {
-    bottom: 65px;
+    bottom: 108px !important;
   }
 
   .cesium-infoBox {

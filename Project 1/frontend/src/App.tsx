@@ -180,6 +180,9 @@ function App() {
 
   return (
     <main>
+      <a className="home-link" href="../">
+        ← My GIS module
+      </a>
       <header className="app-header">
         <h1>
           Projection <span>Lab</span>

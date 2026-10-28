@@ -1,10 +1,33 @@
+.home-link {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--home-blue);
+  color: #fff;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.home-link:hover {
+  background: var(--home-blue-dark);
+}
+
+.home-link:focus-visible {
+  outline: 2px solid var(--home-blue);
+  outline-offset: 2px;
+}
+
 .app-header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 8px 24px;
-  padding-block: 28px;
+  padding-block: 16px 28px;
 }
 
 .app-header h1 span {

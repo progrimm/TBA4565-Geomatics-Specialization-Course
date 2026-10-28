@@ -18,6 +18,9 @@
   --highlight-border: #755516;
   --land-hover: #aebfbb;
   --flag-bg: #f6ece9;
+  /* Shared with the homepage and the other apps' home links (NTNU blue). */
+  --home-blue: #00509e;
+  --home-blue-dark: #003c77;
 }
 
 * {

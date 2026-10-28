@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { MOBILE_QUERY } from '../config.js';
+import { HOME_URL, MOBILE_QUERY } from '../config.js';
 
 /**
  * Collapsible glass panel. Starts collapsed on mobile so the map is visible.
@@ -11,6 +11,9 @@ export default function ControlPanel({ children }) {
 
   return (
     <aside className="panel" aria-label="Map controls">
+      <a className="panel__home" href={HOME_URL}>
+        ← My GIS module
+      </a>
       <header className="panel__header">
         <h1 className="panel__title">
           Trondheim <span className="panel__accent">3D</span>

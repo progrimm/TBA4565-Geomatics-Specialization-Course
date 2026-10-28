@@ -95,3 +95,6 @@ export const NEAREST = {
     outlineWidth: 2,
   },
 };
+
+/** The "My GIS module" homepage, relative to this app's subpath. */
+export const HOME_URL = '../';
