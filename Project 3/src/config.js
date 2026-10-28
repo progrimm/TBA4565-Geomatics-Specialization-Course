@@ -44,6 +44,9 @@ export const DEFAULT_UP_AXIS = '-y';
 /** Measurement markers: diameter as a fraction of the view height, and colour. */
 export const MARKER = { screenSize: 0.025, color: '#f5a623' };
 
+/** Renderer clear colour behind the splat: NTNU navy, as --stage in style.css. */
+export const BACKGROUND = '#0f2a47';
+
 /** While measuring, a press that moves more than this (CSS px) is a drag, not a pick. */
 export const CLICK_TOLERANCE_PX = 5;
 

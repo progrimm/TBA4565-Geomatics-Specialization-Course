@@ -1,20 +1,25 @@
 /* ---------- Design tokens ---------- */
 :root {
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --text: #f2f3f5;
-  --text-muted: #a3a9b4;
-  --accent: #f5a623;
-  --accent-contrast: #1a1203;
-  /* Shared with the homepage and the other apps' home links (NTNU blue). */
-  --home-blue: #00509e;
-  --home-blue-dark: #003c77;
-  --error: #e5484d;
+  /* NTNU look, shared with the "My GIS module" homepage: navy ink on white, NTNU blue accent. */
+  --text: #0f2a47;
+  --text-muted: #44607f;
+  --accent: #00509e;
+  --accent-dark: #003c77;
+  --accent-contrast: #fff;
+  --wash: #eaf1f9;
+  --error: #c62828;
 
-  --surface: rgb(18 20 24 / 72%);
-  --surface-hover: rgb(255 255 255 / 8%);
-  --border: rgb(255 255 255 / 10%);
-  --shadow: 0 8px 32px rgb(0 0 0 / 35%);
+  /* 94 %: the panel reads as white over both the navy stage and a bright splat. */
+  --surface: rgb(255 255 255 / 94%);
+  --surface-hover: var(--wash);
+  --border: #c9d9ec;
+  --shadow: 0 8px 32px rgb(15 42 71 / 22%);
   --glass: blur(14px) saturate(140%);
+  /* The 3D stage behind the panel: NTNU navy (the renderer clears to config.js BACKGROUND). */
+  --stage: #0f2a47;
+  --stage-text: #fff;
+  --stage-muted: #c9d9ec;
 
   --radius: 14px;
   --radius-sm: 8px;
@@ -38,7 +43,7 @@ body,
 }
 
 body {
-  background: #000;
+  background: var(--stage);
   color: var(--text);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
@@ -113,11 +118,9 @@ body {
 
 .panel__heading {
   margin: var(--space-4) 0 var(--space-2);
-  color: var(--text-muted);
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 650;
 }
 
 /* ---------- View buttons ---------- */
@@ -223,7 +226,8 @@ body {
   height: 20px;
   margin: 0;
   border-radius: 999px;
-  background: rgb(255 255 255 / 18%);
+  /* Off track in muted ink: 5.7:1 against the panel (WCAG 1.4.11 asks 3:1 for controls). */
+  background: var(--text-muted);
   cursor: pointer;
   transition: background 150ms;
 }
@@ -275,16 +279,14 @@ body {
 
 .tool__summary {
   padding: var(--space-3) var(--space-3) var(--space-2);
-  color: var(--text-muted);
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 650;
   cursor: pointer;
 }
 
 .tool__summary:hover {
-  color: var(--text);
+  color: var(--accent);
 }
 
 .tool__note {
@@ -386,8 +388,8 @@ body {
   margin-bottom: var(--space-3);
   padding: var(--space-1) var(--space-3);
   border-radius: 999px;
-  background: var(--home-blue);
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-contrast);
   font-size: 0.8rem;
   font-weight: 600;
   line-height: 1.4;
@@ -395,12 +397,7 @@ body {
 }
 
 .panel__home:hover {
-  background: var(--home-blue-dark);
-}
-
-.panel__home:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 2px;
+  background: var(--accent-dark);
 }
 
 .open-button {
@@ -415,6 +412,10 @@ body {
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
+}
+
+.open-button:hover {
+  background: var(--accent-dark);
 }
 
 .open-button:disabled {
@@ -439,9 +440,9 @@ body {
   width: min(calc(100vw - 2 * var(--gutter)), 24rem);
   transform: translate(-50%, -50%);
   padding: var(--space-4);
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--stage-muted);
   border-radius: var(--radius);
-  color: var(--text-muted);
+  color: var(--stage-muted);
   text-align: center;
   box-sizing: border-box;
 }
@@ -455,7 +456,7 @@ body {
 
 .empty-state__title {
   margin: 0 0 var(--space-2);
-  color: var(--text);
+  color: var(--stage-text);
   font-size: 1.1rem;
   font-weight: 600;
 }
@@ -466,15 +467,20 @@ body {
   line-height: 1.5;
 }
 
+/* "choose one" sits on the navy stage, where NTNU blue would be too dark. */
+.empty-state .link-button {
+  color: var(--stage-text);
+}
+
 .drop-overlay {
   position: fixed;
   z-index: 3;
   inset: 0;
   display: grid;
   place-items: center;
-  border: 3px dashed var(--accent);
-  background: rgb(0 0 0 / 60%);
-  color: var(--text);
+  border: 3px dashed var(--stage-text);
+  background: rgb(15 42 71 / 80%);
+  color: var(--stage-text);
   font-size: 1.4rem;
   font-weight: 600;
   pointer-events: none;

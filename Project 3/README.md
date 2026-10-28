@@ -293,3 +293,13 @@ Live (2026-10-28): deployed at
 [Pages workflow](https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course/actions/runs/40763110583), with [Project 3 CI](https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course/actions/runs/40763110560) passing on GitHub.
 The Playwright round trip passed at 1600 and 390 px with no console errors or failed requests.
 Opening a file on the live site was not tested.
+
+NTNU design (2026-10-28): the panel is white with navy text and NTNU-blue buttons, chips and
+switches, like the module homepage. The 3D stage behind it is NTNU navy: the renderer clears to
+`BACKGROUND` in `config.js` with
+[`WebGLRenderer.setClearColor`](https://threejs.org/docs/#api/en/renderers/WebGLRenderer.setClearColor),
+and the empty state and drop overlay use light text on it. The measurement markers stay orange,
+so they stand out on any splat. Computed with the WCAG formula, the panel over the navy stage
+gives 13.0:1 for normal text, 5.8:1 for muted text and 7.1:1 for NTNU blue. The light text of the
+empty state has 10.1:1 on navy. Lint, format check, tests (26) and build pass, and screenshots at
+1600 and 390 px (empty state and the SOAR splat open) were inspected.

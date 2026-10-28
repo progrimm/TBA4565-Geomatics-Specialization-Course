@@ -96,3 +96,5 @@ tests/ – Vitest unit tests
 - 2026-10-28: website (session 9). Shared NTNU-blue home link and favicon; built into
   `/3dgs-viewer/` by the root `npm run site:build`.
 - 2026-10-28: live on GitHub Pages at `/3dgs-viewer/`.
+- 2026-10-28: NTNU design. White panel, NTNU-blue accent, navy stage (`BACKGROUND` in config.js,
+  `renderer.setClearColor`). Measurement markers stay orange.

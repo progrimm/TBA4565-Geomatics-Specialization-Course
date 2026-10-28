@@ -4,7 +4,14 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { SparkRenderer, SplatMesh } from '@sparkjsdev/spark';
-import { CAMERA, CORE_FRACTION, CORE_MAX_SAMPLES, DEFAULT_UP_AXIS, MARKER } from '../config.js';
+import {
+  BACKGROUND,
+  CAMERA,
+  CORE_FRACTION,
+  CORE_MAX_SAMPLES,
+  DEFAULT_UP_AXIS,
+  MARKER,
+} from '../config.js';
 import {
   boundsSize,
   cameraForBounds,
@@ -52,6 +59,7 @@ function circleTexture() {
 export function createSplatViewer(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
   renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setClearColor(BACKGROUND);
 
   const scene = new THREE.Scene();
   const spark = new SparkRenderer({ renderer });
