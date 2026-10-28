@@ -1,5 +1,12 @@
 {
   "type": "FeatureCollection",
+  "metadata": {
+    "fetched": "2026-10-28",
+    "source": "https://ogc.dsb.no/wfs.ashx",
+    "layer": "layer_340",
+    "sourceCrs": "EPSG:25832",
+    "featureCount": 12
+  },
   "features": [
     {
       "type": "Feature",

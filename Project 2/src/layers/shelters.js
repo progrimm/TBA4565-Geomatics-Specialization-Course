@@ -8,6 +8,7 @@ import {
 } from 'cesium';
 import { SHELTERS } from '../config.js';
 import { showMessage } from '../state/messages.js';
+import { withFetchDate } from '../utils/credit.js';
 import { toDescriptionTable } from '../utils/html.js';
 
 /**
@@ -66,7 +67,13 @@ export function toShelterRecords(dataSource) {
 export async function addShelters(viewer) {
   const hideLoading = showMessage('Loading shelters…');
   try {
-    const dataSource = await GeoJsonDataSource.load(SHELTERS.url, { credit: SHELTERS.credit });
+    // Fetch the JSON ourselves to read the fetch date from its `metadata` member.
+    const response = await fetch(SHELTERS.url);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const geojson = await response.json();
+    const dataSource = await GeoJsonDataSource.load(geojson, {
+      credit: withFetchDate(SHELTERS.credit, geojson.metadata),
+    });
     // The viewer may have been destroyed while loading (e.g. React StrictMode remount).
     if (viewer.isDestroyed()) return undefined;
     dataSource.entities.values.forEach(styleShelter);
