@@ -283,15 +283,18 @@ attribution"). The current file:
 The 2026-10-28 re-fetch returned the same 12 shelters as the file committed on 2026-10-27, with
 identical coordinates and attributes. Only the `metadata` member was added.
 
-**Validation.** `utils/shelters.js` leaves out any WFS member without a valid point (two finite
-numbers), a whole-number shelter number or a whole-number capacity, because the analysis and the
-totals depend on them. A missing address becomes an empty string. The script prints each member
-it leaves out and why. The 2026-10-28 fetch left out none. The script formats its output with
+**Validation.** `utils/shelters.js` leaves out any WFS member without a valid point (two or
+three finite numbers; a height is dropped), a whole-number shelter number or a whole-number
+capacity, because the analysis and the totals depend on them. A missing address becomes an
+empty string. The script prints each member it leaves out and why. If any member is left out,
+it keeps the old file, because a partly invalid response may mean the service changed its
+format; `npm run data:shelters -- --allow-skipped` writes the valid ones after a manual check.
+The 2026-10-28 fetch left out none. The script formats its output with
 Prettier, so `npm run format:check` passes after a re-fetch.
 
 ## Quality checks
 
-Hardening pass on 2026-10-28. The browser checks ran against the production build
+Hardening pass on 2026-10-28. Screenshots from the check scripts go to the OS temp folder unless a folder is given. The browser checks ran against the production build
 (`npm run build`, then `npx vite preview --port 4174`) with a personal Cesium ion token, in
 Playwright's Chromium 156 with GPU flags (`--use-angle=d3d11`), headless, on Windows 11 with an
 AMD Radeon 780M.
@@ -312,7 +315,9 @@ Unit tests cover the failure cases that matter for the data:
 
 `scripts/check-failed-layers.js` blocks one request with Playwright's
 [`page.route`](https://playwright.dev/docs/api/class-page#page-route), then flies to Nidarosdomen
-and clicks the ground. Result at 1600 × 900:
+and clicks the ground. It asserts the expected switch states, messages and result, and that
+there are no page errors, and exits with code 1 if any check fails (it exited 0). Result at
+1600 × 900:
 
 | Case                           | Messages and panel                                                                           | After a ground click                                     | Page errors |
 | ------------------------------ | -------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ----------- |
@@ -336,7 +341,10 @@ at 1600 × 900:
 
 - **First load:** time from navigation until terrain (`globe.tilesLoaded`) and the buildings
   ([`tileset.tilesLoaded`](https://cesium.com/learn/cesiumjs/ref-doc/Cesium3DTileset.html#tilesLoaded))
-  have loaded every tile the view needs, polled every 50 ms.
+  have loaded every tile the view needs, and World Terrain has replaced the smooth ellipsoid the
+  Viewer starts with. The state is polled every 50 ms and must hold for 4 polls in a row,
+  because `tilesLoaded` can be true for a moment before any tile is queued. The time recorded is
+  the first poll of that streak.
 - **Frame rate:** a scripted 10 s, 360° orbit around Torvet at the preset pitch and range.
   Render-on-demand is switched off during the orbit. The camera moves in
   [`scene.preRender`](https://cesium.com/learn/cesiumjs/ref-doc/Scene.html#preRender), and each
@@ -350,24 +358,29 @@ Medians of 3 runs (every run is in `results/buildings-benchmark.csv`):
 
 | SSE         | First load | Mean fps | 5th-pct fps | Worst frame | Building tiles | JS heap |
 | ----------- | ---------- | -------- | ----------- | ----------- | -------------- | ------- |
-| 16 (chosen) | 5.27 s     | 57.7     | 45.0        | 105.8 ms    | 26.8 MiB       | 179 MiB |
-| 32          | 3.28 s     | 57.7     | 47.6        | 110.8 ms    | 17.9 MiB       | 141 MiB |
+| 16 (chosen) | 3.05 s     | 58.7     | 51.0        | 101.3 ms    | 26.8 MiB       | 190 MiB |
+| 32          | 3.19 s     | 58.7     | 48.5        | 103.7 ms    | 17.9 MiB       | 141 MiB |
 
 The frame rate is the same for both values. It sits just under the 60 Hz display refresh, so on
-this GPU rendering is not the bottleneck. SSE 32 loads the first view about 2 s faster and uses a
-third less tile memory. But the screenshots (`results/buildings-sse-16.png` and
-`results/buildings-sse-32.png`) show that at SSE 32 many smaller buildings in Midtbyen and east of
-the river are not drawn at all; only their roofs in the imagery are visible. **SSE 16 (Cesium's
-default) stays**, because the buildings are what the user came to see. First-load time at SSE 16
-ranged from 3.7 to 7.3 s across runs, so network speed dominates it.
+this GPU rendering is not the bottleneck. First-load time is also the same within run-to-run
+variation (SSE 16 ranged from 3.04 to 4.78 s), so network speed dominates it. The one clear
+gain at SSE 32 is a third less tile memory. But the screenshots (`results/buildings-sse-16.png`
+and `results/buildings-sse-32.png`) show that at SSE 32 many smaller buildings in Midtbyen and
+east of the river are not drawn at all; only their roofs in the imagery are visible. **SSE 16
+(Cesium's default) stays**, because the buildings are what the user came to see.
+
+An earlier run on the same day used a looser load condition (no terrain check, no stable
+streak) and gave 5.27 s against 3.28 s. The code review flagged that this condition could fire
+too early or late, so it was tightened and the benchmark re-run; the table above is from the
+re-run only.
 
 ### Accessibility
 
 - All panel controls are real `<button>` elements, or checkboxes with the `switch` role inside a
   `<label>`. `scripts/check-accessibility.js` tabs through the page at 1600 × 900 and 390 × 844.
   The tab order is Cesium's credit links, then the panel toggle, the three view buttons and the
-  two layer switches. Every stop has a visible focus outline. Space toggles a switch and Enter
-  presses a button. On mobile, the first stop in the collapsed panel is "Show controls", and
+  two layer switches. Every stop has a visible focus outline. Space toggles a switch (checked
+  before and after) and Enter presses a button. The script asserts these points and exited 0. On mobile, the first stop in the collapsed panel is "Show controls", and
   Enter opens it.
 - Contrast: the panel and the toasts sit on a semi-transparent dark surface over the map. At the
   old 72 % opacity, muted text over a white map would have had a contrast of only 3.1:1. The
@@ -450,7 +463,7 @@ Hardening (2026-10-28): the shelter data was re-fetched, with provenance in the 
 fetch date in the credit. Invalid WFS attributes are now skipped and reported. Failed-layer,
 keyboard and benchmark checks were added, panel contrast was raised, and the limitations are
 collected in one place (see [Quality checks](#quality-checks) and [Limitations](#limitations)).
-Lint, format check, tests (11 files, 53 tests) and build pass.
+Lint, format check, tests (11 files, 54 tests) and build pass.
 
 Not verified: screen-reader behaviour (no screen reader was used), Firefox and Safari, and
 performance on a phone.
