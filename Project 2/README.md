@@ -11,7 +11,7 @@ on code quality: linting, tests, error handling and CI.
 - Full-page 3D viewer starting over Midtbyen, with Cesium World Terrain
 - Cesium OSM Buildings (3D Tiles), toggleable
 - DSB public shelters in Trondheim as ground-clamped points. Click one to see its shelter
-  number, capacity and address
+  number, capacity and address. The shelter credit includes the date the data was fetched
 - Preset camera views: Midtbyen (Torvet), Nidarosdomen (west front) and Bakklandet (the wharf
   row by Gamle Bybro). Each view centres its landmark on screen (see
   [Camera views](#camera-views))
@@ -22,8 +22,8 @@ on code quality: linting, tests, error handling and CI.
   the browser, with no API key and no server (see [Nearest shelter](#nearest-shelter))
 - Loading and error messages for every layer. If one layer fails, the rest of the app keeps
   working
-- A collapsible control panel that becomes a bottom sheet on mobile. Camera flights respect
-  `prefers-reduced-motion`
+- A collapsible control panel that becomes a bottom sheet on mobile. All panel controls work
+  with the keyboard, and camera flights respect `prefers-reduced-motion`
 
 ## Getting Started
 
@@ -68,6 +68,15 @@ Run these from `Project 2/`.
 | `npm run test:watch`    | Run Vitest in watch mode                                                  |
 | `npm run data:shelters` | Re-download the shelter dataset (see [Data](#shelters))                   |
 | `npm run data:network`  | Re-download the walking network (see [Walking network](#walking-network)) |
+
+Browser checks and the benchmark are plain Node scripts that use Playwright (see
+[Quality checks](#quality-checks)):
+
+| Command                               | Purpose                                                        |
+| ------------------------------------- | -------------------------------------------------------------- |
+| `node scripts/check-failed-layers.js` | Block one data request at a time and check the app still works |
+| `node scripts/check-accessibility.js` | Tab through the panel at 1600 px and 390 px, operate controls  |
+| `node scripts/benchmark-buildings.js` | First-load time and frame rate for two SSE values              |
 
 CI ([`.github/workflows/project2-ci.yml`](../.github/workflows/project2-ci.yml)) runs lint,
 format check, tests and build on every push and pull request that touches `Project 2/`.
@@ -251,7 +260,145 @@ npm run data:shelters
 
 The script requests `layer_340` (Tilfluktsrom – Offentlige) within a bounding box around
 Trondheim in EPSG:25832, converts the points to WGS84 GeoJSON and keeps the shelter number,
-capacity and address. It refuses to overwrite the file if the service returns no features.
+capacity and address. It refuses to overwrite the file if the service returns no valid features.
+
+**Provenance.** The script records where and when the data came from in a `metadata` member of
+the GeoJSON file. GeoJSON allows extra top-level members like this
+([RFC 7946 §6.1, foreign members](https://datatracker.ietf.org/doc/html/rfc7946#section-6.1)),
+and readers such as Cesium's
+[`GeoJsonDataSource`](https://cesium.com/learn/cesiumjs/ref-doc/GeoJsonDataSource.html#.load)
+ignore them. The shelter layer fetches the file itself, reads `metadata.fetched` and shows
+"Tilfluktsrom: © DSB, NLOD · data fetched <date>" in Cesium's credit list (behind "Data
+attribution"). The current file:
+
+| Field          | Value                                                                                  |
+| -------------- | -------------------------------------------------------------------------------------- |
+| Fetched        | 2026-10-28 (UTC date)                                                                  |
+| WFS URL        | `https://ogc.dsb.no/wfs.ashx` (WFS 2.0.0, `GetFeature`)                                |
+| Layer          | `layer_340` (Tilfluktsrom – Offentlige)                                                |
+| Request CRS    | EPSG:25832, bbox E 560 000–580 000 m, N 7 020 000–7 040 000 m                          |
+| Features       | 12 (5 268 places in total)                                                             |
+| CRS conversion | EPSG:25832 → WGS84 lon/lat with proj4, EUREF89 treated as WGS84, rounded to 7 decimals |
+
+The 2026-10-28 re-fetch returned the same 12 shelters as the file committed on 2026-10-27, with
+identical coordinates and attributes. Only the `metadata` member was added.
+
+**Validation.** `utils/shelters.js` leaves out any WFS member without a valid point (two finite
+numbers), a whole-number shelter number or a whole-number capacity, because the analysis and the
+totals depend on them. A missing address becomes an empty string. The script prints each member
+it leaves out and why. The 2026-10-28 fetch left out none. The script formats its output with
+Prettier, so `npm run format:check` passes after a re-fetch.
+
+## Quality checks
+
+Hardening pass on 2026-10-28. The browser checks ran against the production build
+(`npm run build`, then `npx vite preview --port 4174`) with a personal Cesium ion token, in
+Playwright's Chromium 156 with GPU flags (`--use-angle=d3d11`), headless, on Windows 11 with an
+AMD Radeon 780M.
+
+### Robustness
+
+Unit tests cover the failure cases that matter for the data:
+
+- `tests/shelters.test.js` with `tests/fixtures/shelters-invalid.gml`: WFS members with no
+  geometry, a position with only one number, an empty or non-numeric capacity ("ca. 200"), no
+  shelter number, a missing address, and a feature from another layer. A response that is not a
+  FeatureCollection (for example a WFS `ExceptionReport`) gives an empty collection, which the
+  script refuses to write.
+- `tests/nearest.test.js` and `tests/network.test.js` already covered the nearest-shelter edge
+  cases: an empty shelter list, a click on a shelter (distance 0), identical points and
+  unreachable shelters.
+- `tests/credit.test.js`: a missing or malformed fetch date leaves the credit unchanged.
+
+`scripts/check-failed-layers.js` blocks one request with Playwright's
+[`page.route`](https://playwright.dev/docs/api/class-page#page-route), then flies to Nidarosdomen
+and clicks the ground. Result at 1600 × 900:
+
+| Case                           | Messages and panel                                                                           | After a ground click                                     | Page errors |
+| ------------------------------ | -------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ----------- |
+| Nothing blocked                | Both layers ready, "12 public shelters · 5,268 places in total"                              | Shelter no. 30671: 489 m walk, 335 m straight            | none        |
+| `shelters.geojson` blocked     | "Shelter data could not be loaded." Shelter switch disabled ("Unavailable"), buildings ready | No search (no shelters); view buttons and map still work | none        |
+| `walking-network.json` blocked | "Walking network unavailable: showing straight-line distances." Both layers ready            | Shelter no. 30671: 335 m straight, no walking distance   | none        |
+
+### Performance
+
+`scripts/benchmark-buildings.js` builds the app twice, each time with a different
+`maximumScreenSpaceError` for Cesium OSM Buildings
+([`Cesium3DTileset.maximumScreenSpaceError`](https://cesium.com/learn/cesiumjs/ref-doc/Cesium3DTileset.html#maximumScreenSpaceError)).
+SSE is the error, in pixels, that Cesium accepts before it loads a more detailed tile, so a
+higher value loads fewer and coarser tiles. The value is set at build time through
+`VITE_BUILDINGS_SSE` (default 16). `VITE_BENCHMARK=true` adds `src/benchmark.js`, which exposes
+`window.__benchmark`. A normal build contains no benchmark code (checked: no `__benchmark` in
+`dist/assets`).
+
+Each value gets 3 runs, each in a fresh browser context (empty cache), at the Midtbyen start view
+at 1600 × 900:
+
+- **First load:** time from navigation until terrain (`globe.tilesLoaded`) and the buildings
+  ([`tileset.tilesLoaded`](https://cesium.com/learn/cesiumjs/ref-doc/Cesium3DTileset.html#tilesLoaded))
+  have loaded every tile the view needs, polled every 50 ms.
+- **Frame rate:** a scripted 10 s, 360° orbit around Torvet at the preset pitch and range.
+  Render-on-demand is switched off during the orbit. The camera moves in
+  [`scene.preRender`](https://cesium.com/learn/cesiumjs/ref-doc/Scene.html#preRender), and each
+  frame is timed in `scene.postRender`. 5th-percentile fps = 1000 / 95th-percentile frame time
+  (`utils/frameStats.js`, unit-tested).
+- **Memory:** building tiles
+  ([`totalMemoryUsageInBytes`](https://cesium.com/learn/cesiumjs/ref-doc/Cesium3DTileset.html#totalMemoryUsageInBytes))
+  and JS heap, after the orbit.
+
+Medians of 3 runs (every run is in `results/buildings-benchmark.csv`):
+
+| SSE         | First load | Mean fps | 5th-pct fps | Worst frame | Building tiles | JS heap |
+| ----------- | ---------- | -------- | ----------- | ----------- | -------------- | ------- |
+| 16 (chosen) | 5.27 s     | 57.7     | 45.0        | 105.8 ms    | 26.8 MiB       | 179 MiB |
+| 32          | 3.28 s     | 57.7     | 47.6        | 110.8 ms    | 17.9 MiB       | 141 MiB |
+
+The frame rate is the same for both values. It sits just under the 60 Hz display refresh, so on
+this GPU rendering is not the bottleneck. SSE 32 loads the first view about 2 s faster and uses a
+third less tile memory. But the screenshots (`results/buildings-sse-16.png` and
+`results/buildings-sse-32.png`) show that at SSE 32 many smaller buildings in Midtbyen and east of
+the river are not drawn at all; only their roofs in the imagery are visible. **SSE 16 (Cesium's
+default) stays**, because the buildings are what the user came to see. First-load time at SSE 16
+ranged from 3.7 to 7.3 s across runs, so network speed dominates it.
+
+### Accessibility
+
+- All panel controls are real `<button>` elements, or checkboxes with the `switch` role inside a
+  `<label>`. `scripts/check-accessibility.js` tabs through the page at 1600 × 900 and 390 × 844.
+  The tab order is Cesium's credit links, then the panel toggle, the three view buttons and the
+  two layer switches. Every stop has a visible focus outline. Space toggles a switch and Enter
+  presses a button. On mobile, the first stop in the collapsed panel is "Show controls", and
+  Enter opens it.
+- Contrast: the panel and the toasts sit on a semi-transparent dark surface over the map. At the
+  old 72 % opacity, muted text over a white map would have had a contrast of only 3.1:1. The
+  surface is now 85 % opaque, which gives at least 5.0:1 for muted text and 10.7:1 for normal
+  text in that worst case
+  ([WCAG 2.2 contrast minimum, 4.5:1](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)).
+  These ratios are computed from the colours, not measured on screen.
+- Reduced motion: with `prefers-reduced-motion: reduce` (Playwright's
+  [`reducedMotion`](https://playwright.dev/docs/api/class-browser#browser-new-context-option-reduced-motion)),
+  pressing Nidarosdomen jumped straight to the view, and `tests/motion.test.js` checks that the
+  flight duration is 0. CSS transitions are still turned off.
+
+## Limitations
+
+- **Heights are ellipsoidal, not NN2000.** Cesium works with heights above the WGS84 ellipsoid.
+  The camera targets use NN2000 ground height + 40 m as an approximate geoid offset for
+  Trondheim, not a value from a geoid model, so a height read from the app is not an NN2000
+  height.
+- **EUREF89 is treated as WGS84.** The shelters are converted from EUREF89 / UTM 32N with proj4,
+  without a datum shift. The difference between the two frames is under a metre, which is below
+  the accuracy of a shelter point on a city map.
+- **OSM building completeness.** Cesium OSM Buildings comes from OpenStreetMap, so which buildings
+  exist, and how tall they are, depends on what mappers have entered. Roof shapes are generic.
+  The buildings were not compared with Kartverket's FKB building data.
+- **Keyboard users cannot run the nearest-shelter search**, because it needs a click on the map.
+  The panel itself is fully keyboard-accessible.
+- On mobile, the nearest-shelter result is only visible while the bottom sheet is open. The open
+  sheet also covers Cesium's credit line.
+- The search also runs when the shelter layer is hidden.
+- The benchmark covers one machine, one view and headless Chromium. The frame rate is capped by
+  the 60 Hz display, so it cannot tell apart settings that both render faster than that.
 
 ## Cesium ion Token and Security
 
@@ -298,5 +445,14 @@ network, computed in the browser (see [Nearest shelter](#nearest-shelter)). Lint
 tests (8 files, 42 tests) and build pass, and the route was checked in the browser at 1600 px
 and 390 px. Open limitations: on mobile the result is only visible when the bottom sheet is
 open, and the search also runs when the shelter layer is hidden.
+
+Hardening (2026-10-28): the shelter data was re-fetched, with provenance in the file and the
+fetch date in the credit. Invalid WFS attributes are now skipped and reported. Failed-layer,
+keyboard and benchmark checks were added, panel contrast was raised, and the limitations are
+collected in one place (see [Quality checks](#quality-checks) and [Limitations](#limitations)).
+Lint, format check, tests (11 files, 53 tests) and build pass.
+
+Not verified: screen-reader behaviour (no screen reader was used), Firefox and Safari, and
+performance on a phone.
 
 Remaining: public deployment.

@@ -133,5 +133,9 @@ public/data/ – static datasets (shelters GeoJSON, walking network JSON)
   snapping and Dijkstra in utils/network.js; hooks/useWalkingNetwork.js. Falls
   back to straight lines if the network fails. GraphHopper was rejected (public
   API key, daily quota).
-- Next: Module 5 (README with attributions, deployment), then hardening.
+- 2026-10-28: hardening. Shelter provenance (metadata member, fetch date in
+  credit), WFS attribute validation, Playwright checks in scripts/
+  (check-failed-layers, check-accessibility, benchmark-buildings), SSE 16 kept,
+  panel surface 85 % for contrast.
+- Next: deployment (root sprint session 9).
   (Update this section after each module.)
