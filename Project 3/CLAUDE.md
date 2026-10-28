@@ -95,4 +95,4 @@ tests/ – Vitest unit tests
   file viewer (Spark). Old code at 9442d81.
 - 2026-10-28: website (session 9). Shared NTNU-blue home link and favicon; built into
   `/3dgs-viewer/` by the root `npm run site:build`.
-- Next: first live deployment check.
+- 2026-10-28: live on GitHub Pages at `/3dgs-viewer/`.

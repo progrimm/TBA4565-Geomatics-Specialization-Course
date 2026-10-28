@@ -2,7 +2,7 @@
 
 Learning projects for the NTNU course TBA4565 Specialization Subject: GI Science and Systems, autumn 2026, by Åmund Grimstad. Three small web GIS apps, one per theme of the module, published together as one static website on GitHub Pages:
 
-**<https://progrimm.github.io/TBA4565-Geomatics-Specialization-Course/>**. This URL serves the site once `pages.yml` has run on `main`; see [Deployment](#deployment).
+**<https://progrimm.github.io/TBA4565-Geomatics-Specialization-Course/>**. It is deployed by `pages.yml` on every push to `main`; see [Deployment](#deployment).
 
 | Path | Project | Theme | Question |
 | --- | --- | --- | --- |
@@ -58,4 +58,5 @@ One-time setup in GitHub and Cesium ion:
 ## Status (2026-10-28)
 
 - **Done and verified locally:** all three projects (see each README); the homepage; the shared home links; Project 1's static data mode; and the one-command build. The assembled site, served under the repository prefix, passed a Playwright round trip (homepage → each project → "← My GIS module" → homepage) at 1600 and 390 px, with 0 console errors and 0 failed requests.
-- **Not verified yet:** the first `pages.yml` run and the live URL, the CI workflows on GitHub, and the production Cesium token's URL restriction.
+- **Live (2026-10-28):** the first push of `main` (`214b1ad`) ran all five workflows on GitHub, and all succeeded: [Pages deploy](https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course/actions/runs/40763110583), [Project 1 CI](https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course/actions/runs/40763110611), [Project 2 CI](https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course/actions/runs/40763110659), [Project 3 CI](https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course/actions/runs/40763110560) and [Homepage CI](https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course/actions/runs/40763110542). On the live URL, the same Playwright round trip passed at 1600 and 390 px with 0 console errors and 0 failed requests; the screenshots were inspected. The production Cesium token is accepted from the Pages origin (HTTP 200 from `api.cesium.com`) and rejected from a foreign origin (`https://example.com`: HTTP 403).
+- **Not verified:** real phones, Firefox and Safari, and Project 1's Docker images after the relative `base` change.

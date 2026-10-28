@@ -141,5 +141,5 @@ public/data/ – static datasets (shelters GeoJSON, walking network JSON)
   shared favicon, mobile credit fix (`Viewer.resize()` sets an inline `bottom`, so the rule needs
   `!important`). Built into `/trondheim-3d/` by the root `npm run site:build`; deployed by
   `.github/workflows/pages.yml` with the `CESIUM_ION_TOKEN` secret.
-- Next: first live deployment check.
+- 2026-10-28: live on GitHub Pages; production token restricted to the Pages origin (checked).
   (Update this section after each module.)

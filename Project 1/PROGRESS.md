@@ -5,7 +5,7 @@ Project scope and tutoring rules: [README.md](README.md).
 ## Current Checkpoint
 
 - **Last updated:** 2026-10-28, in the sprint (the agent implements directly, per the root CLAUDE.md override).
-- **Status:** all six build phases are done and verified locally. Projection statistics cover all 177 countries. The GitHub Pages static data mode is built and checked locally (2026-10-28); the live deployment is still pending. See [Limitations](README.md#limitations).
+- **Status:** all six build phases are done and verified locally. Projection statistics cover all 177 countries. The GitHub Pages static data mode is deployed at `/projection-lab/` and checked live (2026-10-28). See [Limitations](README.md#limitations).
 - **Frontend:**
   - React/TypeScript/Vite and D3 draw one morphing SVG map with graticule, world outline, 30 finite circles and a keyboard slider.
   - Any country can be selected by click, tap, the country list, or the arrow keys on the chart, which opens its area panel.
@@ -24,8 +24,8 @@ Project scope and tutoring rules: [README.md](README.md).
   - CI workflow linted with actionlint;
   - Playwright: 39 interaction checks and 34 accessibility checks at 1600/390/320 px, with screenshots inspected;
   - a fresh-volume Compose replay matched the CSV to within 1.1e-13.
-- **Remaining:** the live Pages check; CI not yet observed on GitHub; Compose images not rebuilt after the relative `base`; browser tests not committed; native-setup replay; generic HTTP 500s for other database failures. See [Limitations](README.md#limitations).
-- **Next action:** deploy the site and check `/projection-lab/` live, then write the report from `results/summary.md` and the chart.
+- **Remaining:** Compose images not rebuilt after the relative `base`; browser tests not committed; native-setup replay; generic HTTP 500s for other database failures. See [Limitations](README.md#limitations).
+- **Next action:** write the report from `results/summary.md` and the chart.
 
 ## Phase Tracker
 
@@ -266,7 +266,8 @@ Project scope and tutoring rules: [README.md](README.md).
   - the static bundle contains `./data/countries.geojson` and no `/api/countries` string;
   - Playwright on the static build served under `/projection-lab/` (by `scripts/preview-site.mjs`), with no API running: 177 country paths drawn, the Greenland panel and the chart render, 0 console errors and 0 failed requests at 1600 and 390 px, no horizontal overflow; screenshots inspected;
   - the assembled site (`npm run site:build`, served under `/TBA4565-Geomatics-Specialization-Course/`) passed the homepage → Projection Lab → home round trip at 1600 and 390 px with no console errors or failed requests.
-- **Not verified:** the live GitHub Pages URL (not deployed yet) and the Docker Compose images after the `base` change (Docker Desktop was not running).
+- **Live:** after the push of `main`, [Project 1 CI](https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course/actions/runs/40763110611) and the [Pages deploy](https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course/actions/runs/40763110583) passed on GitHub. On <https://progrimm.github.io/TBA4565-Geomatics-Specialization-Course/projection-lab/> the Playwright round trip passed at 1600 and 390 px with no console errors or failed requests.
+- **Not verified:** the Docker Compose images after the `base` change (Docker Desktop was not running).
 
 ## Updating Future Checkpoints
 

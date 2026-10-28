@@ -490,5 +490,10 @@ the repository prefix, passed a Playwright round trip (homepage → Trondheim 3D
 module" → homepage) at 1600 and 390 px with no console errors or failed requests, using the local
 development token.
 
-Remaining: the first live deployment, and a check that the production token's URL restriction
-works.
+Live (2026-10-28): deployed at
+<https://progrimm.github.io/TBA4565-Geomatics-Specialization-Course/trondheim-3d/> by the
+[Pages workflow](https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course/actions/runs/40763110583), with [Project 2 CI](https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course/actions/runs/40763110659) passing on GitHub.
+Terrain, imagery, buildings and shelters load with the production token, and the Playwright
+round trip passed at 1600 and 390 px with no console errors or failed requests. The token's
+Allowed URLs restriction works: `api.cesium.com` answers HTTP 200 for the Pages origin and
+HTTP 403 for `https://example.com`.

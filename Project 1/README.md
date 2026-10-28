@@ -152,9 +152,9 @@ Country areas describe this generalized dataset, including database repairs, not
 
 ## Limitations
 
-- **Pages is a snapshot.** The static build shows the exported geometry and statistics; it does not query PostGIS. It was checked locally under a `/projection-lab/` prefix, not yet on the live site.
+- **Pages is a snapshot.** The static build shows the exported geometry and statistics; it does not query PostGIS. It was checked under a local `/projection-lab/` prefix and, on 2026-10-28, on the live site.
 - **Compose images not rebuilt.** After the relative Vite `base` change (2026-10-28) the frontend was rebuilt and browser-checked with npm, but the Docker images were not rebuilt, because Docker Desktop was not running.
-- **CI not yet observed.** The workflow was linted with actionlint, and its steps were run locally. It has not run on GitHub because the branch was not pushed.
+- **CI observed once.** [project1-ci.yml](https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course/actions/runs/40763110611) ran on GitHub for the first time on 2026-10-28 and passed.
 - **Generalised boundaries.** All areas describe Natural Earth 1:110m boundaries, including the database repairs of USA and Sudan. They are not official national figures.
 - **Sphere, not ellipsoid.** Projection ratios use a sphere of radius 6,371,007.1809 m. The WGS 84 ellipsoidal area is reported separately and differs by −0.45% to +0.81% per country.
 - **Antarctica** is clipped at ±85.0511° for its statistics and excluded from the summary statistics.

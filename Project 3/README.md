@@ -288,4 +288,8 @@ errors or failed requests. The homepage card's screenshot shows the "SOAR Telesc
 (see [Test data](#test-data)), loaded from git history only for that screenshot. The splat is
 credited on the homepage and is still not in the repository.
 
-Remaining: the first live deployment check.
+Live (2026-10-28): deployed at
+<https://progrimm.github.io/TBA4565-Geomatics-Specialization-Course/3dgs-viewer/> by the
+[Pages workflow](https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course/actions/runs/40763110583), with [Project 3 CI](https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course/actions/runs/40763110560) passing on GitHub.
+The Playwright round trip passed at 1600 and 390 px with no console errors or failed requests.
+Opening a file on the live site was not tested.
