@@ -35,6 +35,9 @@ export function useSplatViewer() {
   const [facts, setFacts] = useState(null);
   const [upAxis, setUpAxisState] = useState(DEFAULT_UP_AXIS);
   const hideError = useRef(() => {});
+  // A ref, not state, so open() stays the same function while loading (the drop
+  // listeners depend on it) and two quick drops cannot both start a load.
+  const busy = useRef(false);
 
   useEffect(() => {
     let created;
@@ -54,7 +57,12 @@ export function useSplatViewer() {
 
   const open = useCallback(
     async (file) => {
-      if (!viewer || loading) return;
+      if (!viewer) return;
+      if (busy.current) {
+        const hide = showMessage(`Still opening the previous file; ${file.name} was not opened.`);
+        setTimeout(hide, ERROR_MESSAGE_MS);
+        return;
+      }
       hideError.current();
       const fail = (text) => {
         hideError.current = showMessage(text, 'error');
@@ -69,6 +77,7 @@ export function useSplatViewer() {
         return;
       }
 
+      busy.current = true;
       setLoading(true);
       const hideLoading = showMessage(`Opening ${file.name}…`);
       const started = performance.now();
@@ -100,10 +109,11 @@ export function useSplatViewer() {
         fail(`Could not open ${file.name}: ${error?.message ?? error}`);
       } finally {
         hideLoading();
+        busy.current = false;
         setLoading(false);
       }
     },
-    [viewer, loading],
+    [viewer],
   );
 
   const setUpAxis = useCallback(

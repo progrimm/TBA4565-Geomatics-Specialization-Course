@@ -5,7 +5,13 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { SparkRenderer, SplatMesh } from '@sparkjsdev/spark';
 import { CAMERA, CORE_FRACTION, CORE_MAX_SAMPLES, DEFAULT_UP_AXIS, MARKER } from '../config.js';
-import { boundsSize, cameraForBounds, coreBounds, fullBounds } from '../utils/bounds.js';
+import {
+  boundsSize,
+  cameraForBounds,
+  collectCentres,
+  coreBounds,
+  fullBounds,
+} from '../utils/bounds.js';
 import { upAxisRotation } from '../utils/orientation.js';
 
 /**
@@ -31,13 +37,6 @@ function circleTexture() {
   return new THREE.CanvasTexture(canvas);
 }
 
-/** Splat centres in file coordinates, x, y, z interleaved. */
-function splatCentres(mesh) {
-  const centres = [];
-  mesh.forEachSplat((_index, centre) => centres.push(centre.x, centre.y, centre.z));
-  return new Float32Array(centres);
-}
-
 /**
  * Create the viewer on a canvas that fills its parent.
  * @param {HTMLCanvasElement} canvas
@@ -55,7 +54,8 @@ export function createSplatViewer(canvas) {
   renderer.setPixelRatio(window.devicePixelRatio);
 
   const scene = new THREE.Scene();
-  scene.add(new SparkRenderer({ renderer }));
+  const spark = new SparkRenderer({ renderer });
+  scene.add(spark);
 
   const camera = new THREE.PerspectiveCamera(CAMERA.verticalFovDeg, 1, 0.01, 1000);
   const controls = new OrbitControls(camera, canvas);
@@ -118,7 +118,8 @@ export function createSplatViewer(canvas) {
       next.dispose();
       throw error;
     }
-    const centres = splatCentres(next);
+    // Centres in file coordinates; non-finite (NaN) splats are skipped.
+    const centres = collectCentres((callback) => next.forEachSplat(callback));
     if (centres.length === 0) {
       next.dispose();
       throw new Error('The file contains no splats.');
@@ -207,6 +208,7 @@ export function createSplatViewer(canvas) {
     markerMaterial.dispose();
     lineMaterial.dispose();
     mesh?.dispose();
+    spark.dispose();
     renderer.dispose();
   }
 

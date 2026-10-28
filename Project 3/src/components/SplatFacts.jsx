@@ -38,7 +38,10 @@ export default function SplatFacts({ facts }) {
         {header && (
           <>
             <dt>PLY encoding</dt>
-            <dd>{header.format}</dd>
+            <dd>
+              {header.format}
+              {header.compressed && ' (compressed)'}
+            </dd>
             <dt>SH degree</dt>
             <dd>{header.shDegree ?? 'unknown'}</dd>
             <dt>Per splat</dt>

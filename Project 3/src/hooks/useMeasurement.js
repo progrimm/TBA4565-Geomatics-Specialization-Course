@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { CLICK_TOLERANCE_PX } from '../config.js';
 import { distance } from '../utils/measure.js';
-
-/** A press that moves more than this (CSS px) is a drag (orbit), not a click. */
-const CLICK_TOLERANCE_PX = 5;
 
 /**
  * Two-point measurement: while active, clicks on the splat pick points.
@@ -41,7 +39,8 @@ export function useMeasurement(viewer, canvasRef, splatKey) {
     if (!active || !viewer || !canvas) return undefined;
     let down = null;
     const onDown = (event) => {
-      down = { x: event.clientX, y: event.clientY };
+      // Only the primary button (left mouse, touch, pen) picks; right-drag pans.
+      down = event.button === 0 ? { x: event.clientX, y: event.clientY } : null;
     };
     const onUp = (event) => {
       if (!down) return;
@@ -53,7 +52,10 @@ export function useMeasurement(viewer, canvasRef, splatKey) {
       if (point) setPoints((current) => (current.length >= 2 ? [point] : [...current, point]));
     };
     const onKey = (event) => {
-      if (event.key === 'Escape') setActive(false);
+      // Escape inside a <details> or a form field belongs to that element.
+      if (event.key === 'Escape' && !event.target.closest?.('details, input, select, textarea')) {
+        setActive(false);
+      }
     };
     canvas.addEventListener('pointerdown', onDown);
     canvas.addEventListener('pointerup', onUp);

@@ -43,8 +43,9 @@ export function shDegree(restCount) {
  * Read the header of a PLY file.
  * @param {Uint8Array} bytes - the file, or at least its start.
  * @returns {{format: string, vertexCount: number, properties: {type: string, name: string}[],
- *   headerBytes: number, missing: string[], shDegree: number | null}}
- *   missing = required splat properties not in the file (empty for a splat PLY).
+ *   headerBytes: number, compressed: boolean, missing: string[], shDegree: number | null}}
+ *   compressed = SuperSplat compressed PLY (packed_* properties); missing = required
+ *   splat properties not in the file (empty for a splat PLY, plain or compressed).
  * @throws {Error} if the bytes do not start with a PLY header.
  */
 export function parsePlyHeader(bytes) {
@@ -70,13 +71,18 @@ export function parsePlyHeader(bytes) {
   }
 
   const names = new Set(properties.map((property) => property.name));
+  // SuperSplat/PlayCanvas compressed PLY: quantised splats in packed_* properties
+  // plus a "chunk" element, instead of the plain float properties.
+  const compressed = names.has('packed_position');
   const restCount = properties.filter((property) => property.name.startsWith('f_rest_')).length;
   return {
     format,
     vertexCount,
     properties,
     headerBytes,
-    missing: REQUIRED_SPLAT_PROPERTIES.filter((name) => !names.has(name)),
-    shDegree: shDegree(restCount),
+    compressed,
+    missing: compressed ? [] : REQUIRED_SPLAT_PROPERTIES.filter((name) => !names.has(name)),
+    // Compressed files keep SH coefficients in a separate element, not counted here.
+    shDegree: compressed ? null : shDegree(restCount),
   };
 }

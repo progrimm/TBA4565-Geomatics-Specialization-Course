@@ -44,6 +44,9 @@ export const DEFAULT_UP_AXIS = '-y';
 /** Measurement markers: diameter as a fraction of the view height, and colour. */
 export const MARKER = { screenSize: 0.025, color: '#f5a623' };
 
+/** While measuring, a press that moves more than this (CSS px) is a drag, not a pick. */
+export const CLICK_TOLERANCE_PX = 5;
+
 /** How long an error message stays up (ms); opening another file also clears it. */
 export const ERROR_MESSAGE_MS = 10_000;
 

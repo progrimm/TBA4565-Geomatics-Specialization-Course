@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { boundsSize, cameraForBounds, coreBounds, fullBounds } from '../src/utils/bounds.js';
+import {
+  boundsSize,
+  cameraForBounds,
+  collectCentres,
+  coreBounds,
+  fullBounds,
+} from '../src/utils/bounds.js';
 
 /** 101 centres on a line from 0 to 100 along each axis, plus one far floater. */
 function lineWithFloater() {
@@ -10,6 +16,17 @@ function lineWithFloater() {
 }
 
 describe('splat bounds', () => {
+  it('collects finite centres and skips NaN splats', () => {
+    const splats = [
+      { x: 1, y: 2, z: 3 },
+      { x: NaN, y: 0, z: 0 },
+      { x: 4, y: Infinity, z: 6 },
+      { x: -1, y: -2, z: -3 },
+    ];
+    const centres = collectCentres((callback) => splats.forEach((c, i) => callback(i, c)));
+    expect(Array.from(centres)).toEqual([1, 2, 3, -1, -2, -3]);
+  });
+
   it('finds the full bounding box', () => {
     const bounds = fullBounds(new Float32Array([1, 2, 3, -1, 5, 0]));
     expect(bounds).toEqual({ min: [-1, 2, 0], max: [1, 5, 3] });

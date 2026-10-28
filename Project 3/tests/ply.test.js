@@ -63,6 +63,27 @@ describe('PLY header', () => {
     expect(header.missing).not.toContain('x');
   });
 
+  it('recognises a SuperSplat compressed PLY as a splat', () => {
+    const text = [
+      'ply',
+      'format binary_little_endian 1.0',
+      'element chunk 1',
+      'property float min_x',
+      'element vertex 256',
+      'property uint packed_position',
+      'property uint packed_rotation',
+      'property uint packed_scale',
+      'property uint packed_color',
+      'end_header',
+      '',
+    ].join('\n');
+    const header = parsePlyHeader(encode(text));
+    expect(header.compressed).toBe(true);
+    expect(header.missing).toEqual([]);
+    expect(header.vertexCount).toBe(256);
+    expect(header.shDegree).toBeNull();
+  });
+
   it('rejects files that are not PLY', () => {
     expect(() => parsePlyHeader(encode('hello world'))).toThrow('not a PLY');
     expect(() => parsePlyHeader(encode('ply\nformat ascii 1.0\n'))).toThrow('not a PLY');

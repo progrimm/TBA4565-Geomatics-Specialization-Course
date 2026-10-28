@@ -19,7 +19,7 @@ One static website on GitHub Pages: a "My GIS module" homepage in `site/` at `/`
 ## Verify before saying done
 - Project 1: `npm --prefix "Project 1/frontend" run build` and `run lint`; backend tests: `uv run --locked --project "Project 1/backend" pytest` (once tests exist).
 - Project 2: `npm --prefix "Project 2" run lint`, `run format:check`, `test`, `run build`.
-- Project 3: the same four scripts with `--prefix "Project 3"`. Benchmark numbers come only from the Playwright benchmark script run on my machine, never from estimates.
+- Project 3: the same four scripts with `--prefix "Project 3"`. Its old viewer benchmark (Playwright, run on my machine) is in git history at 9442d81; never quote benchmark numbers from estimates.
 - UI changes: check in a browser (Playwright is fine) at 1600 px and 390 px width and look at the screenshot.
 - Show evidence (the command and its result). Don't just assert success.
 

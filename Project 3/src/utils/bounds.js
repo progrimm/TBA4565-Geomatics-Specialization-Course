@@ -3,6 +3,30 @@
  */
 
 /**
+ * Collect splat centres into one typed array, skipping non-finite ones (some
+ * trained files contain NaN splats). Two passes, so the array is allocated once.
+ * @param {(callback: (index: number, centre: {x: number, y: number, z: number}) => void) => void} forEachSplat
+ * @returns {Float32Array} x, y, z for each finite centre, interleaved.
+ */
+export function collectCentres(forEachSplat) {
+  const finite = ({ x, y, z }) => Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z);
+  let count = 0;
+  forEachSplat((_index, centre) => {
+    if (finite(centre)) count += 1;
+  });
+  const centres = new Float32Array(count * 3);
+  let i = 0;
+  forEachSplat((_index, centre) => {
+    if (!finite(centre) || i >= centres.length) return;
+    centres[i] = centre.x;
+    centres[i + 1] = centre.y;
+    centres[i + 2] = centre.z;
+    i += 3;
+  });
+  return centres;
+}
+
+/**
  * Full bounding box of splat centres.
  * @param {Float32Array} centres - x, y, z for each splat, interleaved.
  * @returns {Bounds}
