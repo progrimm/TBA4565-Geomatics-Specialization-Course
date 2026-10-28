@@ -8,6 +8,8 @@ import { createLabPage, START_POSE } from './harness.js';
 const page = createLabPage({
   title: 'Spark',
   engine: 'Spark 2.4.0 on Three.js 0.186.1 (WebGL2)',
+  controls:
+    'Drag to orbit, scroll to zoom. With the view focused: arrow keys pan, Shift + arrows orbit.',
   credit: 'Spark: MIT, World Labs',
 });
 
@@ -36,6 +38,7 @@ try {
   // OrbitControls read camera.up when created, so they orbit around -y here.
   const controls = page.bench ? null : new OrbitControls(camera, page.canvas);
   controls?.target.set(...CAMERA.target);
+  controls?.listenToKeyEvents(page.canvas);
   controls?.update();
 
   page.status('Loading the splat…');

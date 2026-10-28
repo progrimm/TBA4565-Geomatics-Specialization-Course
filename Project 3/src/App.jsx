@@ -18,12 +18,7 @@ export default function App() {
 
   return (
     <>
-      {/* Cesium owns this element's children: React must never render into it. */}
-      <main
-        id="cesiumContainer"
-        ref={containerRef}
-        aria-label="3D globe with georeferenced Gaussian splats"
-      />
+      {/* The panel comes first so keyboard users reach it before Cesium's credit links. */}
       <ControlPanel>
         <Gallery gallery={gallery} />
         {tileset && <Inspector tileset={tileset} />}
@@ -35,6 +30,12 @@ export default function App() {
           a benchmark.
         </p>
       </ControlPanel>
+      {/* Cesium owns this element's children: React must never render into it. */}
+      <main
+        id="cesiumContainer"
+        ref={containerRef}
+        aria-label="3D globe with georeferenced Gaussian splats"
+      />
       {alignment.swipe && tileset && <SplitLine position={alignment.splitPosition} />}
       <Messages />
     </>

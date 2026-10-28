@@ -14,6 +14,7 @@ import { createLabPage, START_POSE } from './harness.js';
 const page = createLabPage({
   title: 'Babylon.js',
   engine: 'Babylon.js 9.32.1, GaussianSplattingMesh (WebGL2)',
+  controls: 'Drag to orbit, scroll to zoom. With the view focused: arrow keys orbit.',
   credit: 'Babylon.js: Apache 2.0',
 });
 

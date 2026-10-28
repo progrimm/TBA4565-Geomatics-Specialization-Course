@@ -49,6 +49,9 @@ body {
 /* ---------- Panel ---------- */
 .panel {
   position: absolute;
+  /* The panel comes before the map in the DOM (first in tab order), so it needs
+     to be lifted above the Cesium widget, which is painted later. */
+  z-index: 1;
   top: var(--gutter);
   left: var(--gutter);
   width: 300px;

@@ -65,10 +65,11 @@ function creditLine(splatCredit, extra) {
 
 /**
  * Build the page around a fixed-size canvas and return the harness API.
- * @param {{title: string, engine: string, credit?: string, createCanvas?: boolean,
- *   splatCredit?: {text: string, sourceUrl: string, licenceUrl: string}}} options
- *   title = viewer name; engine = short description shown under it; credit = extra
- *   engine credit; createCanvas = false when the engine creates its own canvas
+ * @param {{title: string, engine: string, controls?: string, credit?: string,
+ *   createCanvas?: boolean, splatCredit?: {text: string, sourceUrl: string, licenceUrl: string}}} options
+ *   title = viewer name; engine = short description shown under it; controls = how to
+ *   move the camera (mouse and keyboard), shown on the page and read out for the
+ *   canvas; credit = extra engine credit; createCanvas = false when the engine creates its own canvas
  *   (the stage element is then its container); splatCredit = credit of the data
  *   shown, when it is not the shared test splat.
  * @returns {{canvas: HTMLCanvasElement | null, stage: HTMLElement, bench: boolean,
@@ -78,6 +79,7 @@ function creditLine(splatCredit, extra) {
 export function createLabPage({
   title,
   engine,
+  controls,
   credit,
   createCanvas = true,
   splatCredit = SPLAT_CREDIT,
@@ -91,11 +93,15 @@ export function createLabPage({
     <header class="lab-page__header">
       <h1></h1>
       <p class="lab-page__engine"></p>
+      <p class="lab-page__engine" id="lab-controls"></p>
     </header>
     <div class="lab-stage"></div>
     <p class="lab-status" role="status" aria-live="polite"></p>`;
   main.querySelector('h1').textContent = title;
   main.querySelector('.lab-page__engine').textContent = engine;
+  const controlsLine = main.querySelector('#lab-controls');
+  if (controls) controlsLine.textContent = controls;
+  else controlsLine.remove();
   const stage = main.querySelector('.lab-stage');
   const statusLine = main.querySelector('.lab-status');
 
@@ -105,6 +111,9 @@ export function createLabPage({
     canvas.width = CANVAS.width;
     canvas.height = CANVAS.height;
     canvas.setAttribute('aria-label', `${title} rendering of the test splat`);
+    // Focusable, so keyboard users can reach the engine's own keyboard controls.
+    canvas.tabIndex = 0;
+    if (controls) canvas.setAttribute('aria-describedby', 'lab-controls');
     stage.append(canvas);
   }
   document.body.append(navigationBar(title), main, creditLine(splatCredit, credit));

@@ -24,6 +24,8 @@ import { createLabPage, START_POSE } from './harness.js';
 const page = createLabPage({
   title: 'PlayCanvas',
   engine: 'PlayCanvas engine 2.23.3, gsplat component (WebGL2)',
+  controls:
+    'Drag to orbit, scroll to zoom. Arrow keys or WASD fly the camera; drag to orbit again.',
   credit: 'PlayCanvas: MIT',
 });
 
@@ -49,6 +51,11 @@ try {
   app.init(options);
   app.setCanvasFillMode(FILLMODE_NONE, CANVAS.width, CANVAS.height);
   app.setCanvasResolution(RESOLUTION_FIXED, CANVAS.width, CANVAS.height);
+  // setCanvasFillMode writes an inline 1280 × 720 px CSS size, which overrides the lab
+  // stylesheet and clipped the view on narrow screens. Let the stylesheet size the
+  // canvas; the drawing buffer stays fixed (RESOLUTION_FIXED).
+  page.canvas.style.removeProperty('width');
+  page.canvas.style.removeProperty('height');
 
   const camera = new Entity('camera');
   camera.addComponent('camera', {
@@ -67,7 +74,9 @@ try {
   if (!page.bench) {
     camera.addComponent('script');
     camera.script.create(CameraControls, {
-      properties: { enableFly: false, focusPoint: turn(CAMERA.target) },
+      // Fly mode is what gives CameraControls keyboard input (arrows/WASD move the
+      // camera); a mouse drag switches back to orbiting.
+      properties: { enableFly: true, focusPoint: turn(CAMERA.target) },
     });
   }
 
