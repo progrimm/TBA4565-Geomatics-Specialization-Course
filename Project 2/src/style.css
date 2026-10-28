@@ -7,7 +7,8 @@
   --accent-contrast: #1a1203;
   --error: #e5484d;
 
-  --surface: rgb(18 20 24 / 72%);
+  /* 85 %: muted text keeps 4.5:1 contrast (WCAG AA) even over a white map behind the glass. */
+  --surface: rgb(18 20 24 / 85%);
   --surface-hover: rgb(255 255 255 / 8%);
   --border: rgb(255 255 255 / 10%);
   --shadow: 0 8px 32px rgb(0 0 0 / 35%);
