@@ -1,8 +1,8 @@
 import { useId, useState } from 'react';
-import { MOBILE_QUERY } from '../config.js';
+import { HOME_URL, MOBILE_QUERY } from '../config.js';
 
 /**
- * Collapsible glass panel. Starts collapsed on mobile so the map is visible.
+ * Collapsible glass panel. Starts collapsed on mobile so the view is visible.
  * @param {{children: import('react').ReactNode}} props
  */
 export default function ControlPanel({ children }) {
@@ -10,7 +10,10 @@ export default function ControlPanel({ children }) {
   const bodyId = useId();
 
   return (
-    <aside className="panel" aria-label="Map controls">
+    <aside className="panel" aria-label="Viewer controls">
+      <a className="panel__home" href={HOME_URL}>
+        ← My GIS module
+      </a>
       <header className="panel__header">
         <h1 className="panel__title">
           3DGS <span className="panel__accent">Viewer</span>

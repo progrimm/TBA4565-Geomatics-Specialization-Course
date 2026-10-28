@@ -1,5 +1,5 @@
 /**
- * Minimal message store, independent of React so Cesium layer code can use it.
+ * Minimal message store, independent of React so plain-JS viewer code can use it.
  * React reads it with useSyncExternalStore (see components/Messages.jsx).
  */
 
@@ -15,7 +15,7 @@ function emit() {
 }
 
 /**
- * Show a message banner over the map.
+ * Show a message banner over the view.
  * @param {string} text - user-facing message.
  * @param {'info' | 'error'} [type='info'] - errors are announced immediately (role="alert").
  * @returns {() => void} call to remove the message (e.g. when loading finishes).

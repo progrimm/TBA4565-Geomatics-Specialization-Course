@@ -1,9 +1,0 @@
-splat,feature,east_m,north_m,horizontal_m
-rte-substation,registration (+1,0 px),0.09,-0.00,0.09
-rte-substation,scale: 100 px east,8.72,-0.00,8.72
-hines-rowing,registration (-4,+27 px),-0.72,-4.87,4.93
-hines-rowing,scale: 100 px east,18.05,-0.00,18.05
-shaughnessy,registration, no offset (-7,-8 px),-0.93,1.06,1.41
-shaughnessy-offset,registration, Sandcastle offset (0,-1 px),-0.00,0.13,0.13
-shaughnessy,scale: 100 px east,13.44,-0.00,13.44
-microsoft-campus,scale: 100 px east,21.62,-0.00,21.62

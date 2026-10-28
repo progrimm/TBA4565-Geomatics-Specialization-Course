@@ -1,42 +1,50 @@
-import { useCesiumViewer } from './hooks/useCesiumViewer.js';
-import { useGallery } from './hooks/useGallery.js';
-import { useAlignment } from './hooks/useAlignment.js';
+import { useSplatViewer } from './hooks/useSplatViewer.js';
+import { useMeasurement } from './hooks/useMeasurement.js';
+import { useFileOpener } from './hooks/useFileOpener.js';
 import ControlPanel from './components/ControlPanel.jsx';
-import Gallery from './components/Gallery.jsx';
-import Inspector from './components/Inspector.jsx';
+import FileOpener, { DropOverlay, EmptyState } from './components/FileOpener.jsx';
+import SplatFacts from './components/SplatFacts.jsx';
+import OrientationTool from './components/OrientationTool.jsx';
 import MeasureTool from './components/MeasureTool.jsx';
 import Messages from './components/Messages.jsx';
-import AlignmentTool from './components/AlignmentTool.jsx';
-import SplitLine from './components/SplitLine.jsx';
-import PerformancePanel from './components/PerformancePanel.jsx';
 
 export default function App() {
-  const [viewer, containerRef] = useCesiumViewer();
-  const gallery = useGallery(viewer);
-  const tileset = gallery.selected && gallery.states[gallery.selected.id]?.tileset;
-  const alignment = useAlignment(viewer, gallery.selected, tileset);
+  const { canvasRef, viewer, loading, facts, upAxis, setUpAxis, open } = useSplatViewer();
+  const measurement = useMeasurement(viewer, canvasRef, facts);
+  const opener = useFileOpener(open);
 
   return (
     <>
-      {/* The panel comes first so keyboard users reach it before Cesium's credit links. */}
+      {/* The panel comes first, so keyboard users reach the file button before the view. */}
       <ControlPanel>
-        <Gallery gallery={gallery} />
-        {tileset && <Inspector tileset={tileset} />}
-        <MeasureTool viewer={viewer} />
-        <AlignmentTool splat={tileset && gallery.selected} alignment={alignment} />
-        <PerformancePanel viewer={viewer} tileset={tileset} />
-        <p className="tool__note">
-          <a href="lab/">Viewer lab</a>: one splat in Spark, PlayCanvas, Babylon.js and ArcGIS, with
-          a benchmark.
-        </p>
+        <FileOpener opener={opener} loading={loading} />
+        {facts && (
+          <>
+            <SplatFacts facts={facts} />
+            <OrientationTool
+              upAxis={upAxis}
+              onUpAxis={setUpAxis}
+              onReset={() => viewer?.resetView()}
+            />
+            <MeasureTool measurement={measurement} />
+          </>
+        )}
       </ControlPanel>
-      {/* Cesium owns this element's children: React must never render into it. */}
-      <main
-        id="cesiumContainer"
-        ref={containerRef}
-        aria-label="3D globe with georeferenced Gaussian splats"
-      />
-      {alignment.swipe && tileset && <SplitLine position={alignment.splitPosition} />}
+      <main className="stage">
+        <canvas
+          ref={canvasRef}
+          className="stage__canvas"
+          tabIndex={0}
+          aria-label={facts ? `3D view of ${facts.name}` : '3D view, no splat open'}
+          aria-describedby="view-controls"
+        />
+        <p className="sr-only" id="view-controls">
+          Drag to orbit, right-drag to pan, scroll to zoom. With the view focused: arrow keys pan,
+          Shift + arrows orbit.
+        </p>
+        {!facts && !loading && <EmptyState onChoose={opener.choose} />}
+      </main>
+      {opener.dragging && <DropOverlay />}
       <Messages />
     </>
   );

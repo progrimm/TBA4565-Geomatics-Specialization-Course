@@ -1,31 +1,31 @@
 /**
- * Format a length for display: metres below 1 km, kilometres above.
- * @param {number} metres
+ * Format a length in the file's own units. A splat has no inherent scale: it is in
+ * metres only if the capture was scaled (e.g. with GNSS or a known distance).
+ * @param {number} value
  * @returns {string}
  */
-export function formatDistance(metres) {
-  if (Math.abs(metres) >= 1000) return `${(metres / 1000).toFixed(3)} km`;
-  return `${metres.toFixed(2)} m`;
+export function formatLength(value) {
+  return `${formatNumber(value)} units`;
 }
 
 /**
- * Format a signed length in metres (e.g. a height difference or offset).
- * @param {number} metres
+ * A length as a bare number: 3 decimals below 100, 1 above.
+ * @param {number} value
  * @returns {string}
  */
-export function formatSigned(metres) {
-  const sign = metres > 0 ? '+' : metres < 0 ? '−' : '±';
-  return `${sign}${Math.abs(metres).toFixed(2)} m`;
+export function formatNumber(value) {
+  return value.toFixed(Math.abs(value) >= 100 ? 1 : 3);
 }
 
 /**
- * Format an angle in degrees.
- * @param {number} degrees
- * @param {number} [digits=2]
+ * Format a count with thin-space thousands separators (200 258).
+ * @param {number} count
  * @returns {string}
  */
-export function formatDegrees(degrees, digits = 2) {
-  return `${degrees.toFixed(digits)}°`;
+export function formatCount(count) {
+  return Math.round(count)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 }
 
 /**

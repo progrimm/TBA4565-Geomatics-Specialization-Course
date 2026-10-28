@@ -1,57 +1,43 @@
-import { useState } from 'react';
-import { useMeasurement } from '../hooks/useMeasurement.js';
-import { measure } from '../utils/measure.js';
-import { formatDistance, formatSigned } from '../utils/format.js';
-
-const HINTS = ['Click the first point.', 'Click the second point.', 'Click again to restart.'];
+import { formatLength } from '../utils/format.js';
 
 /**
- * Two-point measurement tool: 3D distance, horizontal geodesic distance and
- * height difference between two picked points.
- * @param {{viewer: import('cesium').Viewer | undefined}} props
+ * Two-point distance on the splat.
+ * @param {{measurement: ReturnType<typeof import('../hooks/useMeasurement.js').useMeasurement>}} props
  */
-export default function MeasureTool({ viewer }) {
-  const [active, setActive] = useState(false);
-  const { points, clear } = useMeasurement(viewer, active);
-  const result = points.length === 2 ? measure(points[0], points[1]) : undefined;
+export default function MeasureTool({ measurement }) {
+  const { active, setActive, points, distance, missed, clear } = measurement;
+  let status = 'Click a point on the splat.';
+  if (points.length === 1) status = 'Click a second point.';
+  if (distance !== null) status = `Distance: ${formatLength(distance)}`;
+  if (missed) status = 'No splat under the pointer. Try again.';
 
   return (
-    <details className="tool">
-      <summary className="tool__summary">Measure</summary>
+    <section className="tool" aria-labelledby="measure-heading">
+      <h2 className="tool__summary" id="measure-heading">
+        Measure
+      </h2>
       <div className="tool__actions">
         <button
-          type="button"
           className="chip"
+          type="button"
           aria-pressed={active}
-          disabled={!viewer}
-          onClick={() => setActive((value) => !value)}
+          onClick={() => setActive(!active)}
         >
-          {active ? 'Stop measuring' : 'Start measuring'}
+          {active ? 'Stop measuring' : 'Measure distance'}
         </button>
-        <button type="button" className="chip" disabled={!points.length} onClick={clear}>
+        <button className="chip" type="button" onClick={clear} disabled={points.length === 0}>
           Clear
         </button>
       </div>
-      {active && (
-        <p className="tool__note" aria-live="polite">
-          {HINTS[points.length]}
+      {(active || distance !== null) && (
+        <p className="tool__note" role="status">
+          {status}
         </p>
       )}
-      {result && (
-        <dl className="facts">
-          <dt>3D distance</dt>
-          <dd>{formatDistance(result.straight)}</dd>
-          <dt>Horizontal</dt>
-          <dd>{formatDistance(result.horizontal)} (geodesic)</dd>
-          <dt>Height diff.</dt>
-          <dd>{formatSigned(result.heightDifference)}</dd>
-        </dl>
-      )}
       <p className="tool__note">
-        Points come from the depth buffer (Scene.pickPosition). Gaussian splats do not write depth
-        in CesiumJS 1.146, so a click on a splat lands on the terrain, building or mesh behind it.
-        Seen from straight above, that still gives a feature&apos;s horizontal position.
+        Picks the nearest splat under the pointer (mouse or touch only). A straight line in file
+        units; Escape stops measuring.
       </p>
-    </details>
+    </section>
   );
 }

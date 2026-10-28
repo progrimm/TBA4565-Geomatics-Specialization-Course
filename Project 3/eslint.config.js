@@ -12,7 +12,7 @@ export default [
       ecmaVersion: 'latest',
       sourceType: 'module',
       parserOptions: { ecmaFeatures: { jsx: true } },
-      globals: { ...globals.browser, CESIUM_BASE_URL: 'readonly' },
+      globals: { ...globals.browser },
     },
     rules: {
       'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
@@ -25,12 +25,6 @@ export default [
   {
     files: ['*.config.js', 'tests/**/*.js'],
     languageOptions: { globals: { ...globals.node } },
-  },
-  {
-    // Node scripts; code inside page.evaluate runs in the browser.
-    files: ['scripts/**/*.mjs'],
-    languageOptions: { globals: { ...globals.node, ...globals.browser } },
-    rules: { 'no-console': 'off' },
   },
   prettier,
 ];

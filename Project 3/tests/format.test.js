@@ -1,20 +1,21 @@
 import { describe, it, expect } from 'vitest';
-import { formatBytes, formatDegrees, formatDistance, formatSigned } from '../src/utils/format.js';
+import { formatBytes, formatCount, formatLength, formatNumber } from '../src/utils/format.js';
 
 describe('format helpers', () => {
-  it('switches from metres to kilometres at 1 km', () => {
-    expect(formatDistance(999.994)).toBe('999.99 m');
-    expect(formatDistance(1234.5)).toBe('1.234 km');
+  it('formats lengths in file units, with fewer decimals for large values', () => {
+    expect(formatNumber(1.23456)).toBe('1.235');
+    expect(formatNumber(1234.56)).toBe('1234.6');
+    expect(formatNumber(-250)).toBe('-250.0');
+    expect(formatLength(2.5)).toBe('2.500 units');
   });
 
-  it('signs height differences with a proper minus sign', () => {
-    expect(formatSigned(1.234)).toBe('+1.23 m');
-    expect(formatSigned(-12.08)).toBe('−12.08 m');
-    expect(formatSigned(0)).toBe('±0.00 m');
+  it('groups thousands with thin spaces', () => {
+    expect(formatCount(200258)).toBe('200 258');
+    expect(formatCount(110_000_000)).toBe('110 000 000');
+    expect(formatCount(999)).toBe('999');
   });
 
-  it('formats degrees and binary byte units', () => {
-    expect(formatDegrees(47.647851, 5)).toBe('47.64785°');
+  it('formats binary byte units', () => {
     expect(formatBytes(512)).toBe('512 B');
     expect(formatBytes(3 * 1024 ** 2)).toBe('3.0 MiB');
     expect(formatBytes(1.5 * 1024 ** 3)).toBe('1.5 GiB');
