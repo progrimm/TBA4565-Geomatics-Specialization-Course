@@ -58,11 +58,13 @@ for (const { name, viewport } of WIDTHS) {
   await page.goto(URL);
   await page.waitForTimeout(SETTLE_MS);
 
-  // On mobile the panel starts collapsed: its first focus stop must be the expand button.
+  // On mobile the panel starts collapsed: its first focus stops must be the homepage link,
+  // which stays outside the collapsible body, and then the expand button.
   const before = await tabThrough(page);
-  const firstPanelStop = before.find((stop) => stop.inPanel);
+  const [firstPanelStop, secondPanelStop] = before.filter((stop) => stop.inPanel);
   if (name === 'mobile') {
-    expect(firstPanelStop?.expanded === 'false', 'mobile: first panel stop is "Show controls"');
+    expect(firstPanelStop?.name === '← My GIS module', 'mobile: first panel stop is the home link');
+    expect(secondPanelStop?.expanded === 'false', 'mobile: next panel stop is "Show controls"');
     await page.locator('.panel__toggle').focus();
     await page.keyboard.press('Enter');
   }

@@ -1,21 +1,23 @@
 /* ---------- Design tokens ---------- */
 :root {
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --text: #f2f3f5;
-  --text-muted: #a3a9b4;
-  --accent: #f5a623;
-  --accent-contrast: #1a1203;
-  /* Shared with the homepage and the other apps' home links (NTNU blue). */
-  --home-blue: #00509e;
-  --home-blue-dark: #003c77;
-  --error: #e5484d;
+  /* NTNU look, shared with the "My GIS module" homepage: navy ink on white, NTNU blue accent. */
+  --text: #0f2a47;
+  --text-muted: #44607f;
+  --accent: #00509e;
+  --accent-dark: #003c77;
+  --accent-contrast: #fff;
+  --wash: #eaf1f9;
+  --error: #c62828;
 
-  /* 85 %: muted text keeps 4.5:1 contrast (WCAG AA) even over a white map behind the glass. */
-  --surface: rgb(18 20 24 / 85%);
-  --surface-hover: rgb(255 255 255 / 8%);
-  --border: rgb(255 255 255 / 10%);
-  --shadow: 0 8px 32px rgb(0 0 0 / 35%);
+  /* 94 %: muted text keeps over 4.5:1 contrast (WCAG AA) even over black imagery behind the glass. */
+  --surface: rgb(255 255 255 / 94%);
+  --surface-hover: var(--wash);
+  --border: #c9d9ec;
+  --shadow: 0 8px 32px rgb(15 42 71 / 22%);
   --glass: blur(14px) saturate(140%);
+  /* Cesium's InfoBox renders its description in an iframe with light-on-dark styles, so it stays dark (navy). */
+  --infobox: rgb(15 42 71 / 95%);
 
   --radius: 14px;
   --radius-sm: 8px;
@@ -70,8 +72,8 @@ body {
   margin-bottom: var(--space-3);
   padding: var(--space-1) var(--space-3);
   border-radius: 999px;
-  background: var(--home-blue);
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-contrast);
   font-size: 0.8rem;
   font-weight: 600;
   line-height: 1.4;
@@ -79,12 +81,7 @@ body {
 }
 
 .panel__home:hover {
-  background: var(--home-blue-dark);
-}
-
-.panel__home:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 2px;
+  background: var(--accent-dark);
 }
 
 .panel__header {
@@ -131,11 +128,9 @@ body {
 
 .panel__heading {
   margin: var(--space-4) 0 var(--space-2);
-  color: var(--text-muted);
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 650;
 }
 
 /* ---------- View buttons ---------- */
@@ -204,7 +199,7 @@ body {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  box-shadow: 0 0 0 2px rgb(0 0 0 / 60%);
+  box-shadow: 0 0 0 2px var(--text);
 }
 
 .layer__status {
@@ -219,7 +214,8 @@ body {
   height: 20px;
   margin: 0;
   border-radius: 999px;
-  background: rgb(255 255 255 / 18%);
+  /* Off track in muted ink: 5.7:1 against the panel (WCAG 1.4.11 asks 3:1 for controls). */
+  background: var(--text-muted);
   cursor: pointer;
   transition: background 150ms;
 }
@@ -326,9 +322,9 @@ body {
   right: var(--gutter);
   width: 300px;
   border-radius: var(--radius);
-  background: var(--surface);
+  background: var(--infobox);
   backdrop-filter: var(--glass);
-  border: 1px solid var(--border);
+  border: 1px solid rgb(255 255 255 / 15%);
   box-shadow: var(--shadow);
   overflow: hidden;
 }
@@ -336,6 +332,7 @@ body {
 .cesium-infoBox-title {
   padding: var(--space-3) 40px var(--space-3) var(--space-4);
   background: transparent;
+  color: #fff;
   font-family: var(--font);
   font-size: 0.95rem;
   font-weight: 600;

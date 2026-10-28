@@ -382,14 +382,19 @@ re-run only.
   `<label>`. `scripts/check-accessibility.js` tabs through the page at 1600 × 900 and 390 × 844.
   The tab order is Cesium's credit links, then the panel toggle, the three view buttons and the
   two layer switches. Every stop has a visible focus outline. Space toggles a switch (checked
-  before and after) and Enter presses a button. The script asserts these points and exited 0. On mobile, the first stop in the collapsed panel is "Show controls", and
+  before and after) and Enter presses a button. The script asserts these points and exited 0. On mobile, the first stops in the collapsed panel are "← My GIS module" and then "Show controls", and
   Enter opens it.
-- Contrast: the panel and the toasts sit on a semi-transparent dark surface over the map. At the
-  old 72 % opacity, muted text over a white map would have had a contrast of only 3.1:1. The
-  surface is now 85 % opaque, which gives at least 5.0:1 for muted text and 10.7:1 for normal
-  text in that worst case
+- Contrast: since 2026-10-28 the panel and the toasts are white (94 % opaque) with navy text,
+  in the NTNU look of the module homepage. The worst case is black imagery behind the glass,
+  where the panel mixes to rgb(240 240 240). There, normal text (#0f2a47) has 12.8:1, muted text
+  (#44607f) 5.7:1 and NTNU blue (#00509e) 7.0:1
   ([WCAG 2.2 contrast minimum, 4.5:1](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)).
-  These ratios are computed from the colours, not measured on screen.
+  The switch's off track uses the muted ink (5.7:1), because the first, lighter track had only
+  1.26:1 ([non-text contrast, 3:1](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html)).
+  Cesium's InfoBox stays dark (NTNU navy, white text 12.6:1), because its description is an
+  iframe with Cesium's own light-on-dark styles. These ratios are computed from the colours with
+  the WCAG formula, not measured on screen. (Before: a dark surface at 85 % gave 5.0:1 for muted
+  text.)
 - Reduced motion: with `prefers-reduced-motion: reduce` (Playwright's
   [`reducedMotion`](https://playwright.dev/docs/api/class-browser#browser-new-context-option-reduced-motion)),
   pressing Nidarosdomen jumped straight to the view, and `tests/motion.test.js` checks that the
@@ -497,3 +502,12 @@ Terrain, imagery, buildings and shelters load with the production token, and the
 round trip passed at 1600 and 390 px with no console errors or failed requests. The token's
 Allowed URLs restriction works: `api.cesium.com` answers HTTP 200 for the Pages origin and
 HTTP 403 for `https://example.com`.
+
+NTNU design (2026-10-28): the UI now uses the homepage's palette, NTNU blue `#00509e` on white
+with navy text `#0f2a47`, instead of dark glass with an orange accent. Only colours changed:
+design tokens in `src/style.css`, sentence-case section headings, `color-scheme: light`. The map
+symbology keeps its colours (orange shelters, cyan route), because they are chosen for contrast
+on aerial imagery, where NTNU blue would disappear on dark water. Lint, format check, tests
+(54) and build pass. `scripts/check-accessibility.js` passed against the built site after its
+mobile tab-order expectation was updated for the home link. Screenshots at 1600 and 390 px
+(panel, nearest-shelter result, InfoBox, a switched-off layer) were inspected.

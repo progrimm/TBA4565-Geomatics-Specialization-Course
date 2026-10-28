@@ -117,7 +117,7 @@ public/data/ – static datasets (shelters GeoJSON, walking network JSON)
 - Module 1: done (camera start view, terrain with error handling, notify UI).
 - Module 2: done (Cesium OSM Buildings, ion 96188).
 - Module 3: done (DSB public shelters, EPSG:25832 → WGS84 via scripts/fetch-shelters.js, InfoBox).
-- Module 4: UI done (dark glass panel, layer toggles, camera presets, mobile
+- Module 4: UI done (glass panel, NTNU design since 2026-10-28, layer toggles, camera presets, mobile
   bottom sheet).
 - 2026-10-27: camera presets are target-based (landmark + heading/pitch/range,
   utils/camera.js). Targets come from OSM/Nominatim, ground heights from
@@ -142,4 +142,6 @@ public/data/ – static datasets (shelters GeoJSON, walking network JSON)
   `!important`). Built into `/trondheim-3d/` by the root `npm run site:build`; deployed by
   `.github/workflows/pages.yml` with the `CESIUM_ION_TOKEN` secret.
 - 2026-10-28: live on GitHub Pages; production token restricted to the Pages origin (checked).
+- 2026-10-28: NTNU design. White panel, navy text, NTNU-blue accent (tokens in style.css);
+  InfoBox stays navy (its iframe has light-on-dark styles). Map symbology colours unchanged.
   (Update this section after each module.)
