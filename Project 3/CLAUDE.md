@@ -2,93 +2,69 @@
 
 ## About this project
 
-A CesiumJS web app for displaying georeferenced 3D Gaussian splats (3DGS),
-built by a Geomatics student (NTNU) for TBA4565 (3D GIS part). It was split out
-of Project 2 (Trondheim 3D) on 2026-10-27. It must be built to the same
-PRODUCTION-READY standards as Project 2: clean architecture, linted, tested
-where it matters, robust error handling, CI, and deployed publicly (GitHub
-Pages under `/3dgs-viewer/`, see the root CLAUDE.md).
+A static web app for opening a user's own 3D Gaussian splat file (PLY, SPZ,
+.splat, .ksplat, SOG) and inspecting it in the browser, built by a Geomatics
+student (NTNU) for TBA4565 (3D GIS part). Split out of Project 2 on 2026-10-27;
+rebuilt as a file viewer on 2026-10-28 (the earlier CesiumJS gallery and viewer
+lab are in git history at 9442d81; see README "History"). Production-ready
+standards as Project 2: clean architecture, linted, tested where it matters,
+robust error handling, CI, deployed on GitHub Pages under `/3dgs-viewer/`.
 
-Research question: "How well do current web technologies display georeferenced
-3D Gaussian splats, and what do geospatial viewers (CesiumJS) offer over
-general-purpose splat viewers?"
-
-Learning goals:
-
-1. 3D Tiles with Gaussian splat content (KHR_gaussian_splatting) in CesiumJS
-2. Georeferencing: tileset root transforms, ECEF (EPSG:4978) vs WGS84
-   geographic (EPSG:4979), ellipsoidal heights
-3. Comparing 3DGS web viewers fairly (reproducible benchmarks)
-4. Professional frontend practices (structure, tooling, testing, CI/CD)
+Report question: "What does a 3DGS file contain, and how well can a static web
+page open and inspect it entirely on the client?"
 
 ## Features (scope)
 
-- Globe gallery of four georeferenced splats (Redmond ion 4547222, Hines Rowing
-  Center ion 3667783, RTE substation ion 3667784 + mesh 3443919, O'Shaughnessy
-  Dam via iTwin share key, expires 2026-12-01), lazily loaded, one shown at a time
-- Georeferencing inspector, two-point measurement, alignment check (reference
-  layers, dam offset, swipe splat vs mesh/reference), performance panel
-- Viewer lab (`lab/`, `src/lab/`): the CC BY "SOAR Telescope" PLY in Spark,
-  PlayCanvas and Babylon.js (benchmarked by `scripts/viewer-benchmark.mjs`) and
-  Esri's sample layer in the ArcGIS Maps SDK (qualitative only). CesiumJS is not
-  a lab page (would need an ion upload; the user chose to skip it).
+- Open a file (button or drag and drop anywhere); the file never leaves the
+  browser. No server, no token.
+- File facts: format, size, splat count, extent with/without floaters, PLY
+  header (encoding, properties, SH degree).
+- Orientation fix (up axis +Y/-Y/+Z/-Z) and reset view.
+- Two-point distance in file units.
+- "← My GIS module" link to the homepage.
 - Do NOT add features beyond this list without asking.
 
 ## Tech stack
 
-- Same as Project 2: Vite + React 19 (JavaScript/JSX, no TypeScript), plain
-  React with refs (no Resium), CesiumJS from npm pinned in package.json
-  (1.146.0), ESLint + Prettier, Vitest, GitHub Actions
+- Vite + React 19 (JavaScript/JSX, no TypeScript), Spark 2.4.0 on three.js
+  0.186.1 (pinned in package.json), ESLint + Prettier, Vitest, GitHub Actions
   (`.github/workflows/project3-ci.yml`).
 - Windows, PowerShell, Node 24, Git
-- Helpers (messages store, camera utils, HTML escaping, motion) are copied
-  from Project 2, not shared, so each project builds on its own.
+- The message store is copied from Project 2, not shared, so each project
+  builds on its own.
 
 ## Project structure
 
 src/
-main.jsx – entry point: global setup (ion token) and React root only
+main.jsx – React root only
 App.jsx – composes hooks and components
-config.js – constants: asset IDs, tileset settings
-viewer.js – Viewer creation, global scene settings, ion tokens
-layers/ – plain-JS Cesium loaders, one per data layer (no React)
-hooks/ – React hooks bridging React and Cesium (viewer lifecycle, layer state)
-components/ – React UI: panel, splat button, messages
+config.js – constants: formats, camera, up axes, markers, homepage link
+viewer/splatViewer.js – three.js + Spark scene, no React
+hooks/ – React hooks bridging React and the viewer (viewer, file opening, measurement)
+components/ – React UI: panel, file opener, facts, orientation, measurement, messages
 state/ – small framework-independent stores (messages)
-utils/ – pure helper functions (camera options, HTML escaping, motion)
+utils/ – pure helpers (PLY header, formats, bounds, orientation, distance, formatting)
 tests/ – Vitest unit tests
 
 ## Code standards
 
-- Small, single-purpose modules and functions. No logic in main.jsx beyond setup.
-- Cesium code lives in layers/ and viewer.js, not in components. Components
-  call those modules; Cesium objects are mutated outside React render.
-- No magic numbers: coordinates, asset IDs and URLs live in config.js.
-- Every async load has error handling. The app must keep working and show a
-  user-friendly message if one layer fails. Show loading state for slow layers.
-- Coordinates: comments always state CRS and height reference.
+- Small, single-purpose modules and functions. No logic in main.jsx.
+- three.js/Spark code lives in viewer/, not in components. Components call the
+  hooks; three.js objects are mutated outside React render.
+- No magic numbers: formats, camera and display settings live in config.js.
+- Every file load has error handling. The app must keep working and show a
+  user-friendly message if a file fails; the open splat stays.
+- Coordinates are in the file's own frame and units; say so in UI and docs.
 - JSDoc on exported functions.
 - Code must pass `npm run lint`, `npm run format:check`, `npm test` and
   `npm run build` before committing.
-- Performance: be mindful of tileset settings (maximumScreenSpaceError);
-  requestRenderMode is on. Benchmark numbers come only from the Playwright
-  benchmark script run on the user's machine, never from estimates.
+- Never invent numbers; measured values come from running code.
 - Accessibility basics: buttons are real <button> elements with labels;
   layout works on mobile.
-- Data attribution and licences must be shown in the app and README.
 
 ## Security
 
-- The Cesium ion token is read from `.env` as `VITE_CESIUM_TOKEN`. Never
-  hardcode, print or commit it. `.env` is git-ignored; `.env.example` has a
-  placeholder.
-- Vite embeds VITE\_ variables in the client bundle, so the token is public in
-  production. The production token must be a separate token with minimal
-  scopes, restricted to the deployed URL in Cesium ion.
-- Exception (deliberate): the gallery ion assets belong to Cesium's account and
-  are not in the Asset Depot, so only they are requested with Cesium's built-in
-  evaluation token (`CESIUM_EVALUATION_TOKEN` in viewer.js). Terrain, imagery
-  and OSM Buildings use our token.
+- No secrets: the app needs no token. Never add a runtime call to a backend.
 - Never run commands that delete files, force-push or rewrite git history
   without asking.
 
@@ -96,12 +72,12 @@ tests/ – Vitest unit tests
 
 - SPRINT OVERRIDE (until 2026-10-30): the sprint rules in the root CLAUDE.md
   apply. Implement directly; plan first for changes touching more than ~3 files.
-- Explain WHY, not just what. Name the Cesium classes/concepts used and link
+- Explain WHY, not just what. Name the three.js/Spark classes and concepts used and link
   to the relevant docs when introducing something new.
 - If I ask "why does this happen?", explain the cause. Do not fix it unless
   I ask.
-- Gaussian splat support in CesiumJS is new and changes between versions:
-  check the installed version in package.json and say so.
+- Spark changes quickly between versions: check the installed version in
+  package.json and say so.
 - Point out bad practices or anything that falls short of production quality.
 - Commit messages: Conventional Commits.
 
@@ -113,16 +89,8 @@ tests/ – Vitest unit tests
 
 ## Current status
 
-- 2026-10-27: split from Project 2.
-- 2026-10-27: session 6 done (gallery, inspector, measurement, alignment check,
-  splat vs mesh swipe, performance panel; results in README and `results/`).
-  CesiumJS 1.146 quirks: splats are not pickable, have no opacity/style, need
-  extra frames after sorting in requestRenderMode (layers/splat.js).
-- 2026-10-27: session 7 done (Viewer lab, benchmark in `results/viewer-*.csv`).
-  All three viewers hit the 120 Hz display cap, so FPS does not rank them.
-- 2026-10-28: session 8 done (theory, limitations, accessibility, tests). Our
-  own ion token gets 404 for the gallery assets, so the evaluation-token
-  exception is required. CesiumJS 1.146 only renders splat tiles whose
-  tileset requires both KHR_gaussian_splatting and
-  KHR_gaussian_splatting_compression_spz_2.
+- 2026-10-27: split from Project 2; sessions 6–7 (Cesium gallery, viewer lab).
+- 2026-10-28: session 8 (hardening). Then the gallery was dropped: its ion
+  assets need Cesium's evaluation token (our token gets 404). Rebuilt as a
+  file viewer (Spark). Old code at 9442d81.
 - Next: session 9, website (see `report/SPRINT.md`).
