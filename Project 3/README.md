@@ -544,8 +544,11 @@ step (3D Tiles) before a PLY can be shown.
   Cesium then shows a "default token" notice in the credits. Terrain, imagery and OSM Buildings
   use our own token. A unit test checks that the evaluation token survives after our own token
   is configured.
-- Not verified: whether our own token could read the gallery assets. That test sent the token
-  from a standalone script and was blocked in this session, so it was not run.
+- Checked on 2026-10-28: our own token **cannot** read the gallery assets. A Node script asked
+  `https://api.cesium.com/v1/assets/<id>/endpoint` with our token and printed only the HTTP
+  status: 404 for 4547222, 3667783, 3667784 and 3443919, and 200 for Cesium World Terrain (1).
+  So the exception is needed for as long as these assets are used. Whether that is acceptable is
+  discussed under [Limitations](#limitations).
 - The iTwin share key is in `src/config.js`. It is public (published in Cesium's repository)
   and grants read access to that one iTwin only.
 
@@ -569,6 +572,40 @@ CesiumJS and Babylon.js are licensed under Apache 2.0, Spark, Three.js and PlayC
 MIT. The ArcGIS Maps SDK for JavaScript is proprietary (Esri Master License Agreement; the npm
 package may be redistributed unmodified with its copyright notice). Every lab page shows the
 credit of the splat it displays and the viewer's licence.
+
+## Limitations
+
+- **Evaluation token on a public site.** Cesium's documentation says the demo token in CesiumJS
+  releases is "for trying out our library" and only reaches "a handful of assets", and that
+  "all users are required to replace this with an access token from their own ion account once
+  they begin development"
+  ([Cesium ion access tokens](https://cesium.com/learn/ion/cesium-ion-access-tokens/), read
+  2026-10-28). The [ion Terms of Service](https://cesium.com/legal/terms-of-service/) do not
+  mention the evaluation token. Since our token cannot read the gallery assets (see
+  [Security](#cesium-ion-token-and-security)), the deployed gallery depends on a token that
+  Cesium does not intend for deployed apps. My assessment: this is fine for a short-lived,
+  clearly labelled course demo, but not as a lasting public site. Nothing guarantees the token
+  keeps working, and it is outside Cesium's stated rules. Proper fixes would be to ask Cesium
+  for permission, or to tile splats we have rights to into our own ion account.
+- **The iTwin share key expires on 2026-12-01 05:13 UTC.** After that, the O'Shaughnessy Dam
+  fails to load and the app shows an error for that splat only. A unit test reads the expiry
+  from the key, so it is visible ahead of time. The fix is a new share key (Cesium's Sandcastle
+  example will need one too) or dropping the dam.
+- **Picking accuracy.** Splats write no depth in CesiumJS 1.146, so `Scene.pickPosition`
+  returns the terrain, building or mesh behind a splat. Distances measured on a splat are
+  therefore distances on whatever lies behind it. From straight above this still gives a
+  feature's horizontal position. Heights and vertical distances on a splat cannot be measured.
+  The picked point is also limited by depth-buffer precision, which gets worse with distance.
+- **The alignment check is not a formal accuracy assessment.** One window per splat was
+  registered against Cesium's default imagery, whose own error is unknown. The method uses
+  whole-pixel shifts, does not account for relief displacement, and has no independent check
+  points and no RMSE. The offsets are relative to the imagery, not absolute.
+- **Benchmarks.** One machine (AMD Radeon 780M, 120 Hz display), one browser (Chromium 156), one
+  test splat of 200,258 splats, and localhost. The frame rate hit the display cap, so it does
+  not rank the viewers. Every viewer follows the same camera circle, but projection and
+  near/far handling differ slightly, so the images are close but not identical. The gallery
+  performance runs share these limits, and their first-view times depend on the network at the
+  time.
 
 ## Verification
 
