@@ -232,17 +232,17 @@ Read the root CLAUDE.md and README.md and the READMEs of Projects 1, 2 and 3. Pl
    - Three project cards. Each has a title, the question it answers in one line, a screenshot, a focus badge, stack tags, and an "Open project" button:
      - "Projection Lab" (Project 1, GI Science): how much the Mercator projection distorts country areas.
      - "Trondheim 3D" (Project 2, GI Systems): 3D city model, public shelters and nearest-shelter analysis.
-     - "3DGS Viewer" (Project 3, 3D GIS): a globe gallery of georeferenced Gaussian splats around the world, plus a lab comparing popular 3DGS web viewers.
-   - A footer with data credits (Natural Earth, OSM, DSB, Cesium, and every splat's source) and a link to the GitHub repo.
-   - It must look polished and distinctive, not a generic template. Use the frontend-design skill or plugin if it's available. It must work at 390 px and 1600 px.
+     - "3DGS Viewer" (Project 3, 3D GIS): open your own 3D Gaussian splat file (PLY, SPZ, .splat, .ksplat, SOG) and inspect it in the browser: file facts, an up-axis fix and a two-point distance. Nothing is uploaded.
+   - A footer with data credits (Natural Earth, OSM, DSB, Cesium) and a link to the GitHub repo. Project 3 ships no splat data, so it needs no data credit; credit its rendering libraries (Spark and three.js, both MIT) the way its README does.
+   - It must look polished and distinctive, not a generic template. Use the frontend-design skill or plugin if it's available. The overall design should feel like NTNU's, with white and blue as the main colours. It must work at 390 px and 1600 px.
 2. URL structure: `/` is the homepage, `/projection-lab/` is Project 1, `/trondheim-3d/` is Project 2 and `/3dgs-viewer/` is Project 3. Set the Vite `base` for each app so every asset loads under its subpath.
-3. Unified navigation: all three apps (including every Viewer lab page) get a small, consistent "← My GIS module" link or top bar back to the homepage. It must not cover the map or Cesium controls, and must work on mobile. Share the colours and font between the homepage and the link bars so everything feels like one site.
+3. Unified navigation: all three apps get a small, consistent "← My GIS module" link or top bar back to the homepage. It must not cover the map, the Cesium controls or the splat viewer's canvas and controls, and must work on mobile. Share the colours and font between the homepage and the link bars so everything feels like one site.
 4. Project 1 on Pages: the FastAPI + PostGIS backend can't run there. Add a static data mode: a script exports the API responses (the country GeoJSON and all area results) to JSON files, and the frontend reads those when VITE_DATA_MODE=static. Docker Compose stays the reference full-stack setup. Document the difference honestly in the README.
 5. One workflow, .github/workflows/pages.yml: build the homepage and all three apps and assemble them into one Pages artifact. Run it on pushes to main. Keep the existing CI workflows working.
-6. The Cesium ion token for Projects 2 and 3 comes from a GitHub Actions secret. Tell me exactly which secret to create, and how to restrict the token to the Pages URL in Cesium ion.
+6. The Cesium ion token for Project 2 comes from a GitHub Actions secret (Project 3 needs no token). Tell me exactly which secret to create, and how to restrict the token to the Pages URL in Cesium ion.
 7. Update the root README into the front page of the whole repo: the site URL, the structure, and how to build the whole site locally (one command, e.g. a root script that builds everything into `dist-site/` and previews it).
 
-List everything I must do by hand in GitHub (repo visibility, Pages source = GitHub Actions, secrets) as a checklist. After deployment, open the live homepage with Playwright, click through to all three projects and back, and confirm there are no console errors or 404s at desktop and mobile width. Show me the screenshots.
+List everything I must do by hand in GitHub (repo visibility, Pages source = GitHub Actions, secrets, merging the `sprint` branch into main) as a checklist. After deployment, open the live homepage with Playwright, click through to all three projects and back, and confirm there are no console errors or 404s at desktop and mobile width. Show me the screenshots.
 ```
 
 ## 10. Figures and evidence for the report (~1 h, mostly unattended)
