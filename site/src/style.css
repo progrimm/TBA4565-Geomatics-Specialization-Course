@@ -1,0 +1,379 @@
+/* ---------- Tokens ---------- */
+:root {
+  /* NTNU blue, shared with the "← My GIS module" links in the three apps. */
+  --blue: #00509e;
+  --blue-dark: #003c77;
+  --ink: #0f2a47;
+  --ink-muted: #44607f;
+  --paper: #ffffff;
+  --wash: #eaf1f9;
+  --line: #9dbbe0;
+  --rule: #c9d9ec;
+
+  --font-display: 'Bricolage Grotesque Variable', 'Segoe UI', system-ui, sans-serif;
+  /* The same stack as the home links in the apps. */
+  --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --measure: 62ch;
+  --page: min(1280px, 100% - 2 * var(--gutter));
+  --gutter: clamp(16px, 4vw, 48px);
+}
+
+/* ---------- Base ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--blue);
+  text-underline-offset: 3px;
+}
+
+a:hover {
+  color: var(--blue-dark);
+}
+
+:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- Hero ---------- */
+.hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  align-items: center;
+  min-height: min(760px, 92vh);
+  /* Full-bleed and clipped, so the globe is cropped by the screen edge, not the column. */
+  padding: clamp(48px, 9vh, 112px) max(var(--gutter), (100% - 1280px) / 2) clamp(40px, 7vh, 88px);
+  overflow-x: clip;
+}
+
+.hero__text {
+  position: relative;
+  z-index: 1;
+}
+
+.hero__title {
+  margin: 0 0 0.35em;
+  font-family: var(--font-display);
+  font-size: clamp(3.25rem, 7.6vw, 7.5rem);
+  font-weight: 760;
+  font-stretch: 78%;
+  line-height: 0.9;
+  letter-spacing: -0.025em;
+  color: var(--blue);
+}
+
+.hero__course {
+  max-width: 36ch;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.15rem, 1.6vw, 1.45rem);
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.hero__author {
+  margin: 0.6em 0 0;
+  color: var(--ink-muted);
+}
+
+.hero__intro {
+  max-width: var(--measure);
+  margin: 2em 0 0;
+  padding-top: 1.5em;
+  border-top: 2px solid var(--blue);
+}
+
+.hero__globe {
+  position: relative;
+  margin: 0;
+  /* Bleeds past the column into the page margin, like a map sheet cut at the edge. */
+  width: 125%;
+}
+
+.hero__globe svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.hero__where {
+  margin-top: 8px;
+  color: var(--ink-muted);
+  text-align: center;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.globe__sphere {
+  fill: var(--wash);
+  stroke: var(--blue);
+  stroke-width: 1.5;
+}
+
+.globe__line {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 0.9;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+.globe__equator {
+  fill: none;
+  stroke: var(--blue);
+  stroke-width: 1.2;
+}
+
+.globe__halo {
+  fill: none;
+  stroke: var(--blue);
+  stroke-width: 1.2;
+}
+
+.globe__marker {
+  fill: var(--blue);
+}
+
+/* One orchestrated moment: the graticule draws itself once on load. */
+@media (prefers-reduced-motion: no-preference) {
+  .globe__line {
+    stroke-dashoffset: 1;
+    animation: draw 1.6s cubic-bezier(0.3, 0.6, 0.2, 1) forwards;
+    animation-delay: calc(var(--i) * 45ms);
+  }
+
+  .globe__halo {
+    opacity: 0;
+    animation: appear 0.6s ease-out 1.4s forwards;
+  }
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes appear {
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---------- Projects ---------- */
+.projects {
+  width: var(--page);
+  margin: 0 auto;
+  padding-bottom: clamp(48px, 8vh, 96px);
+}
+
+.project {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: clamp(24px, 4vw, 64px);
+  align-items: center;
+  padding-block: clamp(32px, 6vh, 64px);
+  border-top: 1px solid var(--rule);
+}
+
+.project__shot {
+  display: block;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--wash);
+}
+
+.project__shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+}
+
+.project__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0 0 0.75rem;
+}
+
+.project__number {
+  color: var(--ink-muted);
+  font-size: 0.9375rem;
+}
+
+.badge {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--wash);
+  color: var(--blue);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.project__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3.4vw, 3rem);
+  font-weight: 700;
+  font-stretch: 85%;
+  line-height: 1;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+.project__question {
+  max-width: 34ch;
+  margin: 0.6em 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.15rem, 1.5vw, 1.375rem);
+  font-weight: 450;
+  line-height: 1.3;
+}
+
+.project__note {
+  max-width: 48ch;
+  margin: 1em 0 0;
+  color: var(--ink-muted);
+  font-size: 0.9375rem;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tags li {
+  padding: 1px 9px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+}
+
+/* Same pill shape as the "← My GIS module" links, so the way in matches the way back. */
+.open {
+  display: inline-block;
+  margin-top: 1.75rem;
+  padding: 10px 22px;
+  border-radius: 999px;
+  background: var(--blue);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.open:hover {
+  background: var(--blue-dark);
+  color: #fff;
+}
+
+/* ---------- Footer ---------- */
+.footer {
+  background: var(--blue);
+  color: #fff;
+}
+
+.footer__inner {
+  width: var(--page);
+  margin: 0 auto;
+  padding-block: 48px 56px;
+}
+
+.footer__heading {
+  margin: 0 0 1rem;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 650;
+  font-stretch: 85%;
+}
+
+.credits {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 10px 40px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9375rem;
+}
+
+.footer a {
+  color: #fff;
+}
+
+.footer a:hover {
+  color: var(--wash);
+}
+
+.footer :focus-visible {
+  outline-color: #fff;
+}
+
+.footer__repo {
+  margin: 2rem 0 0;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgb(255 255 255 / 35%);
+  font-weight: 600;
+}
+
+/* ---------- Narrow screens ---------- */
+@media (max-width: 860px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+    padding-top: 24px;
+  }
+
+  /* The globe moves above the title and is cropped by the page edge. */
+  .hero__globe {
+    order: -1;
+    width: 78%;
+    margin: 0 -10% 8px auto;
+  }
+
+  .hero__where {
+    display: none;
+  }
+
+  .project {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

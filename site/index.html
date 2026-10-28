@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Three GIS projects from the NTNU course TBA4565: map projection distortion, a 3D city model of Trondheim, and a 3D Gaussian splat viewer."
+    />
+    <meta name="color-scheme" content="light" />
+    <title>My GIS module</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero__text">
+        <h1 class="hero__title">My GIS module</h1>
+        <p class="hero__course">
+          TBA4565 Specialization Subject: GI Science and Systems, NTNU, autumn 2026
+        </p>
+        <p class="hero__author">Åmund Grimstad</p>
+        <p class="hero__intro">
+          This module builds practical GIS experience through small projects that are actually
+          finished: tested, documented and running in the browser. Each one takes a single question
+          from GI science, GI systems or 3D GIS and answers it with real data.
+        </p>
+      </div>
+      <figure class="hero__globe" aria-hidden="true">
+        <svg id="globe" viewBox="-310 -310 620 620"></svg>
+        <figcaption class="hero__where">Trondheim, 63.4° N 10.4° E</figcaption>
+      </figure>
+    </header>
+
+    <main class="projects" aria-labelledby="projects-heading">
+      <h2 class="sr-only" id="projects-heading">Projects</h2>
+
+      <article class="project" aria-labelledby="p1-title">
+        <a class="project__shot" href="projection-lab/" tabindex="-1" aria-hidden="true">
+          <img
+            src="./screenshots/projection-lab.jpg"
+            width="1600"
+            height="1000"
+            alt=""
+            decoding="async"
+          />
+        </a>
+        <div class="project__body">
+          <p class="project__meta">
+            <span class="project__number">Project 1</span>
+            <span class="badge">GI Science</span>
+          </p>
+          <h3 class="project__title" id="p1-title">Projection Lab</h3>
+          <p class="project__question">
+            How much does the Mercator projection inflate country areas, and how well does sec²φ
+            predict it?
+          </p>
+          <p class="project__note">
+            Here the map reads a static snapshot of its results. The full FastAPI and PostGIS stack
+            runs with Docker Compose.
+          </p>
+          <ul class="tags" aria-label="Stack">
+            <li>React</li>
+            <li>TypeScript</li>
+            <li>d3-geo</li>
+            <li>FastAPI</li>
+            <li>PostGIS</li>
+            <li>Docker</li>
+          </ul>
+          <a class="open" href="projection-lab/"
+            >Open project<span class="sr-only">: Projection Lab</span></a
+          >
+        </div>
+      </article>
+
+      <article class="project" aria-labelledby="p2-title">
+        <a class="project__shot" href="trondheim-3d/" tabindex="-1" aria-hidden="true">
+          <img
+            src="./screenshots/trondheim-3d.jpg"
+            width="1600"
+            height="1000"
+            alt=""
+            loading="lazy"
+            decoding="async"
+          />
+        </a>
+        <div class="project__body">
+          <p class="project__meta">
+            <span class="project__number">Project 2</span>
+            <span class="badge">GI Systems</span>
+          </p>
+          <h3 class="project__title" id="p2-title">Trondheim 3D</h3>
+          <p class="project__question">
+            Where is the nearest public shelter in Trondheim, and how far is the walk there?
+          </p>
+          <p class="project__note">
+            A 3D city model with terrain, OSM buildings and DSB public shelters. Click the ground to
+            route to the nearest shelter.
+          </p>
+          <ul class="tags" aria-label="Stack">
+            <li>CesiumJS</li>
+            <li>React</li>
+            <li>OSM Buildings</li>
+            <li>DSB WFS</li>
+            <li>Vitest</li>
+          </ul>
+          <a class="open" href="trondheim-3d/"
+            >Open project<span class="sr-only">: Trondheim 3D</span></a
+          >
+        </div>
+      </article>
+
+      <article class="project" aria-labelledby="p3-title">
+        <a class="project__shot" href="3dgs-viewer/" tabindex="-1" aria-hidden="true">
+          <img
+            src="./screenshots/3dgs-viewer.jpg"
+            width="1600"
+            height="1000"
+            alt=""
+            loading="lazy"
+            decoding="async"
+          />
+        </a>
+        <div class="project__body">
+          <p class="project__meta">
+            <span class="project__number">Project 3</span>
+            <span class="badge">3D GIS</span>
+          </p>
+          <h3 class="project__title" id="p3-title">3DGS Viewer</h3>
+          <p class="project__question">
+            What can you learn from a 3D Gaussian splat file without uploading it anywhere?
+          </p>
+          <p class="project__note">
+            Open your own PLY, SPZ, .splat, .ksplat or SOG file to see its facts, fix its up axis
+            and measure distances. The file stays in your browser.
+          </p>
+          <ul class="tags" aria-label="Stack">
+            <li>Spark</li>
+            <li>three.js</li>
+            <li>React</li>
+            <li>Vitest</li>
+          </ul>
+          <a class="open" href="3dgs-viewer/"
+            >Open project<span class="sr-only">: 3DGS Viewer</span></a
+          >
+        </div>
+      </article>
+    </main>
+
+    <footer class="footer">
+      <div class="footer__inner">
+        <h2 class="footer__heading">Data and credits</h2>
+        <ul class="credits">
+          <li>
+            Country boundaries:
+            <a href="https://www.naturalearthdata.com/">Natural Earth</a>, public domain.
+          </li>
+          <li>
+            Buildings and walking network: ©
+            <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>, ODbL.
+          </li>
+          <li>
+            Public shelters: © DSB (Direktoratet for samfunnssikkerhet og beredskap),
+            <a href="https://data.norge.no/nlod/en/2.0">NLOD 2.0</a>.
+          </li>
+          <li>
+            Terrain, imagery and 3D Tiles streaming:
+            <a href="https://cesium.com/">Cesium ion</a> and CesiumJS (Apache 2.0).
+          </li>
+          <li>
+            Splat rendering: <a href="https://sparkjs.dev/">Spark</a> and
+            <a href="https://threejs.org/">three.js</a> (both MIT). The 3DGS Viewer picture shows
+            “SOAR Telescope” by
+            <a href="https://github.com/khyron/Gaussian-Splatting">Luis Cerda</a>,
+            <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, converted to a
+            standard PLY. The splat itself is not hosted here.
+          </li>
+          <li>Headings: Bricolage Grotesque, SIL Open Font License 1.1.</li>
+        </ul>
+        <p class="footer__repo">
+          <a href="https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course"
+            >Source code on GitHub</a
+          >
+        </p>
+      </div>
+    </footer>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
