@@ -120,4 +120,9 @@ tests/ – Vitest unit tests
   extra frames after sorting in requestRenderMode (layers/splat.js).
 - 2026-10-27: session 7 done (Viewer lab, benchmark in `results/viewer-*.csv`).
   All three viewers hit the 120 Hz display cap, so FPS does not rank them.
-- Next: session 8, hardening (see `report/SPRINT.md`).
+- 2026-10-28: session 8 done (theory, limitations, accessibility, tests). Our
+  own ion token gets 404 for the gallery assets, so the evaluation-token
+  exception is required. CesiumJS 1.146 only renders splat tiles whose
+  tileset requires both KHR_gaussian_splatting and
+  KHR_gaussian_splatting_compression_spz_2.
+- Next: session 9, website (see `report/SPRINT.md`).

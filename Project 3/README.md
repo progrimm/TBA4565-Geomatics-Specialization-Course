@@ -463,15 +463,24 @@ in `results/viewer-benchmark-env.json` and the static metrics in `results/viewer
 
 | Viewer     | Resolution  | First frame | Mean FPS | 5th-pct FPS | JS heap | Network  | Bundle (gzip) | Integration lines |
 | ---------- | ----------- | ----------- | -------- | ----------- | ------- | -------- | ------------- | ----------------- |
-| Spark      | 1280 × 720  | 0.49 s      | 120.0    | 114.9       | 6.8 MiB | 48.2 MiB | 1,057 KiB     | 43                |
-| PlayCanvas | 1280 × 720  | 0.83 s      | 119.9    | 113.6       | 5.9 MiB | 46.4 MiB | 365 KiB       | 79                |
-| Babylon.js | 1280 × 720  | 0.77 s      | 120.0    | 113.6       | 5.9 MiB | 46.8 MiB | 441 KiB       | 37                |
-| Spark      | 2560 × 1440 | 0.48 s      | 119.9    | 113.6       | 6.8 MiB | 48.2 MiB | 1,057 KiB     | 43                |
-| PlayCanvas | 2560 × 1440 | 0.83 s      | 120.0    | 113.6       | 5.9 MiB | 46.4 MiB | 365 KiB       | 79                |
-| Babylon.js | 2560 × 1440 | 0.61 s      | 120.0    | 113.6       | 5.9 MiB | 46.8 MiB | 441 KiB       | 37                |
+| Spark      | 1280 × 720  | 0.49 s      | 120.0    | 114.9       | 6.8 MiB | 48.2 MiB | 1,057 KiB     | 46                |
+| PlayCanvas | 1280 × 720  | 0.83 s      | 119.9    | 113.6       | 5.9 MiB | 46.4 MiB | 365 KiB       | 83                |
+| Babylon.js | 1280 × 720  | 0.77 s      | 120.0    | 113.6       | 5.9 MiB | 46.8 MiB | 441 KiB       | 38                |
+| Spark      | 2560 × 1440 | 0.48 s      | 119.9    | 113.6       | 6.8 MiB | 48.2 MiB | 1,057 KiB     | 46                |
+| PlayCanvas | 2560 × 1440 | 0.83 s      | 120.0    | 113.6       | 5.9 MiB | 46.4 MiB | 365 KiB       | 83                |
+| Babylon.js | 2560 × 1440 | 0.61 s      | 120.0    | 113.6       | 5.9 MiB | 46.8 MiB | 441 KiB       | 38                |
 
 The ArcGIS page's initial bundle is 1,079 KiB gzipped (511 files in the manifest, before any
 lazily loaded chunk or CDN asset) with 27 integration lines. It is not benchmarked.
+
+Integration lines and bundle sizes were re-measured on 2026-10-28, after the keyboard controls
+(see [Accessibility](#accessibility)) and the PlayCanvas CSS fix added 1–4 lines per viewer. The benchmark was not run
+again: those changes only touch code that `?bench` mode skips (controls are not created). One
+fix does affect what was on screen during the runs. PlayCanvas's `setCanvasFillMode` wrote an
+inline CSS size equal to the drawing buffer, so at 2560 × 1440 the PlayCanvas page showed only
+the top-left quarter of its image in the 1280 × 720 stage. The GPU still rendered the full
+2560 × 1440 buffer, so the frame-rate load matches the other viewers, but those PlayCanvas runs
+were not repeated after the fix.
 
 What the numbers say:
 
@@ -500,7 +509,10 @@ What the numbers say:
 | ArcGIS Maps SDK 5.1.27     | Proprietary (Esri Master License Agreement) | ArcGIS `SceneView` (WebGL2) | `GaussianSplatLayer` from a scene service or portal item (3D Tiles)    | Streamed scene service                                            | Georeferenced layer in a global or local scene       | Basemap, elevation, 3D analysis widgets; some unsupported on splats |
 
 Mobile: all four lab pages render at 390 px in Playwright's emulated viewport; touch orbiting
-was not tested on a real phone. On the ArcGIS page the map widgets cover much of the small view.
+was not tested on a real phone. (Correction, 2026-10-28: on the PlayCanvas page the 390 px view
+was black until the inline-size fix above, because only the empty top-left corner of the
+1280 px canvas was visible. Session 7 had missed this.) On the ArcGIS page the map widgets
+cover much of the small view.
 Documentation (my assessment): Spark has a dedicated docs site with guides; PlayCanvas a user
 manual and many engine examples; Babylon.js one deep-dive page plus Playground examples;
 CesiumJS and ArcGIS an API reference plus Sandcastle examples or samples. The same table, with
@@ -573,6 +585,47 @@ MIT. The ArcGIS Maps SDK for JavaScript is proprietary (Esri Master License Agre
 package may be redistributed unmodified with its copyright notice). Every lab page shows the
 credit of the splat it displays and the viewer's licence.
 
+## Accessibility
+
+Checked on 2026-10-28 with Playwright scripts that Tab through each page and record every focus
+stop (element, role, accessible name, visible outline). They ran at 1600 and 390 px with
+`prefers-reduced-motion: reduce`.
+
+- **Gallery, keyboard.** Every control is a native element with a label: `<button>`s for the
+  splats, `<details>/<summary>` for the tools, checkboxes with `role="switch"` inside their
+  `<label>`, and a labelled range input. Each one shows a 2 px `:focus-visible` outline. The
+  panel now comes before the map in the DOM, so it is the first thing in the tab order. Before,
+  Cesium's four credit links came first; they now follow the panel. The panel has `z-index: 1`
+  so it still paints above the Cesium widget. Using only the keyboard, a splat can be selected
+  (Enter on its button), every tool opened and every switch toggled. The splat buttons are the
+  keyboard alternative to clicking the globe markers.
+- **Gallery, not keyboard-accessible.** The globe canvas itself: CesiumJS's
+  `ScreenSpaceCameraController` handles only mouse and touch, so free navigation and the
+  two-point measurement need a pointer. Cesium's ion logo link gets its name only from the
+  image's `title` ("Cesium ion"), and the image has no `alt`. That is Cesium's markup and was
+  left alone.
+- **Lab pages, keyboard.** The canvas is now focusable (`tabindex="0"`). Each page states its
+  controls under the title, and the canvas points to that text with `aria-describedby`. The
+  keyboard controls are each engine's own, and each was checked by holding keys and comparing
+  canvas screenshots:
+  - Spark: [`OrbitControls.listenToKeyEvents`](https://threejs.org/docs/#examples/en/controls/OrbitControls)
+    on the canvas. Arrows pan, Shift + arrows orbit.
+  - Babylon.js: `ArcRotateCamera` with its default inputs. Arrows orbit
+    ([Babylon.js cameras](https://doc.babylonjs.com/features/featuresDeepDive/cameras/camera_introduction)).
+  - PlayCanvas: `CameraControls` reads the keyboard only in fly mode, which session 7 had turned
+    off (`enableFly: false`), so the page had no keyboard control at all. Fly mode is now on:
+    arrows/WASD move the camera, and a mouse drag switches back to orbiting
+    ([PlayCanvas camera controls](https://developer.playcanvas.com/user-manual/graphics/cameras/camera-controls/)).
+  - ArcGIS: the `SceneView` has its own keyboard navigation. Esri's Calcite buttons draw their
+    focus ring inside a shadow DOM, which the script could not inspect, so their focus
+    indicator was not verified.
+- **Reduced motion.** The gallery's camera flights jump instead of flying (`flightDuration`,
+  now unit-tested), and CSS transitions are turned off. The lab pages animate only while the user
+  drags, or in `?bench` mode. On the ArcGIS page, `goTo()` follows `prefers-reduced-motion` by
+  default (since SDK 4.30, according to the `goTo` docs in `@arcgis/core`).
+- **Messages.** Loading and error messages are in an `aria-live="polite"` region, and errors use
+  `role="alert"`.
+
 ## Limitations
 
 - **Evaluation token on a public site.** Cesium's documentation says the demo token in CesiumJS
@@ -606,6 +659,9 @@ credit of the splat it displays and the viewer's licence.
   near/far handling differ slightly, so the images are close but not identical. The gallery
   performance runs share these limits, and their first-view times depend on the network at the
   time.
+- **Accessibility.** The globe and the measurement tool need a pointer. No screen-reader
+  description of the 3D content beyond labels and the inspector's text. Not tested with a real
+  screen reader or on a real phone (see [Accessibility](#accessibility)).
 
 ## Verification
 
@@ -637,6 +693,24 @@ On 2026-10-27 (session 7, the Viewer lab):
   PlayCanvas and Babylon.js, and whether the ArcGIS terms allow the page on a public site
   without an Esri account.
 
+On 2026-10-28 (session 8, hardening):
+
+- `npm run lint`, `npm run format:check`, `npm test` (16 files, 55 tests) and `npm run build`
+  pass. New tests cover the reduced-motion flight duration, the tileset load statistics (tile
+  count, first `initialTilesLoaded` time kept) and the completeness of the comparison table.
+- Our ion token gets 404 for the gallery assets (see [Security](#cesium-ion-token-and-security)).
+- The splat glTF extensions were checked in the installed CesiumJS 1.146.0 source (see
+  [Background](#background-3d-gaussian-splatting)).
+- Playwright (headless Chromium, same GPU) against `vite preview` of the production build, at
+  1600 and 390 px: the keyboard walk and the lab keyboard controls described under
+  [Accessibility](#accessibility), with no console errors. Screenshots were inspected: the panel
+  sits above the map at both widths, and the PlayCanvas page now shows the splat at 390 px.
+- iTwin failure: with every request to `api.bentley.com` blocked (as after the share key
+  expires), selecting the dam shows "O'Shaughnessy Dam could not be loaded." and the button
+  reads "Unavailable". Selecting the RTE substation afterwards still works.
+- Not verified: a real screen reader, a real phone, Firefox and Safari, and the focus ring of
+  Esri's Calcite buttons. The viewer benchmark was not re-run after the PlayCanvas CSS fix.
+
 ## Status
 
 Session 6 (globe gallery) is done: gallery, inspector, measurement, alignment check, splat vs
@@ -645,4 +719,9 @@ mesh and the performance panel.
 Session 7 (Viewer lab) is done: lab pages for Spark, PlayCanvas, Babylon.js and ArcGIS, the
 benchmark, and the comparison. CesiumJS is not a lab page (see [Viewer lab](#viewer-lab)).
 
-Next: session 8, Project 3 hardening (see `report/SPRINT.md`).
+Session 8 (hardening) is done: background theory, limitations, the own-token check, an
+accessibility pass with keyboard controls on the lab pages, the PlayCanvas mobile fix and new
+tests.
+
+Next: session 9, the "My GIS module" website (see `report/SPRINT.md`). The gallery itself has no
+"← My GIS module" link yet (the lab pages do); session 9 should add it.
