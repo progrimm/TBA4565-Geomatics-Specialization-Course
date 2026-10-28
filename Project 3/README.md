@@ -40,6 +40,7 @@ and inspect it entirely on the client?_
 - **Navigation.** Drag to orbit, right-drag to pan, scroll to zoom
   ([`OrbitControls`](https://threejs.org/docs/#examples/en/controls/OrbitControls)). With the
   view focused, the arrow keys pan and Shift + arrows orbit.
+- **Splat count** counts splats with finite centres; NaN splats are skipped.
 - **Errors** are shown as messages, and the viewer keeps working. This covers unsupported
   extensions, PLY files without splat properties (a mesh or a plain point cloud) and files Spark
   cannot parse. If a new file fails, the splat already open stays.
@@ -103,7 +104,7 @@ Main design choices:
 - **Spark.** Spark reads all five formats from bytes, and it is a three.js object, so the
   three.js raycaster, controls and helpers work with it. It had already been integrated in the
   old viewer lab (see [History](#history)), together with PlayCanvas and Babylon.js. The cost is bundle size: the
-  production JavaScript is 3,495.6 kB (1,167.9 kB gzip), most of it Spark (`npm run build`,
+  production JavaScript is 3,496.1 kB (1,168.1 kB gzip), most of it Spark (`npm run build`,
   2026-10-28).
 - **One group for the splat and the markers.** The up-axis rotation is applied to a parent
   `THREE.Group`. So picked points are stored in file coordinates, and a measurement stays valid
@@ -197,9 +198,10 @@ Real-Time Radiance Field Rendering", _ACM Transactions on Graphics_ 42(4), July 
   Distances are in file units, and the up-axis choice covers only 90° steps about x.
 - **Measurement accuracy.** A pick hits the nearest splat ellipsoid along the ray, not a surface.
   Semi-transparent floaters in front of the scene can be hit first.
-- **Formats tested.** Only PLY was opened in the browser. SPZ, .splat, .ksplat and SOG are read by
+- **Formats tested.** Only plain PLY was opened in the browser. Compressed PLY is recognised
+  from its header (unit-tested), but Spark's decoding of it was not tried. SPZ, .splat, .ksplat and SOG are read by
   Spark's own loaders and were not tested here.
-- **Bundle size.** 1,167.9 kB of gzipped JavaScript must download before the first file can be
+- **Bundle size.** 1,168.1 kB of gzipped JavaScript must download before the first file can be
   opened. Vite warns about the chunk size. Code-splitting Spark was not tried.
 
 ## Test data
@@ -216,8 +218,8 @@ libraries.
 2026-10-28, after the rebuild:
 
 - `npm run lint`: no problems. `npm run format:check`: "All matched files use Prettier code
-  style!" `npm test`: 7 files, 24 tests passed. `npm run build`: `dist/` is 3.4 MB, with one JS
-  file of 3,495.58 kB (1,167.93 kB gzip) and no `cesium/` folder. A search for
+  style!" `npm test`: 7 files, 26 tests passed. `npm run build`: `dist/` is 3.4 MB, with one JS
+  file of 3,496.05 kB (1,168.14 kB gzip) and no `cesium/` folder. A search for
   `cesium|itwin|ion.cesium` in `src/`, `index.html` and `dist/` found nothing.
 - Playwright on `vite preview` (headless Chromium, `--use-angle=d3d11`) at 1600 × 900 and
   390 × 844, with the screenshots looked at:
@@ -239,7 +241,18 @@ libraries.
     sheet shows all facts. No console errors at 390 px. At 1600 px the only console error is
     Spark's message for the truncated file, which is logged on purpose because it is an engine
     error.
-- **Not verified:** real phones, Firefox and Safari, a screen reader, files much larger than
+- `/code-review` (medium) of the rebuild found 10 issues. All were fixed except the deletions it
+  flagged, which were planned and approved. Fixes: compressed PLY files (SuperSplat
+  `packed_*`) are no longer rejected but passed to Spark; NaN splat centres are skipped so
+  framing cannot become NaN; centres are collected into one preallocated array; the
+  `SparkRenderer` is disposed; only the primary button picks measurement points; Escape inside
+  `<details>` or a form field no longer stops measuring; a file opened while another loads gets
+  a message instead of being dropped silently, and the drop listeners are no longer re-attached
+  while loading; the click tolerance moved to `config.js`; the root CLAUDE.md no longer refers
+  to the deleted benchmark. Re-checked: lint, format check, 26 tests and build pass; the
+  Playwright run gives the same results as above; a right click while measuring adds no point;
+  Escape in `<details>` keeps measuring, and on the canvas it stops.
+- **Not verified:** compressed PLY files in the browser (no test file), real phones, Firefox and Safari, a screen reader, files much larger than
   47 MB, and the SPZ, .splat, .ksplat and SOG formats.
 
 ## History
