@@ -15,15 +15,22 @@
  */
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { chromium } from 'playwright';
+import { launchBrowser } from './browser.js';
 
 const RUNS = Number(process.argv[2] ?? 3);
 const SSE_VALUES = (process.argv[3] ?? '16,32').split(',').map(Number);
+// config.js falls back to 16 for anything that is not a positive number, so a bad
+// value would be measured as SSE 16 under the wrong label.
+if (!Number.isInteger(RUNS) || RUNS < 1) throw new Error(`runs must be a positive integer`);
+if (!SSE_VALUES.every((sse) => Number.isFinite(sse) && sse > 0)) {
+  throw new Error(`SSE values must be positive numbers, got ${process.argv[3]}`);
+}
 const PORT = 4175;
 const VIEWPORT = { width: 1600, height: 900 };
 const ORBIT_MS = 10000;
 const LOAD_TIMEOUT_MS = 120000;
 const SETTLE_MS = 2000;
+const INTEGER_COLUMNS = new Set(['sse', 'run', 'frames']);
 
 const median = (values) => {
   const sorted = [...values].sort((a, b) => a - b);
@@ -36,9 +43,16 @@ const vite = (args, env) => ({ command: `npx vite ${args}`, options: { env, shel
 
 /** Start `vite preview` for one build and resolve once it accepts requests. */
 async function startPreview(outDir) {
-  const { command, options } = vite(`preview --outDir ${outDir} --port ${PORT} --strictPort`);
-  const server = spawn(command, { ...options, stdio: 'ignore' });
   const url = `http://localhost:${PORT}/`;
+  // A server left on the port would be measured instead of this build.
+  const alreadyUp = await fetch(url).then(
+    () => true,
+    () => false,
+  );
+  if (alreadyUp) throw new Error(`port ${PORT} is already in use`);
+  const { command, options } = vite(`preview --outDir ${outDir} --port ${PORT} --strictPort`);
+  // detached: own process group on Linux/macOS, so stopPreview can kill the whole tree.
+  const server = spawn(command, { ...options, stdio: 'ignore', detached: true });
   for (let i = 0; i < 50; i += 1) {
     try {
       if ((await fetch(url)).ok) return { server, url };
@@ -50,16 +64,14 @@ async function startPreview(outDir) {
   throw new Error(`vite preview did not start on port ${PORT}`);
 }
 
-/** Stop the preview server (and its child processes on Windows). */
+/** Stop the preview server: the shell, npx and vite. */
 function stopPreview(server) {
   if (process.platform === 'win32') spawnSync('taskkill', ['/pid', String(server.pid), '/T', '/F']);
-  else server.kill();
+  else process.kill(-server.pid); // negative pid = the whole process group
 }
 
 mkdirSync('results', { recursive: true });
-const browser = await chromium.launch({
-  args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'],
-});
+const browser = await launchBrowser();
 const rows = [];
 let renderer;
 for (const sse of SSE_VALUES) {
@@ -118,7 +130,13 @@ const header = Object.keys(rows[0]);
 const csv = [
   header.join(','),
   ...rows.map((row) =>
-    header.map((key) => (Number.isInteger(row[key]) ? row[key] : row[key].toFixed(2))).join(','),
+    header
+      .map((key) => {
+        if (INTEGER_COLUMNS.has(key)) return row[key];
+        // performance.memory is Chromium-only: leave the cell empty elsewhere.
+        return Number.isNaN(row[key]) ? '' : row[key].toFixed(2);
+      })
+      .join(','),
   ),
 ];
 writeFileSync('results/buildings-benchmark.csv', `${csv.join('\n')}\n`);

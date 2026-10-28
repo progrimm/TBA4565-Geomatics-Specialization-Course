@@ -2,7 +2,7 @@
  * Download DSB public shelters (Tilfluktsrom – Offentlige, licence NLOD) for
  * Trondheim and write them as WGS84 GeoJSON to public/data/shelters.geojson,
  * with the fetch date and source in a `metadata` foreign member (see utils/credit.js).
- * Run with: npm run data:shelters
+ * Run with: npm run data:shelters  (add `-- --allow-skipped` to write a partly invalid response)
  */
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -30,11 +30,23 @@ if (!response.ok) {
   throw new Error(`WFS request failed: ${response.status} ${response.statusText}`);
 }
 
+let skipped = 0;
 const { features } = parseSheltersGml(await response.text(), {
-  onInvalid: (reason, index) => console.warn(`Skipped WFS member ${index}: ${reason}`),
+  onInvalid: (reason, index) => {
+    skipped += 1;
+    console.warn(`Skipped WFS member ${index}: ${reason}`);
+  },
 });
 if (features.length === 0) {
   throw new Error('WFS returned no valid shelters; refusing to overwrite the dataset.');
+}
+// A partly invalid response may mean the service changed its format: keep the old
+// file unless the skipped members have been checked and accepted.
+if (skipped > 0 && !process.argv.includes('--allow-skipped')) {
+  throw new Error(
+    `${skipped} WFS member(s) were invalid; refusing to overwrite the dataset. ` +
+      'Check the warnings, then re-run with --allow-skipped to write the valid ones.',
+  );
 }
 
 const geojson = {

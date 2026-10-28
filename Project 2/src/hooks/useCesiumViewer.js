@@ -18,10 +18,16 @@ export function useCesiumViewer() {
     instance.camera.setView(toCameraOptions(CAMERA_VIEWS.trondheimCentre));
     setViewer(instance);
     // Benchmark builds only (scripts/benchmark-buildings.js); removed from normal builds.
+    let uninstallBenchmark = () => {};
     if (import.meta.env.VITE_BENCHMARK === 'true') {
-      import('../benchmark.js').then(({ installBenchmark }) => installBenchmark(instance));
+      import('../benchmark.js')
+        .then(({ installBenchmark }) => {
+          if (!instance.isDestroyed()) uninstallBenchmark = installBenchmark(instance);
+        })
+        .catch((error) => console.error('Benchmark hooks failed to load:', error));
     }
     return () => {
+      uninstallBenchmark();
       setViewer(undefined);
       instance.destroy(); // frees the WebGL context, tilesets and data sources
     };

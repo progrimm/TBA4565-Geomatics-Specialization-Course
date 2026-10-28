@@ -55,6 +55,13 @@ describe('parseSheltersGml with bad or missing attributes', () => {
     ]);
   });
 
+  it('accepts a 3D position and drops the height', () => {
+    const gml3d = gml.replace('569813.430700 7034377.044946', '569813.430700 7034377.044946 12.5');
+    expect(parseSheltersGml(gml3d).features[0].geometry.coordinates).toEqual(
+      parseSheltersGml(gml).features[0].geometry.coordinates,
+    );
+  });
+
   it('returns an empty collection for a response that is not a FeatureCollection', () => {
     expect(parseSheltersGml('<ExceptionReport/>').features).toEqual([]);
   });

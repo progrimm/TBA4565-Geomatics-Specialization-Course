@@ -20,11 +20,15 @@ function toCount(text) {
   return trimmed !== '' && Number.isInteger(value) && value >= 0 ? value : undefined;
 }
 
-/** Parse "E N" (EPSG:25832, metres) from a gml:pos; undefined if not two finite numbers. */
+/**
+ * Parse "E N" or "E N H" (EPSG:25832, metres) from a gml:pos; a height is dropped.
+ * @returns {[number, number] | undefined} undefined if not 2 or 3 finite numbers.
+ */
 function toEastNorth(pos) {
   if (typeof pos !== 'string') return undefined;
   const values = pos.trim().split(/\s+/).map(Number);
-  return values.length === 2 && values.every(Number.isFinite) ? values : undefined;
+  const valid = (values.length === 2 || values.length === 3) && values.every(Number.isFinite);
+  return valid ? [values[0], values[1]] : undefined;
 }
 
 /**
@@ -57,7 +61,7 @@ function toFeature(member) {
 /**
  * Parse DSB "Tilfluktsrom – Offentlige" WFS GML (EPSG:25832) into a GeoJSON
  * FeatureCollection in WGS84 (RFC 7946). Points are 2D: no height is given.
- * Members without a valid point, shelter number or capacity are left out, because
+ * Members without a valid point (2D or 3D), shelter number or capacity are left out, because
  * the nearest-shelter analysis and the capacity totals depend on them.
  * @param {string} gml - WFS 2.0 GetFeature response for layer_340.
  * @param {object} [options]
