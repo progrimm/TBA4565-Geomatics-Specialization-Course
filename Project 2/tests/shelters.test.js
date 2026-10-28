@@ -32,3 +32,30 @@ describe('parseSheltersGml', () => {
     expect(parseSheltersGml(empty).features).toEqual([]);
   });
 });
+
+describe('parseSheltersGml with bad or missing attributes', () => {
+  const invalid = readFileSync(new URL('./fixtures/shelters-invalid.gml', import.meta.url), 'utf8');
+
+  it('keeps only valid members, with an empty address when it is missing', () => {
+    const { features } = parseSheltersGml(invalid);
+    expect(features).toHaveLength(1);
+    expect(features[0].properties).toEqual({ romnr: 6870, plasser: 630, adresse: '' });
+  });
+
+  it('reports every member it leaves out, with the reason', () => {
+    const skipped = [];
+    parseSheltersGml(invalid, { onInvalid: (reason, index) => skipped.push([index, reason]) });
+    expect(skipped).toEqual([
+      [1, 'missing or invalid point geometry'],
+      [2, 'missing or invalid point geometry'],
+      [3, 'missing or invalid capacity (plasser)'],
+      [4, 'missing or invalid capacity (plasser)'],
+      [5, 'missing or invalid shelter number (romnr)'],
+      [6, 'not a layer_340 feature'],
+    ]);
+  });
+
+  it('returns an empty collection for a response that is not a FeatureCollection', () => {
+    expect(parseSheltersGml('<ExceptionReport/>').features).toEqual([]);
+  });
+});
