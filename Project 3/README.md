@@ -464,17 +464,17 @@ in `results/viewer-benchmark-env.json` and the static metrics in `results/viewer
 | Viewer     | Resolution  | First frame | Mean FPS | 5th-pct FPS | JS heap | Network  | Bundle (gzip) | Integration lines |
 | ---------- | ----------- | ----------- | -------- | ----------- | ------- | -------- | ------------- | ----------------- |
 | Spark      | 1280 × 720  | 0.49 s      | 120.0    | 114.9       | 6.8 MiB | 48.2 MiB | 1,057 KiB     | 46                |
-| PlayCanvas | 1280 × 720  | 0.83 s      | 119.9    | 113.6       | 5.9 MiB | 46.4 MiB | 365 KiB       | 83                |
+| PlayCanvas | 1280 × 720  | 0.83 s      | 119.9    | 113.6       | 5.9 MiB | 46.4 MiB | 365 KiB       | 96                |
 | Babylon.js | 1280 × 720  | 0.77 s      | 120.0    | 113.6       | 5.9 MiB | 46.8 MiB | 441 KiB       | 38                |
 | Spark      | 2560 × 1440 | 0.48 s      | 119.9    | 113.6       | 6.8 MiB | 48.2 MiB | 1,057 KiB     | 46                |
-| PlayCanvas | 2560 × 1440 | 0.83 s      | 120.0    | 113.6       | 5.9 MiB | 46.4 MiB | 365 KiB       | 83                |
+| PlayCanvas | 2560 × 1440 | 0.83 s      | 120.0    | 113.6       | 5.9 MiB | 46.4 MiB | 365 KiB       | 96                |
 | Babylon.js | 2560 × 1440 | 0.61 s      | 120.0    | 113.6       | 5.9 MiB | 46.8 MiB | 441 KiB       | 38                |
 
 The ArcGIS page's initial bundle is 1,079 KiB gzipped (511 files in the manifest, before any
 lazily loaded chunk or CDN asset) with 27 integration lines. It is not benchmarked.
 
 Integration lines and bundle sizes were re-measured on 2026-10-28, after the keyboard controls
-(see [Accessibility](#accessibility)) and the PlayCanvas CSS fix added 1–4 lines per viewer. The benchmark was not run
+(see [Accessibility](#accessibility)) and the PlayCanvas CSS fix: +3 lines for Spark, +1 for Babylon.js and +17 for PlayCanvas, most of them its focus workaround for keyboard input. The benchmark was not run
 again: those changes only touch code that `?bench` mode skips (controls are not created). One
 fix does affect what was on screen during the runs. PlayCanvas's `setCanvasFillMode` wrote an
 inline CSS size equal to the drawing buffer, so at 2560 × 1440 the PlayCanvas page showed only
@@ -596,7 +596,9 @@ stop (element, role, accessible name, visible outline). They ran at 1600 and 390
   `<label>`, and a labelled range input. Each one shows a 2 px `:focus-visible` outline. The
   panel now comes before the map in the DOM, so it is the first thing in the tab order. Before,
   Cesium's four credit links came first; they now follow the panel. The panel has `z-index: 1`
-  so it still paints above the Cesium widget. Using only the keyboard, a splat can be selected
+  so it still paints above the Cesium widget. The overlays that used to paint over the panel
+  (Cesium's InfoBox, the messages and the swipe line) get `z-index: 2`, so they still do. Using
+  only the keyboard, a splat can be selected
   (Enter on its button), every tool opened and every switch toggled. The splat buttons are the
   keyboard alternative to clicking the globe markers.
 - **Gallery, not keyboard-accessible.** The globe canvas itself: CesiumJS's
@@ -612,10 +614,20 @@ stop (element, role, accessible name, visible outline). They ran at 1600 and 390
     on the canvas. Arrows pan, Shift + arrows orbit.
   - Babylon.js: `ArcRotateCamera` with its default inputs. Arrows orbit
     ([Babylon.js cameras](https://doc.babylonjs.com/features/featuresDeepDive/cameras/camera_introduction)).
+    Babylon writes `engine.canvasTabIndex` (default 1) onto the canvas on every pointer move,
+    which would move the canvas ahead of the page links in the tab order. The page therefore
+    passes `canvasTabIndex: 0`.
   - PlayCanvas: `CameraControls` reads the keyboard only in fly mode, which session 7 had turned
-    off (`enableFly: false`), so the page had no keyboard control at all. Fly mode is now on:
-    arrows/WASD move the camera, and a mouse drag switches back to orbiting
-    ([PlayCanvas camera controls](https://developer.playcanvas.com/user-manual/graphics/cameras/camera-controls/)).
+    off, so the page had no keyboard control. Its keyboard source listens on `window`, so if
+    fly mode were always on, arrow keys would fly the camera while the user tabs or scrolls
+    elsewhere on the page. Fly mode is therefore on only while the canvas has focus: arrows/WASD
+    move the camera, and a mouse drag switches back to orbiting. On blur, keys still held get a
+    synthetic `keyup`, because CameraControls would otherwise never see them released and keep
+    flying ([PlayCanvas camera controls](https://developer.playcanvas.com/user-manual/graphics/cameras/camera-controls/)).
+  - Checked for all three at 1600 and 390 px: keys do nothing while focus is on a link, they
+    move the view while the canvas has focus, the page does not scroll, and the canvas keeps
+    `tabindex` 0 after a mouse move. After a key is held while focus moves away, Spark and
+    PlayCanvas stop at once. Babylon's view settles within 4 s, from its camera inertia.
   - ArcGIS: the `SceneView` has its own keyboard navigation. Esri's Calcite buttons draw their
     focus ring inside a shadow DOM, which the script could not inspect, so their focus
     indicator was not verified.
@@ -708,6 +720,11 @@ On 2026-10-28 (session 8, hardening):
 - iTwin failure: with every request to `api.bentley.com` blocked (as after the share key
   expires), selecting the dam shows "O'Shaughnessy Dam could not be loaded." and the button
   reads "Unavailable". Selecting the RTE substation afterwards still works.
+- `/code-review` (medium) of the session found seven issues, all fixed and re-checked in the
+  browser: PlayCanvas's window-wide keyboard and stuck keys, Babylon resetting the canvas tab
+  index, overlays hidden under the raised panel, the PlayCanvas fill-mode workaround (now the
+  call is simply dropped), a class reused for two paragraphs, and a test that missed extra
+  comparison rows.
 - Not verified: a real screen reader, a real phone, Firefox and Safari, and the focus ring of
   Esri's Calcite buttons. The viewer benchmark was not re-run after the PlayCanvas CSS fix.
 
