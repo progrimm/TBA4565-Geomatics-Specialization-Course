@@ -60,7 +60,8 @@ export const COMPARISON = [
     viewer: 'CesiumJS 1.146.0 (gallery)',
     licence: 'Apache 2.0',
     engine: 'CesiumJS (WebGL2)',
-    formats: '3D Tiles with glTF KHR_gaussian_splatting (+ SPZ compression)',
+    formats:
+      '3D Tiles with glTF KHR_gaussian_splatting + KHR_gaussian_splatting_compression_spz_2 (both required in 1.146)',
     lod: 'Hierarchical 3D Tiles LOD, streamed by screen-space error',
     georef: 'Tileset root transform to ECEF (EPSG:4978); WGS 84 globe',
     gis: 'Terrain, imagery, OSM Buildings, measurement, swipe (see the gallery)',

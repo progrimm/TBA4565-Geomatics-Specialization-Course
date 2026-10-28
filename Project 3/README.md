@@ -167,6 +167,80 @@ Main design choices:
 - **`requestRenderMode` is on.** The scene only re-renders when something changes. Splats need
   a workaround, described under Findings.
 
+## Background: 3D Gaussian splatting
+
+**What it is.** 3D Gaussian splatting (Kerbl et al., 2023) represents a scene as millions of
+small, semi-transparent 3D Gaussians. Each one has a position (its mean), a shape and size (a
+covariance, stored as a scale per axis plus a rotation quaternion), an opacity, and a colour
+stored as spherical-harmonic coefficients, so the colour can change with the viewing direction.
+The Gaussians are optimised from photos whose camera poses come from structure from motion
+(e.g. COLMAP), starting from its sparse point cloud. To render a view, each Gaussian is
+projected to a 2D ellipse ("splat"). The splats are sorted by depth and alpha-blended, which is
+fast enough for real time on a GPU. Because the sort depends on the camera, every viewer re-sorts
+while the camera moves; CesiumJS does this in a web worker (see Findings).
+
+**Splats vs meshes and point clouds.** A mesh is an explicit surface: vertices joined by
+triangles, with a texture. It has topology and a closed surface, so it can be picked, clipped
+and measured, but thin structures and reflections are hard to reconstruct. A point cloud
+contains samples on the surface, each with a position and usually a colour, but with no size
+or orientation. A Gaussian has an extent, an orientation and an opacity. It is fitted to
+reproduce the photos (a photometric loss), not to sit on the surface, so it gives a
+photorealistic image without guaranteeing that any one Gaussian marks a surface point. The
+[substation comparison](#splat-vs-mesh) shows the trade-off: the splat renders lattice towers
+and wires that the mesh loses, but has "floaters" and, in CesiumJS, cannot be picked.
+
+**File formats.**
+
+- **PLY**: the output of the reference implementation. One binary record per splat: `x y z`,
+  `rot_0..3`, `scale_0..2` (log scale), `opacity` (logit), `f_dc_0..2` (SH degree 0) and
+  `f_rest_0..44` (SH degrees 1 to 3). The lab's test splat has exactly these 59 floats per
+  splat: 236 bytes × 200,258 splats plus a 1,477-byte header = 47,262,365 bytes. Simple and
+  universal, but large.
+- **SPZ**: Niantic's open compressed format ([nianticlabs/spz](https://github.com/nianticlabs/spz)),
+  which quantises the attributes and gzips them. The same splat is 4.96 MB as SPZ, about 9.5
+  times smaller (see [Test splat](#test-splat)).
+- **SOG**: PlayCanvas's compressed format, which stores the attributes in images
+  ([PlayCanvas formats](https://developer.playcanvas.com/user-manual/gaussian-splatting/formats/));
+  4.81 MB for the test splat.
+- **ksplat**: the format of Mark Kellogg's Three.js viewer
+  ([GaussianSplats3D](https://github.com/mkkellogg/GaussianSplats3D)), with optional
+  compression levels. Spark can read it; none of the pages here use it.
+
+**How CesiumJS streams splats.** CesiumJS reads splats as 3D Tiles: a `tileset.json` holds a
+tree of tiles, each with a bounding volume and a geometric error, and CesiumJS loads only the
+tiles whose screen-space error is too large for the current view. Each tile's content is a
+glTF 2.0 (glb). The glTF extension
+[`KHR_gaussian_splatting`](https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_gaussian_splatting)
+stores splats as a `POINTS` primitive with `POSITION` plus `KHR_gaussian_splatting:ROTATION`,
+`:SCALE`, `:OPACITY` and `:SH_DEGREE_n_COEF_m` attributes. Unlike PLY, scale and opacity are
+stored as linear values. Khronos lists it as "Complete, Ratified by the Khronos Group" (checked
+2026-10-28). The compression extension, `KHR_gaussian_splatting_compression_spz_2`, puts an
+SPZ payload inside the glTF. It is still an open draft
+([KhronosGroup/glTF#2531](https://github.com/KhronosGroup/glTF/pull/2531), checked
+2026-10-28). Note the `_2`: the sprint plan named it `..._spz`, but CesiumJS uses `_spz_2`. In the
+installed **CesiumJS 1.146.0**, `Cesium3DTileContentFactory` uses the splat renderer
+(`GaussianSplat3DTileContent`) only when the tileset's `extensionsRequired` lists **both**
+`KHR_gaussian_splatting` and `KHR_gaussian_splatting_compression_spz_2`. So in this version,
+splat tiles must be SPZ-compressed. The older draft `KHR_spz_gaussian_splats_compression` was
+removed in 1.135, and now only triggers a deprecation warning asking for the tileset to be
+re-tiled (`GaussianSplat3DTileContent.js`, `CHANGES.md`). 3D Tiles gives splats what the
+general-purpose viewers lack: hierarchical LOD (the 110-million-splat Microsoft campus streams
+39 tiles for its first view, see [Performance](#performance)) and a root transform that puts
+the splat on the globe.
+
+**Why georeferencing matters.** A splat trained from photos lives in the arbitrary frame of the
+structure-from-motion solution: unknown origin, orientation and often scale (the lab's test
+splat even has +y pointing down). Only when it is tied to a CRS, through GNSS camera positions
+or ground control points and then a root transform, can it be overlaid on terrain, imagery and
+buildings, measured in metres with geodetic distances, and combined with other geodata. It also
+makes errors visible: the [alignment check](#alignment-check) found the Hines Rowing Center
+splat 4.9 m south of the imagery, and the dam 12 m too high, a size of error typical of mixing
+ellipsoidal and orthometric heights.
+
+Reference: B. Kerbl, G. Kopanas, T. Leimkühler and G. Drettakis, "3D Gaussian Splatting for
+Real-Time Radiance Field Rendering", _ACM Transactions on Graphics_ 42(4), July 2023
+([project page](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/)).
+
 ## Georeferencing
 
 A 3D Tiles tileset stores splat positions in local metres (glTF). The root tile's `transform`
@@ -422,7 +496,7 @@ What the numbers say:
 | Spark 2.4.0                | MIT                                         | Three.js (WebGL2)           | PLY (incl. compressed), SPZ, SOG, SPLAT, KSPLAT, RAD                   | Optional (`lod: true`, built in a worker); paged `.rad` streaming | None: local coordinates                              | None built in                                                       |
 | PlayCanvas 2.23.3          | MIT                                         | PlayCanvas (WebGL2/WebGPU)  | PLY (incl. compressed), SOG, streamed SOG, GLB, SPZ                    | Streamed SOG: chunked spatial tree with LOD levels                | None: local coordinates                              | None built in                                                       |
 | Babylon.js 9.32.1          | Apache 2.0                                  | Babylon.js (WebGL2/WebGPU)  | PLY (incl. compressed), SPLAT, SPZ, SOG, glTF `KHR_gaussian_splatting` | Streamed SOG with LOD (`lod-meta.json`), memory and splat budgets | None: local coordinates, left-handed by default      | None built in                                                       |
-| CesiumJS 1.146.0 (gallery) | Apache 2.0                                  | CesiumJS (WebGL2)           | 3D Tiles with glTF `KHR_gaussian_splatting` (+ SPZ compression)        | Hierarchical 3D Tiles LOD, streamed by screen-space error         | Root transform to ECEF (EPSG:4978) on a WGS 84 globe | Terrain, imagery, OSM Buildings, measurement, swipe (this app)      |
+| CesiumJS 1.146.0 (gallery) | Apache 2.0                                  | CesiumJS (WebGL2)           | 3D Tiles with glTF `KHR_gaussian_splatting` + SPZ (both required)      | Hierarchical 3D Tiles LOD, streamed by screen-space error         | Root transform to ECEF (EPSG:4978) on a WGS 84 globe | Terrain, imagery, OSM Buildings, measurement, swipe (this app)      |
 | ArcGIS Maps SDK 5.1.27     | Proprietary (Esri Master License Agreement) | ArcGIS `SceneView` (WebGL2) | `GaussianSplatLayer` from a scene service or portal item (3D Tiles)    | Streamed scene service                                            | Georeferenced layer in a global or local scene       | Basemap, elevation, 3D analysis widgets; some unsupported on splats |
 
 Mobile: all four lab pages render at 390 px in Playwright's emulated viewport; touch orbiting
