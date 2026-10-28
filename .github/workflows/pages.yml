@@ -1,0 +1,53 @@
+name: Deploy website to GitHub Pages
+
+# Builds the homepage and the three apps into one artifact (npm run site:build)
+# and publishes it. Lint and tests run in the per-project CI workflows.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; a newer push replaces a queued one but never
+# cancels a deployment that is already running.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            site/package-lock.json
+            Project 1/frontend/package-lock.json
+            Project 2/package-lock.json
+            Project 3/package-lock.json
+      - run: npm run site:install
+      - run: npm run site:build
+        env:
+          # Public in the bundle by design: restrict this token to the Pages URL in Cesium ion.
+          VITE_CESIUM_TOKEN: ${{ secrets.CESIUM_ION_TOKEN }}
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist-site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

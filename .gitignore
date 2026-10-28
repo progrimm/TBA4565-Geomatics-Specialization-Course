@@ -141,3 +141,6 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Assembled GitHub Pages site (npm run site:build)
+dist-site/
