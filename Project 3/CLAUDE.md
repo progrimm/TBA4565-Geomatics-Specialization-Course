@@ -93,4 +93,6 @@ tests/ – Vitest unit tests
 - 2026-10-28: session 8 (hardening). Then the gallery was dropped: its ion
   assets need Cesium's evaluation token (our token gets 404). Rebuilt as a
   file viewer (Spark). Old code at 9442d81.
-- Next: session 9, website (see `report/SPRINT.md`).
+- 2026-10-28: website (session 9). Shared NTNU-blue home link and favicon; built into
+  `/3dgs-viewer/` by the root `npm run site:build`.
+- Next: first live deployment check.

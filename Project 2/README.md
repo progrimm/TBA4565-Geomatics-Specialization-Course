@@ -24,6 +24,8 @@ on code quality: linting, tests, error handling and CI.
   working
 - A collapsible control panel that becomes a bottom sheet on mobile. All panel controls work
   with the keyboard, and camera flights respect `prefers-reduced-motion`
+- A "← My GIS module" link at the top of the panel goes back to the module homepage (`../`). It
+  sits outside the collapsible body, so it stays visible when the sheet is collapsed on mobile
 
 ## Getting Started
 
@@ -408,7 +410,8 @@ re-run only.
 - **Keyboard users cannot run the nearest-shelter search**, because it needs a click on the map.
   The panel itself is fully keyboard-accessible.
 - On mobile, the nearest-shelter result is only visible while the bottom sheet is open. The open
-  sheet also covers Cesium's credit line.
+  sheet also covers Cesium's credit line; the collapsed sheet no longer does (fixed 2026-10-28,
+  see [Status](#status)).
 - The search also runs when the shelter layer is hidden.
 - The benchmark covers one machine, one view and headless Chromium. The frame rate is capped by
   the 60 Hz display, so it cannot tell apart settings that both render faster than that.
@@ -420,6 +423,9 @@ re-run only.
 - Vite embeds `VITE_` variables in the client bundle, so **the token is public in a production
   build**. For deployment, use a separate token with minimal scopes that is restricted to the
   deployed URL in Cesium ion.
+- On GitHub Pages the token comes from the repository secret `CESIUM_ION_TOKEN`, which
+  `.github/workflows/pages.yml` passes to the build as `VITE_CESIUM_TOKEN`. See the root
+  [README](../README.md#deployment).
 
 ## Attribution and Licences
 
@@ -468,4 +474,21 @@ Lint, format check, tests (11 files, 54 tests) and build pass.
 Not verified: screen-reader behaviour (no screen reader was used), Firefox and Safari, and
 performance on a phone.
 
-Remaining: public deployment.
+Website (2026-10-28, sprint session 9): the app is part of the "My GIS module" site at
+`/trondheim-3d/`. The Vite `base` was already relative (`./`). Changes:
+
+- A "← My GIS module" link in the panel, in the NTNU blue shared by all apps.
+- A shared favicon.
+- A fix for the mobile credits. Cesium's `Viewer.resize()` writes an inline `bottom` style on
+  the credit container (`Viewer.js`, CesiumJS 1.146.0), so the old `bottom: 65px` rule never
+  applied, and the collapsed sheet had always covered the Cesium ion credit line. The rule now
+  uses `!important` and the collapsed sheet's measured height (103 px with the link). Playwright
+  at 390 px: the credits end at y = 736, and the sheet starts at y = 741.
+
+Lint, format check, tests (11 files, 54 tests) and build pass. The assembled site, served under
+the repository prefix, passed a Playwright round trip (homepage → Trondheim 3D → "← My GIS
+module" → homepage) at 1600 and 390 px with no console errors or failed requests, using the local
+development token.
+
+Remaining: the first live deployment, and a check that the production token's URL restriction
+works.

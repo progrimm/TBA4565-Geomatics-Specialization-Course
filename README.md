@@ -1,116 +1,61 @@
-# TBA4565-Geomatics-Specialization-Course
+# My GIS module (TBA4565)
 
-Learning projects for the TBA4565 Geomatics Specialization Course: three web GIS applications, one GI Science-oriented (Project 1), one GI Systems-oriented (Project 2) and one 3D GIS-oriented (Project 3).
+Learning projects for the NTNU course TBA4565 Specialization Subject: GI Science and Systems, autumn 2026, by Åmund Grimstad. Three small web GIS apps, one per theme of the module, published together as one static website on GitHub Pages:
 
-## Project 1: Comparing Map Projections
+**<https://progrimm.github.io/TBA4565-Geomatics-Specialization-Course/>**. This URL serves the site once `pages.yml` has run on `main`; see [Deployment](#deployment).
 
-An interactive React/TypeScript map explores Mercator and Eckert IV projection distortion through a morph slider and equal-radius geographic circles. FastAPI serves 177 country geometries from PostGIS, together with projection-area statistics precomputed for every country. Click any country, or pick it from the list, to compare its spherical, ellipsoidal, Mercator and Eckert IV areas. A distortion-vs-latitude chart compares every country's Mercator inflation with the theoretical sec²φ. Intermediate blends are explicitly unmeasured. CI runs frontend lint and build plus the backend pytest suite.
+| Path | Project | Theme | Question |
+| --- | --- | --- | --- |
+| `/` | [Homepage](site/) | | "My GIS module": introduction, one card per project, credits |
+| `/projection-lab/` | [Project 1: Projection Lab](Project%201/README.md) | GI Science | How much does the Mercator projection inflate country areas, and how well does sec²φ predict it? |
+| `/trondheim-3d/` | [Project 2: Trondheim 3D](Project%202/README.md) | GI Systems | Where is the nearest public shelter in Trondheim, and how far is the walk? |
+| `/3dgs-viewer/` | [Project 3: 3DGS Viewer](Project%203/README.md) | 3D GIS | What can you learn from a 3D Gaussian splat file without uploading it anywhere? |
 
-- [Project overview and learning agreement](Project%201/README.md)
-- [Current checkpoint and learning log](Project%201/PROGRESS.md)
-- [Frontend setup and data source](Project%201/frontend/README.md)
-- [Backend setup, endpoints, and the country area method](Project%201/backend/README.md)
-- [Results: per-country CSV and summary](Project%201/results/summary.md)
-- [Database setup, SQL scripts, and verification](Project%201/database/README.md)
+Every app links back to the homepage with the same "← My GIS module" link and uses the same favicon.
 
-## Project 2: Trondheim 3D
+## The Projects
 
-A CesiumJS + React web app for exploring Trondheim in 3D. It shows terrain, OpenStreetMap buildings and DSB public shelters that you can click to inspect. CI runs lint, format check, tests and build.
+**Project 1: Projection Lab.** React, TypeScript and d3-geo draw one morphing Mercator/Eckert IV map of 177 Natural Earth countries. Projection-area statistics for every country are precomputed with pyproj and Shapely, stored in PostGIS and served by FastAPI. A distortion-vs-latitude chart compares each country's Mercator inflation with sec²φ. The full stack runs with Docker Compose. On Pages it runs in a **static data mode**, reading JSON exported from the same queries.
+[README](Project%201/README.md) · [progress log](Project%201/PROGRESS.md) · [results](Project%201/results/summary.md) · [frontend](Project%201/frontend/README.md) · [backend](Project%201/backend/README.md) · [database](Project%201/database/README.md)
 
-- [Setup, scripts, data, and attributions](Project%202/README.md)
+**Project 2: Trondheim 3D.** A CesiumJS and React app with terrain, OSM buildings and DSB public shelters. You click the ground to get the nearest shelter by walking distance along the OSM network.
+[README](Project%202/README.md)
 
-```powershell
-Copy-Item "Project 2/.env.example" "Project 2/.env"   # then add your Cesium ion token
-npm --prefix "Project 2" ci
-npm --prefix "Project 2" run dev
-```
+**Project 3: 3DGS Viewer.** A static viewer built with Spark and three.js. You open your own 3D Gaussian splat file (PLY, SPZ, .splat, .ksplat, SOG) to see its file facts, fix its up axis and measure a two-point distance. Nothing is uploaded.
+[README](Project%203/README.md)
 
-## Project 3: 3DGS Viewer
+## Build the Website Locally
 
-A CesiumJS + React web app for georeferenced 3D Gaussian splats, split out of Project 2 on 2026-10-27. It opens directly on a public Gaussian splat of the Microsoft campus in Redmond (USA). A globe gallery of several splats and a "Viewer lab" comparing 3DGS web viewers are planned. CI runs lint, format check, tests and build.
-
-- [Setup, scripts, token exception, and attributions](Project%203/README.md)
+Node 24 is required. From the repository root:
 
 ```powershell
-Copy-Item "Project 3/.env.example" "Project 3/.env"   # then add your Cesium ion token
-npm --prefix "Project 3" ci
-npm --prefix "Project 3" run dev
+npm run site:install   # npm ci in site/ and the three apps
+npm run site:build     # builds everything into dist-site/
+npm run site:preview   # serves dist-site/ at http://localhost:4300/TBA4565-Geomatics-Specialization-Course/
 ```
 
-The rest of this README covers Project 1.
+[scripts/build-site.mjs](scripts/build-site.mjs) builds the homepage and the three apps, then copies them into `dist-site/` under their Pages paths. Project 1 is built with `VITE_DATA_MODE=static`. Project 2 reads its Cesium ion token from `Project 2/.env` (copy `.env.example`). [scripts/preview-site.mjs](scripts/preview-site.mjs) serves the folder under the repository-name prefix, exactly as GitHub Pages does. A stray absolute `/` path therefore returns 404 locally instead of only on the live site. Every app uses a relative Vite `base` (`./`) for the same reason.
 
-## Run the Map
+To work on a single app, use its own scripts, e.g. `npm --prefix "Project 2" run dev`. Each project README has its run instructions. Project 1's full stack (Docker Compose or native PostGIS + FastAPI) is described in [Run the Map](Project%201/README.md#run-the-map).
 
-### Docker Compose
+## Deployment
 
-Docker Desktop is required. From the repository root, create the local environment file from the example and replace both placeholders with private development passwords. Keep `Project 1/.env` private; it is ignored by Git.
+[.github/workflows/pages.yml](.github/workflows/pages.yml) runs on pushes to `main` and on manual dispatch. It runs `site:install` and `site:build` and publishes `dist-site/` with [`actions/upload-pages-artifact`](https://github.com/actions/upload-pages-artifact) and [`actions/deploy-pages`](https://github.com/actions/deploy-pages); see GitHub's guide to [custom Pages workflows](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages). Lint and tests stay in the per-project workflows (`project1-ci.yml`, `project2-ci.yml`, `project3-ci.yml`) and `site-ci.yml` for the homepage.
 
-```powershell
-Copy-Item "Project 1/.env.example" "Project 1/.env"
-```
+One-time setup in GitHub and Cesium ion:
 
-For a new container database, initialize its country table and restricted API role once:
+- The repository is public. Pages on a free account needs a public repository.
+- Settings → Pages → Build and deployment → Source: **GitHub Actions**.
+- A Cesium ion token for the public site, separate from the development token, with only the `assets:read` scope and **Allowed URLs** set to `https://progrimm.github.io`. Store it as the repository secret **`CESIUM_ION_TOKEN`** (Settings → Secrets and variables → Actions). Vite embeds it in Project 2's JavaScript, so it is public by design, and the URL restriction is what limits its use ([Cesium ion access tokens](https://cesium.com/learn/ion/cesium-ion-access-tokens/)). The build fails early if the secret is missing.
 
-```powershell
-docker compose --env-file "Project 1/.env" -f "Project 1/compose.yaml" up -d db
-docker compose --env-file "Project 1/.env" -f "Project 1/compose.yaml" --profile setup run --build --rm bootstrap
-```
+## Repository Layout
 
-The bootstrap imports the versioned GeoJSON, applies the existing geometry preparation SQL, creates the read-only `projection_api` role and creates the empty `country_area_stats` table. It refuses to import if `public.countries` already exists. It is an explicit one-shot command, not part of ordinary application startup.
+- `site/`: the homepage, a small Vite site without a framework.
+- `Project 1/`, `Project 2/`, `Project 3/`: the apps; each builds and tests on its own.
+- `scripts/`: the website build and the prefix preview server.
+- `report/`: sprint plan and report material.
 
-Then precompute the projection-area statistics once. This runs the backend image as the database administrator:
+## Status (2026-10-28)
 
-```powershell
-docker compose --env-file "Project 1/.env" -f "Project 1/compose.yaml" --profile setup run --build --rm areas
-```
-
-Build and start the app:
-
-```powershell
-docker compose --env-file "Project 1/.env" -f "Project 1/compose.yaml" up -d --build web
-```
-
-Open <http://127.0.0.1:8080>. Nginx serves the production Vite build and proxies `/api/*` to FastAPI; FastAPI connects to PostGIS over Compose's private network. PostgreSQL is published only to the local machine on port `5433`, and the API on `8000`. The named database volume survives `docker compose down`; `down -v` deletes it and its contents.
-
-Check service state and API responses:
-
-```powershell
-docker compose --env-file "Project 1/.env" -f "Project 1/compose.yaml" ps
-Invoke-RestMethod http://127.0.0.1:8080/api/countries/count
-```
-
-### Native Development
-
-Alternatively, prepare the native database and restricted `projection_api` role using the database guide. Keep credentials in the external libpq password file, not the repository. With uv and Python 3.14 or newer, start the API from the repository root:
-
-```powershell
-uv sync --locked --project "Project 1/backend"
-uv run --locked --project "Project 1/backend" fastapi dev "Project 1/backend/main.py"
-```
-
-In a separate terminal, with Node.js supported by Vite (Node 24 used here):
-
-```powershell
-npm --prefix "Project 1/frontend" ci
-npm --prefix "Project 1/frontend" run dev
-```
-
-Open the local URL printed by Vite. Native PostgreSQL and FastAPI on port 8000 must remain running. Vite forwards `/api/*` to FastAPI, stripping `/api`; the static GeoJSON remains the import source, not a runtime fallback. Production and lint checks:
-
-```powershell
-npm --prefix "Project 1/frontend" run build
-npm --prefix "Project 1/frontend" run lint
-```
-
-## Status
-
-All six build phases of Project 1 are done and verified locally:
-
-- static maps;
-- the distortion study with circles and the morph slider;
-- the PostGIS import, repair, areas and index;
-- the restricted API and projection statistics for **all 177 countries**;
-- Docker Compose;
-- the country panel and distortion-vs-latitude chart.
-
-On 2026-10-27 the Compose setup (bootstrap, area precompute, app) was replayed on a fresh, empty volume. The API it served matched `results/country_areas.csv` to within 1.1e-13 relative. Headline results and the method are in the [Project 1 README](Project%201/README.md). The remaining limitations are listed there too. The main open item is deployment: the GitHub Pages static data mode at `/projection-lab/` is not built yet.
+- **Done and verified locally:** all three projects (see each README); the homepage; the shared home links; Project 1's static data mode; and the one-command build. The assembled site, served under the repository prefix, passed a Playwright round trip (homepage → each project → "← My GIS module" → homepage) at 1600 and 390 px, with 0 console errors and 0 failed requests.
+- **Not verified yet:** the first `pages.yml` run and the live URL, the CI workflows on GitHub, and the production Cesium token's URL restriction.

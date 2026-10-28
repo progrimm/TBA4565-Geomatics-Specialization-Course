@@ -44,8 +44,8 @@ and inspect it entirely on the client?_
 - **Errors** are shown as messages, and the viewer keeps working. This covers unsupported
   extensions, PLY files without splat properties (a mesh or a plain point cloud) and files Spark
   cannot parse. If a new file fails, the splat already open stays.
-- A "← My GIS module" link goes back to the homepage. The panel becomes a bottom sheet on
-  mobile.
+- A "← My GIS module" link goes back to the homepage. It is the same NTNU-blue link as in the
+  other apps. The panel becomes a bottom sheet on mobile.
 
 ## Getting Started
 
@@ -277,5 +277,15 @@ git history at commit `9442d81`.
 
 ## Status
 
-The rebuild as a file viewer is done (2026-10-28). Next: session 9, the "My GIS module" website,
-which will serve this app at `/3dgs-viewer/`.
+The rebuild as a file viewer is done (2026-10-28).
+
+Website (2026-10-28, sprint session 9): the app is built into `/3dgs-viewer/` of the "My GIS
+module" site by the root `npm run site:build`. The home link was restyled to the shared NTNU-blue
+link, and the app got the shared favicon. Lint, format check, tests (7 files, 26 tests) and build
+pass. The assembled site, served under the repository prefix, passed a Playwright round trip
+(homepage → 3DGS Viewer → "← My GIS module" → homepage) at 1600 and 390 px with no console
+errors or failed requests. The homepage card's screenshot shows the "SOAR Telescope" splat
+(see [Test data](#test-data)), loaded from git history only for that screenshot. The splat is
+credited on the homepage and is still not in the repository.
+
+Remaining: the first live deployment check.

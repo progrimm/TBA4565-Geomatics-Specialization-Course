@@ -4,15 +4,15 @@ Project scope and tutoring rules: [README.md](README.md).
 
 ## Current Checkpoint
 
-- **Last updated:** 2026-10-27, in the sprint (the agent implements directly, per the root CLAUDE.md override).
-- **Status:** all six build phases are done and verified locally. Projection statistics cover all 177 countries. The one open deployment item is GitHub Pages static data mode; see [Limitations](README.md#limitations).
+- **Last updated:** 2026-10-28, in the sprint (the agent implements directly, per the root CLAUDE.md override).
+- **Status:** all six build phases are done and verified locally. Projection statistics cover all 177 countries. The GitHub Pages static data mode is built and checked locally (2026-10-28); the live deployment is still pending. See [Limitations](README.md#limitations).
 - **Frontend:**
   - React/TypeScript/Vite and D3 draw one morphing SVG map with graticule, world outline, 30 finite circles and a keyboard slider.
   - Any country can be selected by click, tap, the country list, or the arrow keys on the chart, which opens its area panel.
   - The distortion-vs-latitude chart (d3-scale, log y-axis, sec²φ curve) and a plain-language Method section.
 - **Backend:** Python 3.14.7, FastAPI 0.141.1, Psycopg 3.3.6, pyproj, Shapely and pytest (dev).
   - GET endpoints: `/health`, `/countries/count`, `/countries`, `/countries/areas`, `/countries/{adm0_a3}/areas`.
-  - [country_areas.py](backend/country_areas.py) `compute` fills `public.country_area_stats`; `export` writes [results/](results/).
+  - [country_areas.py](backend/country_areas.py) `compute` fills `public.country_area_stats`; `export` writes [results/](results/); `export-geometry` writes the static country GeoJSON.
 - **Database:** native `localhost:5432` and Compose `127.0.0.1:5433` both hold `public.countries` (177 valid MultiPolygons, GiST index, stored WGS 84 areas) and `public.country_area_stats` (177 rows).
 - **Results:** [results/summary.md](results/summary.md) and [results/country_areas.csv](results/country_areas.csv). Excluding the clipped Antarctica:
   - the median Mercator ratio is 1.2063 and the maximum 16.5433 (Greenland);
@@ -24,8 +24,8 @@ Project scope and tutoring rules: [README.md](README.md).
   - CI workflow linted with actionlint;
   - Playwright: 39 interaction checks and 34 accessibility checks at 1600/390/320 px, with screenshots inspected;
   - a fresh-volume Compose replay matched the CSV to within 1.1e-13.
-- **Remaining:** static Pages mode; CI not yet observed on GitHub; browser tests not committed; native-setup replay; generic HTTP 500s for other database failures. See [Limitations](README.md#limitations).
-- **Next action:** wire static data mode for GitHub Pages at `/projection-lab/`, then write the report from `results/summary.md` and the chart.
+- **Remaining:** the live Pages check; CI not yet observed on GitHub; Compose images not rebuilt after the relative `base`; browser tests not committed; native-setup replay; generic HTTP 500s for other database failures. See [Limitations](README.md#limitations).
+- **Next action:** deploy the site and check `/projection-lab/` live, then write the report from `results/summary.md` and the chart.
 
 ## Phase Tracker
 
@@ -254,6 +254,19 @@ Project scope and tutoring rules: [README.md](README.md).
   - a mocked 502 shows the unreachable message;
   - the 700 px and 320 px chart screenshots were inspected;
   - pytest: 12 passed.
+
+### 2026-10-28: Static Data Mode for GitHub Pages (sprint session 9)
+
+- **Why:** the module website on GitHub Pages has no backend. The frontend therefore gets a second data source: files exported from the same queries the API serves.
+- **Backend:** the `/countries` SQL moved from `main.py` into `country_areas.read_countries()`. The endpoint and the new `export-geometry` command both call it. `export-geometry` wrote [frontend/public/data/countries.geojson](frontend/public/data/countries.geojson) (177 features, 262,508 bytes) from the native database.
+- **Frontend:** [src/dataSource.ts](frontend/src/dataSource.ts) picks `/api/...` or `data/...` from `VITE_DATA_MODE`. The Vite `base` is now `./`. In static mode the footer says the data is a snapshot. A "← My GIS module" link (NTNU blue, shared with the other apps) sits above the header, and the page has the shared favicon.
+- **Verification:**
+  - `main.get_countries() == json.load(countries.geojson)` returned `True` (177 features);
+  - pytest: 12 passed; frontend lint passes; the build passes in API mode and with `VITE_DATA_MODE=static`;
+  - the static bundle contains `./data/countries.geojson` and no `/api/countries` string;
+  - Playwright on the static build served under `/projection-lab/` (by `scripts/preview-site.mjs`), with no API running: 177 country paths drawn, the Greenland panel and the chart render, 0 console errors and 0 failed requests at 1600 and 390 px, no horizontal overflow; screenshots inspected;
+  - the assembled site (`npm run site:build`, served under `/TBA4565-Geomatics-Specialization-Course/`) passed the homepage → Projection Lab → home round trip at 1600 and 390 px with no console errors or failed requests.
+- **Not verified:** the live GitHub Pages URL (not deployed yet) and the Docker Compose images after the `base` change (Docker Desktop was not running).
 
 ## Updating Future Checkpoints
 

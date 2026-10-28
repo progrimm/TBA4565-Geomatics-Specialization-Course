@@ -36,7 +36,7 @@ The API image is built from this directory's Dockerfile using Python 3.14 and th
 docker compose --env-file "Project 1/.env" -f "Project 1/compose.yaml" up -d --build web
 ```
 
-Compose waits for PostGIS to be healthy before starting the API, and the frontend waits for the API health check. The API listens on port 8000 inside the Compose network and is also published locally at <http://127.0.0.1:8000>. For the full bootstrap and end-to-end workflow, see the [Project 1 guide](../../README.md#run-the-map).
+Compose waits for PostGIS to be healthy before starting the API, and the frontend waits for the API health check. The API listens on port 8000 inside the Compose network and is also published locally at <http://127.0.0.1:8000>. For the full bootstrap and end-to-end workflow, see the [Project 1 guide](../README.md#run-the-map).
 
 The connection settings are centralized in [database.py](database.py). Environment variables override the local defaults: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and optional `DB_PASSWORD`. This lets the HTTP endpoints and the country calculation CLI use the same settings. The CLI writes the table as `postgres`, by setting `DB_USER=postgres`. See the [database guide](../database/README.md#7-precomputed-country-area-statistics).
 
@@ -94,13 +94,16 @@ Standalone use, from this directory:
 uv run --locked country_areas.py compute --dry-run --only GRL ATA   # print, no write
 uv run --locked pytest                                               # unit tests
 uv run --locked country_areas.py export                              # table -> results/ and static JSON
+uv run --locked country_areas.py export-geometry                     # /countries GeoJSON for the Pages build
 ```
 
 `export` reads `public.country_area_stats`, through the `projection_api` role by default, and writes three files:
 
 - [../results/country_areas.csv](../results/country_areas.csv): one row per country, with the table columns at full float precision.
-- [../frontend/public/data/country_areas.json](../frontend/public/data/country_areas.json): the same records in the API response shape, prepared for a later static GitHub Pages mode. The frontend does not use it yet.
+- [../frontend/public/data/country_areas.json](../frontend/public/data/country_areas.json): the same records in the API response shape, read by the frontend's static data mode on GitHub Pages.
 - [../results/summary.md](../results/summary.md): every number in it is computed from the rows. It covers median and maximum inflation, the five most and least inflated countries, the Eckert IV residual, how far each ratio sits from sec²(φc), and the reasons for the gap.
+
+`export-geometry` writes [../frontend/public/data/countries.geojson](../frontend/public/data/countries.geojson): the `/countries` FeatureCollection (`admin`, `adm0_a3`, `geodesic_area_m2` and the repaired geometry). The query lives in `read_countries()`, which the endpoint also calls, so the file and the API cannot drift apart. On 2026-10-28 it was run against the native database: 177 features, 262,508 bytes, and `main.get_countries() == json.load(countries.geojson)` returned `True`. It is a separate command so that re-exporting geometry does not rewrite the dated `summary.md`.
 
 The 2026-10-27 export was made from the native database. Its headline numbers were cross-checked against an independent SQL query: n = 176 excluding ATA, median 1.2063, maximum 16.5433, minimum 1.0007, median ratio/sec² 1.0010, minimum 1.000010, 156 within 1% and 169 within 10%, Eckert IV worst 2.486e-6. They matched.
 

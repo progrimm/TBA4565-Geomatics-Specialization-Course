@@ -137,5 +137,9 @@ public/data/ – static datasets (shelters GeoJSON, walking network JSON)
   credit), WFS attribute validation, Playwright checks in scripts/
   (check-failed-layers, check-accessibility, benchmark-buildings), SSE 16 kept,
   panel surface 85 % for contrast.
-- Next: deployment (root sprint session 9).
+- 2026-10-28: website (root sprint session 9). "← My GIS module" link in the panel,
+  shared favicon, mobile credit fix (`Viewer.resize()` sets an inline `bottom`, so the rule needs
+  `!important`). Built into `/trondheim-3d/` by the root `npm run site:build`; deployed by
+  `.github/workflows/pages.yml` with the `CESIUM_ION_TOKEN` secret.
+- Next: first live deployment check.
   (Update this section after each module.)

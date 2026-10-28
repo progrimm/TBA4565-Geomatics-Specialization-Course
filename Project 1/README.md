@@ -31,7 +31,92 @@ The frontend loads database-backed GeoJSON through FastAPI. In native developmen
 
 Docker Compose is implemented and locally verified for PostGIS, FastAPI, and the production frontend. An explicit setup-profile bootstrap imports the versioned GeoJSON, prepares geometries and areas, and creates the restricted API role. It refuses to overwrite an existing countries table. A separate `areas` setup service precomputes the statistics. On 2026-10-27 the whole Compose sequence was replayed on a fresh, empty volume with [compose.replay.yaml](compose.replay.yaml). Its API matched [results/country_areas.csv](results/country_areas.csv) to within 1.1e-13 relative; see the [database guide](database/README.md#fresh-volume-replay). GitHub Actions ([project1-ci.yml](../.github/workflows/project1-ci.yml)) runs frontend lint and build plus the backend pytest suite.
 
-See the [frontend guide](frontend/README.md) to run the map, the [backend guide](backend/README.md) for endpoints and measurement details, the [database guide](database/README.md) for setup and read-only checks, and the [progress log](PROGRESS.md) for verification evidence. The database guide separates fresh setup from checks safe to run on the existing prepared database.
+On GitHub Pages the frontend runs in a **static data mode** that reads exported JSON instead of the API; see [Static Data Mode](#static-data-mode-github-pages).
+
+See [Run the Map](#run-the-map) and the [frontend guide](frontend/README.md) to run the map, the [backend guide](backend/README.md) for endpoints and measurement details, the [database guide](database/README.md) for setup and read-only checks, and the [progress log](PROGRESS.md) for verification evidence. The database guide separates fresh setup from checks safe to run on the existing prepared database.
+
+## Run the Map
+
+### Docker Compose
+
+Docker Desktop is required. From the repository root, create the local environment file from the example and replace both placeholders with private development passwords. Keep `Project 1/.env` private; it is ignored by Git.
+
+```powershell
+Copy-Item "Project 1/.env.example" "Project 1/.env"
+```
+
+For a new container database, initialize its country table and restricted API role once:
+
+```powershell
+docker compose --env-file "Project 1/.env" -f "Project 1/compose.yaml" up -d db
+docker compose --env-file "Project 1/.env" -f "Project 1/compose.yaml" --profile setup run --build --rm bootstrap
+```
+
+The bootstrap imports the versioned GeoJSON, applies the existing geometry preparation SQL, creates the read-only `projection_api` role and creates the empty `country_area_stats` table. It refuses to import if `public.countries` already exists. It is an explicit one-shot command, not part of ordinary application startup.
+
+Then precompute the projection-area statistics once. This runs the backend image as the database administrator:
+
+```powershell
+docker compose --env-file "Project 1/.env" -f "Project 1/compose.yaml" --profile setup run --build --rm areas
+```
+
+Build and start the app:
+
+```powershell
+docker compose --env-file "Project 1/.env" -f "Project 1/compose.yaml" up -d --build web
+```
+
+Open <http://127.0.0.1:8080>. Nginx serves the production Vite build and proxies `/api/*` to FastAPI; FastAPI connects to PostGIS over Compose's private network. PostgreSQL is published only to the local machine on port `5433`, and the API on `8000`. The named database volume survives `docker compose down`; `down -v` deletes it and its contents.
+
+Check service state and API responses:
+
+```powershell
+docker compose --env-file "Project 1/.env" -f "Project 1/compose.yaml" ps
+Invoke-RestMethod http://127.0.0.1:8080/api/countries/count
+```
+
+### Native Development
+
+Alternatively, prepare the native database and restricted `projection_api` role using the database guide. Keep credentials in the external libpq password file, not the repository. With uv and Python 3.14 or newer, start the API from the repository root:
+
+```powershell
+uv sync --locked --project "Project 1/backend"
+uv run --locked --project "Project 1/backend" fastapi dev "Project 1/backend/main.py"
+```
+
+In a separate terminal, with Node.js supported by Vite (Node 24 used here):
+
+```powershell
+npm --prefix "Project 1/frontend" ci
+npm --prefix "Project 1/frontend" run dev
+```
+
+Open the local URL printed by Vite. Native PostgreSQL and FastAPI on port 8000 must remain running. Vite forwards `/api/*` to FastAPI, stripping `/api`; the static GeoJSON remains the import source, not a runtime fallback. Production and lint checks:
+
+```powershell
+npm --prefix "Project 1/frontend" run build
+npm --prefix "Project 1/frontend" run lint
+```
+
+### Static Data Mode (GitHub Pages)
+
+The public site at `/projection-lab/` cannot run FastAPI or PostGIS, so it uses a separate static build of the same frontend (added 2026-10-28):
+
+```powershell
+uv run --locked --project "Project 1/backend" "Project 1/backend/country_areas.py" export-geometry   # once; needs the database
+$env:VITE_DATA_MODE = "static"; npm --prefix "Project 1/frontend" run build; Remove-Item Env:VITE_DATA_MODE
+```
+
+`npm run site:build` in the repository root does the build step for the whole website. With `VITE_DATA_MODE=static`, [src/dataSource.ts](frontend/src/dataSource.ts) points the two requests at files in `public/data/` instead of `/api`:
+
+| Request | API mode (Vite proxy, Compose) | Static mode (Pages) |
+| --- | --- | --- |
+| Country geometry | `/api/countries` | `data/countries.geojson`, written by `country_areas.py export-geometry` |
+| Area statistics | `/api/countries/areas` | `data/country_areas.json`, written by `country_areas.py export` |
+
+Both files come from the same code as the endpoints: `export-geometry` calls `read_countries()`, which `/countries` also uses, and `country_areas.json` is `to_response()` over the stored table. The static site is therefore a **snapshot**: nothing is computed in the browser or queried live, and a database change only reaches Pages after a new export and commit. The app says so in its footer. Docker Compose remains the reference full-stack setup.
+
+The Vite `base` is `./` (relative), so the same build works at `/` (Nginx in Compose) and under `/projection-lab/` (Pages). See the Vite docs on [env variables and modes](https://vite.dev/guide/env-and-mode) and [`base`](https://vite.dev/config/shared-options#base).
 
 ## Stack
 
@@ -57,7 +142,7 @@ See the [frontend guide](frontend/README.md) to run the map, the [backend guide]
 3. **Complete:** native PostgreSQL/PostGIS setup, ogr2ogr import, geometry validation/repair, stored geodesic areas, and a verified spatial-index query.
 4. **Complete:** restricted database login, FastAPI GeoJSON, API-backed map, winding/rendering checks, and pyproj/Shapely projection statistics. These started with Greenland (2026-09-21) and were extended to all 177 countries on 2026-10-27: precomputed in PostGIS, exported to CSV, and tested with pytest.
 5. **Complete and locally verified:** containerize PostGIS, FastAPI, and the production frontend with Docker Compose, including an explicit guarded data bootstrap, the `areas` precompute service, persistent storage, and private local configuration. Replayed on a fresh volume on 2026-10-27.
-6. **Complete locally (2026-10-27):** any country can be selected by click, tap or keyboard to open its area panel. The distortion-vs-latitude chart is keyboard-navigable, the Method section is written for non-experts, and the layout was checked for contrast and at 320 px. CI was added. **Open:** the static GitHub Pages mode. `frontend/public/data/country_areas.json` is already generated for it.
+6. **Complete locally (2026-10-27):** any country can be selected by click, tap or keyboard to open its area panel. The distortion-vs-latitude chart is keyboard-navigable, the Method section is written for non-experts, and the layout was checked for contrast and at 320 px. CI was added. On 2026-10-28 the static GitHub Pages mode was added for `/projection-lab/` (see [Static Data Mode](#static-data-mode-github-pages)).
 
 The implemented area ratio is projected square meters divided by spherical reference square meters, using radius 6,371,007.1809 m for both. The stored WGS 84 ellipsoidal area is reported separately. Great-circle boundary densification at 20/10/5 km checks convergence. Greenland's Mercator ratio is approximately 16.5433 and Eckert IV's approximately 1. See the [method](backend/README.md#country-method), including how poles (Antarctica), the antimeridian and the centroid latitude are handled.
 
@@ -67,7 +152,8 @@ Country areas describe this generalized dataset, including database repairs, not
 
 ## Limitations
 
-- **Not deployed.** GitHub Pages static data mode (Vite `base` `/projection-lab/`, reading JSON instead of `/api`) is not built. The app currently needs FastAPI and PostGIS. The geometry for static mode would also have to be exported, because `country_areas.json` holds statistics only.
+- **Pages is a snapshot.** The static build shows the exported geometry and statistics; it does not query PostGIS. It was checked locally under a `/projection-lab/` prefix, not yet on the live site.
+- **Compose images not rebuilt.** After the relative Vite `base` change (2026-10-28) the frontend was rebuilt and browser-checked with npm, but the Docker images were not rebuilt, because Docker Desktop was not running.
 - **CI not yet observed.** The workflow was linted with actionlint, and its steps were run locally. It has not run on GitHub because the branch was not pushed.
 - **Generalised boundaries.** All areas describe Natural Earth 1:110m boundaries, including the database repairs of USA and Sudan. They are not official national figures.
 - **Sphere, not ellipsoid.** Projection ratios use a sphere of radius 6,371,007.1809 m. The WGS 84 ellipsoidal area is reported separately and differs by −0.45% to +0.81% per country.
