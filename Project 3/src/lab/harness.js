@@ -93,7 +93,7 @@ export function createLabPage({
     <header class="lab-page__header">
       <h1></h1>
       <p class="lab-page__engine"></p>
-      <p class="lab-page__engine" id="lab-controls"></p>
+      <p class="lab-page__controls" id="lab-controls"></p>
     </header>
     <div class="lab-stage"></div>
     <p class="lab-status" role="status" aria-live="polite"></p>`;

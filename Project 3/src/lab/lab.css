@@ -80,6 +80,7 @@ a {
 }
 
 .lab-page__engine,
+.lab-page__controls,
 .lab-note {
   margin: 0 0 12px;
   color: var(--text-muted);

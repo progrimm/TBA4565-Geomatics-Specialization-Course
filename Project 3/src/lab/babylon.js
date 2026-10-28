@@ -26,7 +26,9 @@ const toBabylon = ([x, y, z]) => new Vector3(x, -y, z);
 
 try {
   // adaptToDeviceRatio = false and a fixed size keep the drawing buffer at 1280 × 720.
-  const engine = new Engine(page.canvas, false, {}, false);
+  // canvasTabIndex 0: Babylon re-applies this on every pointer move; its default (1)
+  // would push the canvas ahead of the page links in the tab order.
+  const engine = new Engine(page.canvas, false, { canvasTabIndex: 0 }, false);
   engine.setSize(CANVAS.width, CANVAS.height);
 
   const scene = new Scene(engine);

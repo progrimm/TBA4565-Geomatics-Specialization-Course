@@ -49,8 +49,9 @@ body {
 /* ---------- Panel ---------- */
 .panel {
   position: absolute;
-  /* The panel comes before the map in the DOM (first in tab order), so it needs
-     to be lifted above the Cesium widget, which is painted later. */
+  /* The panel comes before the map in the DOM (first in tab order), so it is lifted
+     above the Cesium widget. The overlays that used to paint over it (InfoBox,
+     messages, split line) get z-index 2 to keep that order. */
   z-index: 1;
   top: var(--gutter);
   left: var(--gutter);
@@ -267,6 +268,7 @@ body {
 /* ---------- Swipe line over the map ---------- */
 .split-line {
   position: absolute;
+  z-index: 2;
   top: 0;
   bottom: 0;
   width: 2px;
@@ -348,6 +350,7 @@ body {
 /* ---------- Messages (toasts) ---------- */
 #messages {
   position: absolute;
+  z-index: 2;
   top: var(--gutter);
   left: 50%;
   transform: translateX(-50%);
@@ -374,6 +377,7 @@ body {
 
 /* ---------- Cesium widget overrides ---------- */
 .cesium-infoBox {
+  z-index: 2;
   top: var(--gutter);
   right: var(--gutter);
   width: 300px;

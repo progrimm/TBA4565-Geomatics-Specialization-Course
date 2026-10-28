@@ -6,7 +6,6 @@ import {
   CameraComponentSystem,
   Color,
   Entity,
-  FILLMODE_NONE,
   GSplatComponentSystem,
   GSplatHandler,
   Mouse,
@@ -33,6 +32,31 @@ const page = createLabPage({
 // PlayCanvas's own examples. Shared poses (PLY coordinates, -y up) get the same turn.
 const turn = ([x, y, z]) => new Vec3(-x, -y, z);
 
+/**
+ * CameraControls only reads the keyboard in fly mode (arrows/WASD move the camera),
+ * and it listens on `window`, so it would also react while the user tabs through the
+ * page. Fly mode is therefore on only while the canvas has focus. On blur, keys still
+ * held are released, because CameraControls never sees their keyup.
+ * @param {HTMLCanvasElement} canvas
+ * @param {{enableFly: boolean}} controls - the CameraControls script instance.
+ */
+function enableKeyboardWhileFocused(canvas, controls) {
+  const held = new Set();
+  canvas.addEventListener('focus', () => {
+    controls.enableFly = true;
+  });
+  canvas.addEventListener('keydown', (event) => {
+    held.add(event.code);
+    if (event.code.startsWith('Arrow') || event.code === 'Space') event.preventDefault();
+  });
+  canvas.addEventListener('keyup', (event) => held.delete(event.code));
+  canvas.addEventListener('blur', () => {
+    for (const code of held) window.dispatchEvent(new KeyboardEvent('keyup', { code }));
+    held.clear();
+    controls.enableFly = false;
+  });
+}
+
 try {
   const device = await createGraphicsDevice(page.canvas, {
     deviceTypes: ['webgl2'],
@@ -49,13 +73,9 @@ try {
 
   const app = new AppBase(page.canvas);
   app.init(options);
-  app.setCanvasFillMode(FILLMODE_NONE, CANVAS.width, CANVAS.height);
+  // Fixed drawing buffer; the lab stylesheet sizes the canvas. No setCanvasFillMode:
+  // it writes an inline 1280 × 720 px CSS size, which clipped the view on narrow screens.
   app.setCanvasResolution(RESOLUTION_FIXED, CANVAS.width, CANVAS.height);
-  // setCanvasFillMode writes an inline 1280 × 720 px CSS size, which overrides the lab
-  // stylesheet and clipped the view on narrow screens. Let the stylesheet size the
-  // canvas; the drawing buffer stays fixed (RESOLUTION_FIXED).
-  page.canvas.style.removeProperty('width');
-  page.canvas.style.removeProperty('height');
 
   const camera = new Entity('camera');
   camera.addComponent('camera', {
@@ -73,11 +93,10 @@ try {
 
   if (!page.bench) {
     camera.addComponent('script');
-    camera.script.create(CameraControls, {
-      // Fly mode is what gives CameraControls keyboard input (arrows/WASD move the
-      // camera); a mouse drag switches back to orbiting.
-      properties: { enableFly: true, focusPoint: turn(CAMERA.target) },
+    const controls = camera.script.create(CameraControls, {
+      properties: { enableFly: false, focusPoint: turn(CAMERA.target) },
     });
+    enableKeyboardWhileFocused(page.canvas, controls);
   }
 
   page.status('Loading the splat…');
