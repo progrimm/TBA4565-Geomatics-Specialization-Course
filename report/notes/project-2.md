@@ -290,7 +290,7 @@ Spotted in the code (not stated in the docs):
 - The Cesium ion token is public in the bundle. This is mitigated by the Allowed URLs restriction, which was verified on 2026-10-28 **[docs]**.
 - The production JS bundle is a single 4.4 MB chunk (1.2 MB gzip) **[re-run]**; there is no code splitting.
 - The browser checks and the benchmark depend on live Cesium ion and network conditions and are not in CI.
-- Doc inconsistency: the `CLAUDE.md` hardening line still says "panel surface 85 % for contrast", which the NTNU design (94 % white) superseded. The `CLAUDE.md` NTNU-design line and the README are current. (`CLAUDE.md` §Current status; `src/style.css` `--surface`)
+- **FIXED 2026-10-29** (the line now notes it was superseded). Doc inconsistency: the `CLAUDE.md` hardening line still says "panel surface 85 % for contrast", which the NTNU design (94 % white) superseded. The `CLAUDE.md` NTNU-design line and the README are current. (`CLAUDE.md` §Current status; `src/style.css` `--surface`)
 
 ## 9. Future work
 

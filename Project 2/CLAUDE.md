@@ -136,7 +136,7 @@ public/data/ – static datasets (shelters GeoJSON, walking network JSON)
 - 2026-10-28: hardening. Shelter provenance (metadata member, fetch date in
   credit), WFS attribute validation, Playwright checks in scripts/
   (check-failed-layers, check-accessibility, benchmark-buildings), SSE 16 kept,
-  panel surface 85 % for contrast.
+  dark panel surface 85 % for contrast (later replaced by the 94 % white surface of the NTNU design).
 - 2026-10-28: website (root sprint session 9). "← My GIS module" link in the panel,
   shared favicon, mobile credit fix (`Viewer.resize()` sets an inline `bottom`, so the rule needs
   `!important`). Built into `/trondheim-3d/` by the root `npm run site:build`; deployed by
