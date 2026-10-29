@@ -269,6 +269,17 @@ Project scope and tutoring rules: [README.md](README.md).
 - **Live:** after the push of `main`, [Project 1 CI](https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course/actions/runs/40763110611) and the [Pages deploy](https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course/actions/runs/40763110583) passed on GitHub. On <https://progrimm.github.io/TBA4565-Geomatics-Specialization-Course/projection-lab/> the Playwright round trip passed at 1600 and 390 px with no console errors or failed requests.
 - **Not verified:** the Docker Compose images after the `base` change (Docker Desktop was not running).
 
+### 2026-10-29: Fixes from the Report Evidence Pass
+
+- **Empty table returned 404:** `GET /countries/{adm0_a3}/areas` answered 404 ("unknown code") when `country_area_stats` existed but was empty, although the docs promised 503. [main.py](backend/main.py) now checks the whole table before it answers 404. A missing or empty table means "not computed yet", which is a server state (503), not a client mistake (404).
+- **New API tests:** [tests/test_api.py](backend/tests/test_api.py) (6 tests) uses FastAPI's TestClient with `read_table` replaced by an in-memory table, so CI still needs no database. It covers a known code in lower case (200), an unknown code (404), and a missing or empty table on both area routes (503). The empty-table case on the single-country route failed before the fix (`1 failed, 5 passed`).
+- **Antarctica compared different regions:** its panel showed the unclipped WGS 84 ellipsoid area (12,335,956 km²) next to the clipped spherical reference (11,290,119 km²) with only the second one labelled. The ellipsoid row now reads "WGS 84 ellipsoid (whole country)" for clipped countries. The data is unchanged. Recomputing a clipped ellipsoidal area would mean changing the PostGIS step and re-exporting the static data a day before the deadline, and the ratios never use the ellipsoidal area.
+- **Verification:**
+  - pytest: 18 passed (12 calculation + 6 API);
+  - frontend lint passes; the build passes in API mode and with `VITE_DATA_MODE=static`;
+  - Playwright on the static build at 1600 and 390 px: Antarctica shows "WGS 84 ellipsoid (whole country)" and "Sphere · reference (clipped)", Greenland is unchanged, there are 0 console errors and no horizontal overflow, and the screenshots were inspected.
+- **Not verified:** the Docker Compose API image with this change (Docker Desktop was not running).
+
 ## Updating Future Checkpoints
 
 After each completed step, update the current checkpoint and append a short dated entry containing:

@@ -131,6 +131,8 @@ These values were observed from the current generalized Greenland geometry. Fina
 - geometry entirely beyond the limit, which is rejected;
 - a Greenland regression against the static GeoJSON.
 
+[tests/test_api.py](tests/test_api.py) tests the area endpoints with FastAPI's [TestClient](https://fastapi.tiangolo.com/tutorial/testing/). It replaces `read_table` with an in-memory table, so it needs no database: a known code (any case) returns 200, an unknown code 404, and a missing or empty table 503 on both area routes.
+
 [conftest.py](conftest.py) lets the repository-root command in CLAUDE.md find the module:
 
 ```powershell
@@ -161,6 +163,8 @@ The agent ran these checks on 2026-10-27:
   - GRL Mercator 16.543261873210074 and Eckert IV 0.9999997520352765, identical to the Compose response before the change.
   - `grl` returned 200 and `XXX` 404.
 - `uv run --locked --project "Project 1/backend" pytest`: 12 passed.
+
+On 2026-10-29 the report evidence pass found that `/countries/{adm0_a3}/areas` returned 404 instead of 503 when the table existed but was empty. The route now checks the whole table before it answers 404. `tests/test_api.py` failed on that case before the fix and passes after it; pytest: 18 passed.
 
 Remaining work:
 

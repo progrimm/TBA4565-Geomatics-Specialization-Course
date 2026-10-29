@@ -46,5 +46,7 @@ def get_country_areas():
 def get_country_area(adm0_a3: str):
     rows = read_area_stats(adm0_a3.upper())
     if not rows:
+        # An empty table means nothing is computed (503), not an unknown code (404).
+        read_area_stats()
         raise HTTPException(404, f"No area statistics for country code {adm0_a3!r}")
     return to_response(rows[0])

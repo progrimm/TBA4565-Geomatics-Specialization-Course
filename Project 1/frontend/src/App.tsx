@@ -332,7 +332,10 @@ function App() {
                 )}
                 <dl className="reference-areas">
                   <div>
-                    <dt>WGS 84 ellipsoid</dt>
+                    <dt>
+                      WGS 84 ellipsoid
+                      {selectedAreas.clipping.is_clipped ? ' (whole country)' : ''}
+                    </dt>
                     <dd>{formatArea(selectedAreas.ellipsoidal_area_m2)}</dd>
                   </div>
                   <div>

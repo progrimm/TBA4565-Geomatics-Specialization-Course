@@ -99,7 +99,7 @@ The GI Science / GI Systems classification is my judgement unless the docs say o
   - `/countries/count`;
   - `/countries`: a FeatureCollection;
   - `/countries/areas`;
-  - `/countries/{adm0_a3}/areas`: case-insensitive; 404 for an unknown code; 503 if the table is missing.
+  - `/countries/{adm0_a3}/areas`: case-insensitive; 404 for an unknown code; 503 if the table is missing or empty (the empty case on this route was fixed on 2026-10-29, see §8).
   (`backend/main.py`)
 
 ```mermaid
@@ -255,7 +255,7 @@ All numbers below exclude the clipped Antarctica, n = 176, unless stated otherwi
 - the fresh-volume Compose replay on 2026-10-27 matched (§6).
 (`database/README.md`)
 
-**API checks** [docs]: run through FastAPI TestClient and HTTP (GRL 15 fields bit-for-bit, `grl` → 200, `XXX` → 404, simulated missing table → 503), but ad hoc; no API tests are committed. (`backend/README.md` §Verification)
+**API checks** [docs]: run through FastAPI TestClient and HTTP (GRL 15 fields bit-for-bit, `grl` → 200, `XXX` → 404, simulated missing table → 503), ad hoc at the time. Since 2026-10-29 `backend/tests/test_api.py` (6 tests, TestClient with an in-memory table) covers 200/404/503 for both area routes; pytest 18 passed [re-run]. (`backend/README.md` §Verification)
 
 **Not re-run here:** anything that needs PostGIS or Docker (Docker Desktop state unknown), the Playwright suites, and the browser screenshots.
 
@@ -283,11 +283,11 @@ All numbers below exclude the clipped Antarctica, n = 176, unless stated otherwi
 - Convergence passing is evidence of numerical stability, not an error bound for the boundaries. (`backend/README.md`)
 
 **Spotted in the code or data during this collection (not in the docs):**
-- `GET /countries/{code}/areas` against an existing but *empty* table returns 404, not 503: `read_area_stats` only checks for emptiness when `code is None`. The docs say "a missing or empty table returns 503", which holds only for `/countries/areas` and for a missing table. (`backend/main.py` L28–48)
+- **FIXED 2026-10-29 (`backend/main.py`, `tests/test_api.py`):** `GET /countries/{code}/areas` against an existing but *empty* table returns 404, not 503: `read_area_stats` only checks for emptiness when `code is None`. The docs say "a missing or empty table returns 503", which holds only for `/countries/areas` and for a missing table. (`backend/main.py` L28–48)
 - The convergence check covers only the 10→5 km step. Eckert IV LUX reaches 9.31e-6, close to the 1e-5 threshold, and the 20→10 km changes are above 1e-5. [re-run]
-- For ATA, `ellipsoidal_area_m2` is the *unclipped* WGS 84 area while `spherical_area_m2` is clipped, so the two are not like for like in the panel. (`country_areas.py` L188–196)
+- **Mitigated 2026-10-29:** the panel now labels the ellipsoid row "WGS 84 ellipsoid (whole country)" for clipped countries; the data is unchanged. Original finding: For ATA, `ellipsoidal_area_m2` is the *unclipped* WGS 84 area while `spherical_area_m2` is clipped, so the two are not like for like in the panel. (`country_areas.py` L188–196)
 - The static `countries.geojson` uses `ST_AsGeoJSON` default precision (`read_countries`, no digits argument), while `compute` reads 15 digits. The map geometry is therefore rounded relative to the computed geometry. Measured effect on the recomputed ratios: ≤ 1.84e-13 relative. [re-run]
-- The Greenland regression test reads the *unrepaired* source GeoJSON, not the database geometry. That is fine for GRL, which was not repaired, but no test covers the repaired USA/SDN geometries, the database layer or the endpoints. (`tests/test_country_areas.py` L17–23)
+- The Greenland regression test reads the *unrepaired* source GeoJSON, not the database geometry. That is fine for GRL, which was not repaired, but no test covers the repaired USA/SDN geometries or the database layer (the endpoints are covered by `tests/test_api.py` since 2026-10-29). (`tests/test_country_areas.py` L17–23)
 - The dataset's Natural Earth version and download date are not recorded. (§3.1)
 - `summary.md` carries `date.today()`, so any re-export rewrites its date. This is why `export-geometry` is a separate command. (`country_areas.py` L389; `backend/README.md`)
 - The working-copy data files are CRLF (git `core.autocrlf=true`) and LF in the index, so local and served byte sizes differ. Cosmetic. [re-run]
