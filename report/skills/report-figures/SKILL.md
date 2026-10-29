@@ -1,7 +1,6 @@
 ---
 name: report-figures
 description: Capture report-ready screenshots of the TBA4565 web apps (Project 1, 2 or 3, or the homepage) into report/figures/ with draft captions. Use when asked for figures or screenshots for the report.
-disable-model-invocation: true
 argument-hint: "[project-1|project-2|project-3|site] [optional: what to show]"
 ---
 
@@ -14,7 +13,7 @@ Capture report figures for: $ARGUMENTS
 4. Default shot list, unless the arguments say otherwise:
    - project-1: Mercator endpoint; Eckert IV endpoint; 0.5 blend with circles on; a selected-country panel; the distortion-vs-latitude chart with a hovered point; mobile view.
    - project-2: Midtbyen overview with buildings; a shelter InfoBox open; a nearest-shelter result with its line; mobile bottom sheet.
-   - project-3: the globe with all splat markers; each splat in the gallery; the georeferencing inspector; a measurement between two points; the alignment check (OSM Buildings, reduced splat opacity); the power station splat-vs-mesh split view; the performance panel; the Viewer lab index with its results table; the same splat in each viewer (same viewport and camera); mobile view.
+   - project-3: the empty start screen; a splat file loaded with the file-facts panel; the up-axis fix before and after; a two-point distance measurement; mobile view. Project 3 ships no splat, so use the file named in the arguments (or ask for one).
    - site: the "My GIS module" homepage at desktop and mobile width (run `/report-figures site`).
 5. Save each one as `report/figures/<project>-<nn>-<short-slug>.png`. Open every image and check it: tiles loaded, labels readable, no error banners, nothing cut off. Retake it if it fails any check.
 6. Append one row per image to `report/figures/FIGURES.md` with: the file name, what it shows, a draft caption (one sentence telling the reader what to notice), and the data credit the caption must include (OSM, DSB, Natural Earth, Cesium, the splat's source...).

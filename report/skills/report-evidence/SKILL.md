@@ -1,7 +1,6 @@
 ---
 name: report-evidence
 description: Collect verified facts about one TBA4565 project (Project 1, 2 or 3) (objective, GIS concepts, data, methods, results, verification, limitations, references) into report/notes/ as source material for the project report.
-disable-model-invocation: true
 argument-hint: "[project-1|project-2|project-3]"
 context: fork
 agent: general-purpose
