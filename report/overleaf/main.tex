@@ -55,11 +55,7 @@
 
 \begin{abstract}
 \noindent
-This module built practical GIS experience through three small projects, each answering one question and each finished to the point of being tested, documented and running in the browser. They are published together as one static website: \siteurl.
-\emph{Projection Lab} (GI science) measures how much the Mercator projection inflates the area of 177 countries. The median inflation is $1.21\times$ and the maximum $16.54\times$ (Greenland). The theoretical area scale factor $\sec^2\varphi$ at a country's centroid predicts the measured inflation within 1\,\% for 156 of 176 countries, and never overestimates it, as Jensen's inequality requires.
-\emph{Trondheim 3D} (GI systems) combines terrain, OpenStreetMap buildings and the DSB public shelters in a $20\times20$\,km area around central Trondheim (12 shelters, 5,268 places) in a CesiumJS city model, and finds the nearest shelter along the OpenStreetMap walking network. Over a $30\times30$ grid, the shelter that is nearest on foot differs from the nearest in a straight line at 19\,\% of reachable points, and the median walk is 1.34 times the straight-line distance.
-\emph{3DGS Viewer} (3D GIS) opens a 3D Gaussian splat file entirely in the browser and reports what the file contains. It shows that a typical splat file carries no coordinate reference system, no reliable up direction and no metric scale.
-All results in this report come from running code. Each project section ends with how it was verified and with its limitations.
+This report describes three small web GIS projects I built in the specialization module TBA4565 in autumn 2026, and what I learned from building them. \emph{Projection Lab} is an interactive world map that lets anyone see how the Mercator projection distorts the size of countries compared with an equal-area map. \emph{Trondheim 3D} is a 3D model of my own city, built to learn CesiumJS, with public shelters and a walking route to the nearest one. \emph{3DGS Viewer} opens 3D Gaussian splat files in the browser, built to learn how this new kind of 3D data works on the web. The three apps are published together on one website, \siteurl. The report focuses on the purpose of each project, the technologies behind it and the experience I gained, rather than on detailed numerical results.
 \end{abstract}
 
 \tableofcontents

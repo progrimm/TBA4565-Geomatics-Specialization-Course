@@ -1,134 +1,42 @@
-\section{3DGS Viewer: what is inside a Gaussian splat file?}\label{sec:p3}
+\section{3DGS Viewer: learning Gaussian splatting on the web}\label{sec:p3}
 
-\subsection{Question}
+\subsection{Purpose}
 
-3D Gaussian splatting \citep{kerbl2023} has quickly become a popular way to capture real places in 3D from ordinary photos, and splat files are increasingly shared as if they were 3D models. For GIS use, the important questions are what such a file actually contains and whether it can be placed in the real world. The 3DGS Viewer is a static web page where you open your own splat file (PLY, SPZ, \code{.splat}, \code{.ksplat} or SOG) and inspect it: what it contains, which way is up, and how far apart two points are. The file is read in the browser and never uploaded. The project asks what a 3DGS file contains, and how well a static web page can open and inspect it entirely on the client.
+3D Gaussian splatting \citep{kerbl2023} is a new way to capture real places and objects in 3D from ordinary photos or video, and it is quickly showing up in GIS and digital-twin tools. I wanted to understand what a splat actually is, how it can be shown in a web browser, and what a working implementation looks like. The result is a viewer where you open your own splat file and inspect it; the file is read in the browser and never uploaded.
 
-\paragraph{How the project changed.} The first version (27--28 October) was a CesiumJS globe with a gallery of georeferenced splats from Cesium ion and Bentley iTwin, and a ``viewer lab'' comparing splat renderers. It was dropped on 28 October: the gallery's Cesium ion assets loaded only with Cesium's evaluation token, not with my own token; the iTwin share key expires on 1 December 2026; and Esri's sample layer states no licence. A public website cannot depend on any of these, so the project was rebuilt as a viewer for the user's own files. The earlier version remains in the repository history.
+\paragraph{A change of plan.} The first version was a CesiumJS globe with a gallery of georeferenced splats from around the world. It turned out that the example splats only loaded with a special evaluation token from Cesium, not with my own account, and another dataset depended on a share key that expires in December 2026. A public website cannot rely on that, so I rebuilt the project as a viewer for local files. The lesson was to check data access and licences \emph{before} building on a dataset.
 
-\subsection{Background}\label{sec:p3-background}
+\subsection{What I built}
 
-\paragraph{Gaussian splats.} A 3DGS scene is a set of 3D Gaussians, typically hundreds of thousands. Each has a mean position, a covariance (stored as a scale per axis and a rotation quaternion), an opacity and a colour that varies with viewing direction, expressed as spherical-harmonic (SH) coefficients \citep{kerbl2023}. To render a view, each Gaussian is projected to a 2D ellipse (a ``splat''), the splats are sorted by depth and alpha-blended. The Gaussians are fitted to the input photos with a photometric loss.
-
-\paragraph{Splats, meshes and point clouds.} A mesh has explicit surfaces and topology, and a point cloud has surface samples without extent. A Gaussian has extent, orientation and transparency, but no surface: it is optimised to \emph{look} right from the training views, not to lie exactly on a surface. This matters for measurement: picking a point on a splat hits a semi-transparent ellipsoid, not a surface.
-
-\paragraph{File formats.} The reference implementation writes a binary PLY file \citep{bourke-ply} with one record per Gaussian: position \code{x y z}, \code{scale\_0..2}, \code{rot\_0..3}, \code{opacity}, the base colour \code{f\_dc\_0..2} and the higher-order SH coefficients \code{f\_rest\_*}. The SH degree $d$ follows from the number of \code{f\_rest} properties, $3\left((d+1)^2-1\right)$, so degree~3 has 45. Compressed formats such as SPZ \citep{spz}, SOG \citep{playcanvas-sog} and \code{.ksplat} quantise these values to make files several times smaller.
-
-\paragraph{Reference frames and georeferencing.} A splat inherits the coordinate frame of the structure-from-motion reconstruction it was trained from (for example COLMAP \citep{colmap}). That frame has an arbitrary origin and orientation, and an arbitrary scale unless the capture was scaled. Conventions also differ: 3DGS training output usually has $-Y$ up, while GIS and CAD data usually have $+Z$ up. To use a splat in GIS it must be georeferenced, for example with GNSS camera positions or ground control points, which gives a transformation to a CRS such as ECEF (EPSG:4978). Georeferenced splats can then be streamed onto a globe as 3D Tiles with the glTF \code{KHR\_gaussian\_splatting} extension \citep{khr-gaussian-splatting,3dtiles}. The viewer does none of this; it shows the file in its own frame, which is exactly what makes the gap visible.
-
-\subsection{Data}
-
-The app ships no data. Two files were used to test it:
 \begin{itemize}
-  \item \textbf{SOAR Telescope} by Luis Cerda \citep{soar}, CC BY 4.0: the SOAR telescope on Cerro Pachón, Chile, converted from a SuperSplat compressed PLY to a standard PLY with \code{splat-transform}~3.10.3. 200,258 Gaussians, 47,262,365 bytes. The header size plus $200{,}258 \times 59 \times 4$ bytes matches the file size exactly. It is used on the homepage screenshot, but is not hosted on the site.
-  \item \textbf{Nugatti jar}: a splat of a Nugatti jar on a piece of burlap that I provided, exported from LichtFeld Studio v0.5.4 on 28 October 2026. 154,055 Gaussians. It was used for the figures in this section and is not published.
+  \item Open a splat file by dialog or drag and drop (PLY, SPZ, \code{.splat}, \code{.ksplat} or SOG).
+  \item A ``file facts'' panel that reads the file header: number of splats, size, colour detail and extent.
+  \item An up-axis switch and a reset button, because splat files do not agree on which way is up.
+  \item A two-point distance tool.
 \end{itemize}
 
-\subsection{System}
+\subsection{What I learned about Gaussian splats}
 
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[node distance=0.45cm and 0.55cm]
-  \node[store=2.4cm] (file) {Local file\\(dialog or drop)};
-  \node[box=2.6cm, right=of file] (hdr) {PLY header parser\\(facts, validation)};
-  \node[box=2.6cm, right=of hdr] (spark) {Spark \code{SplatMesh}\\(decode, sort)};
-  \node[box=2.6cm, right=of spark] (bounds) {Bounds\\core 96\,\% + full};
-  \node[box=2.6cm, below=0.9cm of spark] (scene) {three.js scene\\up-axis group,\\camera, picking};
-  \node[box=2.6cm, below=0.9cm of hdr] (ui) {React panel\\facts, orientation,\\measure};
-  \draw[flow] (file) -- (hdr);
-  \draw[flow] (hdr) -- (spark);
-  \draw[flow] (spark) -- (bounds);
-  \draw[flow] (spark) -- (scene);
-  \draw[flow] (bounds) |- (scene);
-  \draw[flow, <->] (ui) -- (scene);
-  \draw[flow] (hdr) -- (ui);
-\end{tikzpicture}
-\caption{3DGS Viewer architecture. Everything runs in the browser; there is no server and no access token. The header is parsed from the same bytes before the renderer gets them, so a file that is not a splat is rejected with a clear message.}
-\label{fig:p3-arch}
-\end{figure}
+\paragraph{What a splat is.} A splat scene is a cloud of hundreds of thousands of small, semi-transparent, coloured 3D blobs (Gaussians). Each has a position, a size and orientation, an opacity and a colour that changes with the viewing angle. Unlike a mesh, there are no surfaces; unlike a point cloud, each point has a shape. The blobs are optimised so that the scene \emph{looks} right from the photos, which is why splats look so realistic.
 
-The viewer (\cref{fig:p3-arch}) is a static Vite and React app. Rendering uses Spark 2.4 \citep{spark}, a Gaussian-splat renderer on three.js \citep{threejs}, both MIT-licensed. The three.js objects live in one module outside React; the React components hold only interface state. The file is read with \code{File.arrayBuffer()} and the bytes go to two places: a small PLY header parser written for this project, and Spark's loader. The splat and the measurement markers sit in one parent group, so changing the up axis rotates both and measurements stay in file coordinates.
+\paragraph{What is inside the file.} Reading the PLY header myself showed that most of each record is colour: of the 59 values stored per splat in a typical file, 45 describe how the colour changes with viewing direction. This explains why splat files are large and why compressed formats such as SPZ and SOG exist.
 
-\subsection{Method}
-
-Opening a file runs these steps:
-\begin{enumerate}
-  \item Check the file extension, read the file into memory and start a timer.
-  \item For PLY files, parse the header: encoding, splat count, properties and SH degree. A PLY without the Gaussian properties (\code{scale\_*}, \code{rot\_*}, \code{opacity}, \code{f\_dc\_*}) is rejected as a mesh or plain point cloud.
-  \item Let Spark decode the file. On an error, keep the previously opened splat.
-  \item Collect all finite splat centres and compute two bounding boxes: the full box, and a \emph{core} box from the 2\,\% and 98\,\% quantiles on each axis. ``Floaters'', stray Gaussians far from the scene, are common in splat captures and would otherwise push the camera far away.
-  \item Frame the camera on the core box (distance $= r/\sin(\text{fov}/2)$ for the bounding sphere radius $r$) and show the facts and the load time.
-\end{enumerate}
-The user can then switch the up axis between $+Y$, $-Y$, $+Z$ and $-Z$ (default $-Y$), and measure the straight-line distance between two picked points. Picking casts a ray through the pointer and takes the nearest splat ellipsoid it hits.
-
-\subsection{Results}\label{sec:p3-results}
-
-\begin{table}[htbp]
-\centering
-\caption{File facts reported by the viewer for the two test files (production build, headless Chromium, one machine). Extents are in file units. ``Opened in'' covers reading, parsing, decoding and collecting the centres, not the first render.}
-\label{tab:p3-facts}
-\small
-\begin{tabular}{l r r}
-\toprule
- & SOAR Telescope & Nugatti jar \\
-\midrule
-Gaussians & 200,258 & 154,055 \\
-File size & 45.1\,MiB & 36.4\,MiB \\
-Properties per Gaussian & 59 & 62 \\
-SH degree & 3 & 3 \\
-Core extent (96\,\% per axis) & $7.303 \times 3.438 \times 9.494$ & $1.897 \times 1.555 \times 1.573$ \\
-Full extent & $9.209 \times 4.154 \times 10.770$ & $2.027 \times 1.993 \times 1.673$ \\
-Full / core extent ($x$, $y$, $z$) & 1.26, 1.21, 1.13 & 1.07, 1.28, 1.06 \\
-Opened in, 3 loads & 0.25--0.27\,s & 0.19--0.36\,s \\
-Correct up axis & $-Y$ & $-Y$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\Cref{tab:p3-facts} shows what the viewer reports. Both files are standard 3DGS training output with SH degree~3, so about three quarters of each record (45 of 59 values) is view-dependent colour. The Nugatti file has three extra properties, \code{nx ny nz}, which are unused normals written by the exporter. In both files the full box is noticeably larger than the core box: floaters add 26\,\% to the SOAR scene in $x$ and 28\,\% to the Nugatti scene in $y$. Both opened in well under half a second on this machine.
+\paragraph{Splats and GIS.} Testing with real files showed what a splat does \emph{not} contain. It has no coordinate reference system, and it does not say which way is up: the files I tested were upright with $-Y$ as up, the usual convention for 3DGS training output, but lay on their side with $+Z$, the usual convention in GIS (\cref{fig:p3-upaxis}). It also has no real scale: measuring across the lid of a jar gave 1.075 ``units'', and nothing in the file says what a unit is. To use splats in GIS, they must be georeferenced, for example with GNSS or ground control points, and can then be streamed onto a globe as 3D Tiles \citep{3dtiles,khr-gaussian-splatting}, which is what my first version tried to do.
 
 \begin{figure}[htbp]
 \centering
 \begin{subfigure}{0.49\textwidth}
   \includegraphics[width=\linewidth]{project-3-02-loaded-file-facts.png}
-  \caption{Up axis $-Y$ (default): upright}
+  \caption{Up axis $-Y$: upright}
 \end{subfigure}\hfill
 \begin{subfigure}{0.49\textwidth}
   \includegraphics[width=\linewidth]{project-3-03-up-axis-wrong-plus-z.png}
-  \caption{Up axis $+Z$ (GIS convention): on its side}
+  \caption{Up axis $+Z$: on its side}
 \end{subfigure}
-\caption{The same file and camera with two up-axis choices. The panel lists the facts read from the PLY header. The file itself does not say which way is up; the $-Y$ convention of 3DGS training output is correct here, while the $+Z$ convention of GIS data lays the jar on its side. Splat: Nugatti jar (not published). Rendering: Spark and three.js (MIT).}
+\caption{A splat of a Nugatti jar in the viewer, with the file facts in the panel. The file does not say which way is up, so the same data appears upright or on its side depending on the convention. Rendering: Spark and three.js (MIT).}
 \label{fig:p3-upaxis}
 \end{figure}
 
-\paragraph{Orientation.} Neither file says which way is up. Both were upright with the default $-Y$, the usual convention for 3DGS training output, and wrong with the GIS convention $+Z$ (\cref{fig:p3-upaxis}). A GIS tool that assumes $+Z$ up would therefore show such a file lying on its side.
+\subsection{What I learned about the web technology}
 
-\paragraph{Measurement and scale.} \Cref{fig:p3-measure} measures across the lid of the Nugatti jar: 1.075 units. This is a distance in the file's own units. Nothing in the file says what a unit is, so without a known reference length the number cannot be turned into centimetres. This is the scale ambiguity of structure from motion, made concrete.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.8\textwidth]{project-3-04-measure-lid-diameter.png}
-\caption{A two-point measurement across the lid reads 1.075 units: a straight line in the file's own units, which are not metres unless the capture was scaled. Splat: Nugatti jar (not published). Rendering: Spark and three.js (MIT).}
-\label{fig:p3-measure}
-\end{figure}
-
-\paragraph{Cost of a client-only viewer.} The production bundle is 3,496\,kB of JavaScript (1,168\,kB gzipped), mostly Spark, and it must be downloaded before a file can be opened. In exchange there is no server, no token and no upload, and the viewer worked unchanged when deployed under a sub-path on GitHub Pages.
-
-\subsection{Verification}
-
-\begin{itemize}
-  \item \textbf{Unit tests} (Vitest, 26 tests in 7 files) cover the pure helpers: the PLY header parser (3DGS headers, Windows line endings, plain point clouds, SuperSplat compressed PLY, non-PLY input), SH degree, the core and full bounds (including floaters and NaN centres), camera framing, the four up-axis rotations, distance and formatting. The rendering module, hooks and components need WebGL and are checked in the browser only.
-  \item \textbf{Browser checks.} The SOAR file was opened three times in the production build with Playwright and gave identical facts and no console errors, and the facts were recomputed independently from the raw file. Error cases (a text file, a PLY with only \code{x y z}, a truncated PLY) were checked on 28 October: each shows a message and the open splat stays. The Nugatti figures were captured on the live site on 29 October with no console errors.
-  \item \textbf{Review.} An automated code review found 10 issues, which were fixed before release.
-\end{itemize}
-
-\subsection{Limitations}\label{sec:p3-limits}
-
-\begin{itemize}
-  \item Only plain PLY was tested in a browser. Compressed PLY is recognised in unit tests only, and SPZ, \code{.splat}, \code{.ksplat} and SOG rely on Spark's loaders without being tested here. Formats other than PLY are recognised by file extension only.
-  \item The whole file is held in memory; files much larger than 47\,MB were not tested.
-  \item There is no real-world frame or scale, the up axis can only be changed in 90\dg{} steps, and multi-file formats and 3D Tiles tilesets cannot be opened.
-  \item ``Extent'' is the box of splat \emph{centres}, so the visible object is somewhat larger, and the per-axis 96\,\% box can contain fewer than 96\,\% of all splats.
-  \item Picking hits the nearest splat ellipsoid, and semi-transparent floaters can be hit first. Measuring needs a pointer and is not keyboard-accessible.
-  \item Load times come from one machine in headless Chromium; they are not a benchmark.
-\end{itemize}
+The viewer uses Spark \citep{spark}, a splat renderer built on three.js \citep{threejs}, the most common 3D library for the web. I learned how a three.js scene is organised (renderer, scene, camera and controls), how picking works by casting a ray from the mouse into the scene, and why the splats must be sorted by depth every time the view changes. Reading files locally, with no server or upload, keeps the app simple and private, but the renderer makes the download large before anything can be shown. Stray blobs far from the scene (``floaters'') are common in captures, so the camera is framed on the central part of the scene rather than on all splats.

@@ -1,166 +1,48 @@
-\section{Trondheim 3D: how far is the walk to the nearest public shelter?}\label{sec:p2}
+\section{Trondheim 3D: learning CesiumJS}\label{sec:p2}
 
-\subsection{Question}
+\subsection{Purpose}
 
-Norway's public shelters (\emph{tilfluktsrom}) are registered by the Norwegian Directorate for Civil Protection (DSB) and published as open data. A map can show where they are, but in an emergency the useful question is which shelter is closest \emph{on foot}, and how far that walk is. Trondheim 3D is a CesiumJS city model of Trondheim with terrain, 3D buildings and the public shelters. Clicking the ground finds the nearest shelter along the OpenStreetMap walking network and draws the route. The project is the GI-systems part of the module: most of the work lies in combining data from different sources and reference systems into one working 3D application.
+CesiumJS \citep{cesiumjs} is one of the most widely used libraries for 3D maps and digital globes on the web, and I wanted to learn it properly. The best way seemed to be to build something real in a place I know: a 3D model of Trondheim with terrain, buildings and one open dataset. I chose DSB's register of public shelters (\emph{tilfluktsrom}), because it raises a simple, practical question: which shelter is closest, and how far is the walk?
 
-\subsection{Background}\label{sec:p2-background}
+\subsection{What I built}
 
-\paragraph{Reference systems and heights.} The shelters are published in EUREF89 / UTM zone 32N (EPSG:25832), with easting and northing in metres. CesiumJS works in Earth-centred, Earth-fixed coordinates (EPSG:4978) and takes positions as WGS~84 longitude, latitude and \emph{ellipsoidal} height. The shelters are therefore converted to longitude/latitude when the data is prepared, treating EUREF89 as equal to WGS~84 (no datum shift). Heights need more care. Norwegian heights (NN2000) are measured above the geoid, which near Trondheim lies about 40\,m above the WGS~84 ellipsoid. The camera targets of the preset views are built from Kartverket's terrain height in NN2000 plus a fixed +40\,m. This fixed offset is an approximation, not a geoid model, so a height read from the app is not an NN2000 height.
-
-\paragraph{Local frames for the camera.} Each preset view stores a landmark (from OpenStreetMap via Nominatim) and a heading, pitch and range. The camera offset is built in the landmark's local East-North-Up frame and converted to ECEF with \code{Transforms.eastNorthUpToFixedFrame} \citep{cesiumjs}, so the landmark is centred by construction.
-
-\paragraph{3D Tiles and level of detail.} The buildings are Cesium OSM Buildings, streamed as 3D Tiles \citep{3dtiles}: a hierarchy of tiles at increasing detail. A tile is refined when its \emph{screen-space error}, the geometric error projected to pixels, exceeds \code{maximumScreenSpaceError} (default 16). A higher value loads fewer and coarser tiles.
-
-\paragraph{Geodesic distance.} Straight-line distances and the edge lengths of the walking network are geodesics on the WGS~84 ellipsoid, computed with CesiumJS's \code{EllipsoidGeodesic}, which uses Vincenty's method \citep{vincenty1975}. The implementation is tested against GeographicLib, which implements Karney's algorithm \citep{karney2013,geographiclib}. Heights are ignored, so distances are measured on the ellipsoid surface.
-
-\paragraph{Network analysis.} The walking network is modelled as a graph: OpenStreetMap nodes are vertices and way segments are undirected edges weighted by their geodesic length. The shortest walk is found with Dijkstra's algorithm \citep{dijkstra1959}. Because the search can stop at the first shelter it reaches, one search from the clicked point finds the nearest shelter by walking distance.
-
-\subsection{Data}
-
-\begin{table}[htbp]
-\centering
-\caption{Datasets used by Trondheim 3D.}
-\label{tab:p2-data}
-\small
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.6cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{2.3cm}}
-\toprule
-Dataset & Source, format and processing & Licence \\
-\midrule
-Public shelters & DSB, OGC WFS 2.0 \citep{ogcwfs,dsbwfs}, layer \code{layer\_340}, GML in EPSG:25832, bounding box 560--580\,km E, 7020--7040\,km N. Converted to WGS~84 GeoJSON with proj4 at data-preparation time, coordinates rounded to 7 decimals ($\approx$1\,cm), invalid members rejected. 12 shelters, 5,268 places, fetched 28 October 2026. & NLOD 2.0 \\
-\addlinespace
-Walking network & OpenStreetMap via the Overpass API \citep{overpass}, walkable \code{highway} types without \code{foot} or \code{access} = no/private, in the shelters' bounding box plus about 1\,km. OSM timestamp 27 October 2026. 164,294 nodes and 32,944 ways (181,441 edges), stored as compact JSON of 3.49\,MB (1.37\,MB gzipped). & ODbL 1.0 \\
-\addlinespace
-Terrain & Cesium World Terrain (Cesium ion asset 1), heights above the WGS~84 ellipsoid. & Cesium ion terms \\
-\addlinespace
-Buildings & Cesium OSM Buildings (Cesium ion asset 96188), 3D Tiles. & ODbL 1.0 \\
-\addlinespace
-Camera targets & Landmark positions from Nominatim; ground heights from Kartverket's terrain model (DTM 1\,m), looked up once. & ODbL; CC BY 4.0 \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\Cref{tab:p2-data} lists the data. The shelter file records where it came from: it carries a \code{metadata} member (allowed by RFC~7946 \citep{rfc7946}) with the fetch date, source, layer, source CRS and feature count, and the fetch date is shown in the on-screen credit. In the evidence pass on 29 October 2026 the same WFS request returned the same 12 shelters, identical to the committed file.
-
-Two quality issues matter for the analysis. The shelter request uses a fixed $20\times20$\,km square around the city centre, not the municipal boundary, and whether it covers all of Trondheim municipality was not checked. The OpenStreetMap network is a volunteer-mapped snapshot, so a missing or mistagged path changes the result.
-
-\subsection{System}
-
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[node distance=0.45cm and 0.6cm]
-  \node[store=2.6cm] (wfs) {DSB WFS\\GML, EPSG:25832};
-  \node[box=2.9cm, right=of wfs] (fs) {\code{fetch-shelters.js}\\parse + proj4};
-  \node[store=3.0cm, right=of fs] (sh) {\code{shelters.geojson}\\12 points, WGS~84};
-  \node[store=2.6cm, below=of wfs] (ovp) {Overpass API\\OSM ways};
-  \node[box=2.9cm, right=of ovp] (fn) {\code{fetch-network.js}\\compact encoding};
-  \node[store=3.0cm, right=of fn] (net) {\code{walking-network.json}};
-  \node[box=3.3cm, below=1.2cm of fn] (app) {Browser app (React)\\CesiumJS Viewer};
-  \node[box=3.0cm, right=0.8cm of app] (ns) {Nearest shelter\\graph, snapping,\\Dijkstra};
-  \node[store=2.6cm, left=0.8cm of app] (ion) {Cesium ion\\terrain, buildings};
-  \draw[flow] (wfs) -- (fs);
-  \draw[flow] (fs) -- (sh);
-  \draw[flow] (ovp) -- (fn);
-  \draw[flow] (fn) -- (net);
-  \draw[flow] (ion) -- (app);
-  \draw[flow] (app) -- (ns);
-  \draw[flow] (sh.east) -- ++(0.6,0) |- (ns.east);
-  \draw[flow] (net) -- (ns);
-  \node[draw=black!40, dashed, rounded corners, fit=(wfs)(net), inner sep=5pt,
-    label={[font=\scriptsize]north:data preparation (offline, output committed)}] {};
-\end{tikzpicture}
-\caption{Trondheim 3D architecture. Both datasets are prepared offline by Node scripts and committed as static files. In the browser, CesiumJS streams terrain and buildings from Cesium ion, and the nearest-shelter analysis runs entirely on the client.}
-\label{fig:p2-arch}
-\end{figure}
-
-The app (\cref{fig:p2-arch}) is a static Vite and React application around CesiumJS 1.146 \citep{cesiumjs}. CesiumJS code lives in small plain-JavaScript modules, one per layer, so the Cesium API stays visible instead of being hidden behind a wrapper library. Every layer loads asynchronously with its own error handling: if one fails, the rest of the app keeps working and a message explains what is missing. The scene renders only when something changes (\code{requestRenderMode}). Clicking a shelter or a building opens Cesium's InfoBox with its attributes (\cref{fig:p2-infobox}).
-
-There is no backend and no routing service. A hosted routing API (GraphHopper) was considered and rejected: its API key would be public in the browser bundle, and the free daily quota could run out. Instead the walking network is downloaded once as a static file and the graph is searched in the browser.
-
-\subsection{Method}\label{sec:p2-method}
-
-When the user clicks the ground:
-\begin{enumerate}
-  \item The camera ray through the clicked pixel is intersected with the terrain (\code{Globe.pick}), giving a WGS~84 position. A click on a building or a shelter opens its InfoBox instead.
-  \item The click is snapped to the nearest network node. The shelters were snapped once, when the network loaded.
-  \item A Dijkstra search with a binary heap runs from the click's node and stops at the first shelter node it reaches.
-  \item The walking distance is the geodesic connector from the click to its node, plus the network path, plus the connector from the shelter's node to the shelter.
-  \item The straight-line geodesic distance to the same shelter is computed for comparison. If the network failed to load, or no shelter is reachable, the app falls back to the nearest shelter in a straight line.
-  \item The route is drawn as a line clamped to the ground, and the panel shows the shelter, its capacity, the walking distance and the straight-line distance.
-\end{enumerate}
-
-To see how much the walking network changes the answer, the same functions were run in Node over a $30\times30$ grid of points (cell centres) covering the shelters' bounding box. For each point, the walking-nearest shelter was compared with the straight-line-nearest shelter, and the ratio of walking to straight-line distance was recorded.
-
-For the buildings layer, \code{maximumScreenSpaceError} values of 16 (the default) and 32 were compared with a Playwright benchmark: the Midtbyen view at $1600\times900$ in headless Chromium with the GPU enabled, three runs per value with a fresh browser context, measuring the time until all terrain and building tiles had loaded, the frame rate during a scripted 10\,s orbit, tile memory and JavaScript heap.
-
-\subsection{Results}\label{sec:p2-results}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{project-2-03-nearest-shelter-route.png}
-\caption{Nearest-shelter result after a click in the park south of Nidarosdomen. The nearest shelter (no.~30671, Nedre Bakklandet) is 490\,m away as a geodesic, but the walk along the network crosses the river on Gamle Bybro and is 684\,m. Data: shelters \textcopyright{} DSB (NLOD 2.0); walking network and buildings \textcopyright{} OpenStreetMap contributors (ODbL); terrain and imagery via Cesium ion.}
-\label{fig:p2-route}
-\end{figure}
-
-\paragraph{Shelters.} The study area has 12 public shelters with 5,268 places in total, from 45 to 800 places each. \Cref{fig:p2-overview} shows the start view with the shelters in the city centre.
-
-\paragraph{Single clicks.} From Torvet, the main square, the nearest shelter is no.~6870, 199.3\,m away in a straight line (GeographicLib: 199.2548\,m) and 275.8\,m on foot. \Cref{fig:p2-route} shows a click south of the cathedral: the river is in the way, so the 490\,m straight line becomes a 684\,m walk over Gamle Bybro. Building the graph took 169\,ms and a single search a few milliseconds in Node (median 4.5\,ms over the 900 grid points), which is fast enough to answer each click immediately.
-
-\paragraph{Walking versus straight line.} Over the 900 grid points:
 \begin{itemize}
-  \item a shelter was reachable from 884 points; from 16 points none was (probably disconnected parts of the network, not investigated);
-  \item at 168 of the 884 reachable points (19.0\,\%), the shelter that is nearest on foot is \emph{not} the one that is nearest in a straight line;
-  \item the walk to the nearest shelter is a median of 1.34 times the straight-line distance, and 1.68 times at the 90th percentile.
+  \item A full-screen 3D view of Trondheim with Cesium World Terrain and Cesium OSM Buildings (\cref{fig:p2-overview}).
+  \item The public shelters as points on the map. Clicking one shows its number, capacity and address.
+  \item A control panel with preset camera views (Midtbyen, Nidarosdomen, Bakklandet) and layer switches, which turns into a bottom sheet on phones.
+  \item ``Nearest shelter'': click the ground, and the app finds the nearest shelter along the OpenStreetMap walking network and draws the route (\cref{fig:p2-route}).
 \end{itemize}
-A straight-line ``nearest shelter'' map would therefore point to the wrong shelter at about one location in five, and a typical walk is about a third longer than the straight line suggests. The grid also covers water, where points snap to the nearest shore, so these numbers describe the method on this network rather than the population.
-
-\paragraph{Level of detail.} \Cref{tab:p2-bench} shows the benchmark. Doubling the screen-space error to 32 saved a third of the tile memory, but did not improve the frame rate, which was close to the 60\,Hz display limit in both cases, and the first load was dominated by the network. Screenshots at 32 showed many small buildings missing in the centre, so the default of 16 was kept.
-
-\begin{table}[htbp]
-\centering
-\caption{OSM Buildings benchmark, Midtbyen view, $1600\times900$, headless Chromium (Windows 11, AMD Radeon 780M). Column-wise medians of three runs.}
-\label{tab:p2-bench}
-\small
-\begin{tabular}{l r r r r r}
-\toprule
-SSE & First load & Mean fps & 5th-pct fps & Building tiles & JS heap \\
-\midrule
-16 (kept) & 3.05\,s & 58.7 & 51.0 & 26.8\,MiB & 190\,MiB \\
-32 & 3.19\,s & 58.7 & 48.5 & 17.9\,MiB & 141\,MiB \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{project-2-01-midtbyen-buildings.png}
-\caption{Start view over Midtbyen: Cesium OSM Buildings on Cesium World Terrain, with the DSB public shelters as orange points. Data: \textcopyright{} OpenStreetMap contributors (ODbL); Cesium ion; \textcopyright{} DSB (NLOD 2.0).}
+\caption{Trondheim 3D: OpenStreetMap buildings on Cesium World Terrain, with the public shelters as orange points. Data: \textcopyright{} OpenStreetMap contributors (ODbL); Cesium ion; \textcopyright{} DSB (NLOD 2.0).}
 \label{fig:p2-overview}
 \end{figure}
 
+\subsection{What I learned about CesiumJS}
+
+\paragraph{The Viewer and Cesium ion.} Everything starts with a \code{Viewer}, which brings a globe, a camera and default imagery. Terrain and buildings are streamed from Cesium ion, which needs an access token. Because a web app's code is public, the token is visible to anyone; I learned to use a separate production token that only works from my own website.
+
+\paragraph{3D Tiles.} The buildings are Cesium OSM Buildings, streamed as 3D Tiles \citep{3dtiles}: the city is split into tiles at several levels of detail, and Cesium loads finer tiles only where the camera needs them. One setting, \code{maximumScreenSpaceError}, controls this trade-off. I tested a coarser value to save memory, but small buildings in the centre disappeared, so I kept the default.
+
+\paragraph{Entities, primitives and picking.} The shelters are \emph{entities} loaded from GeoJSON, which come with built-in selection and an info box. The buildings are a \emph{primitive}, the lower-level and faster way to draw large data. Picking showed the difference in practice: a click on a building or shelter selects that object, while a click on the ground returns a position on the terrain, which starts the nearest-shelter search.
+
+\paragraph{The camera.} My first preset views used guessed camera positions and missed their landmarks. The fix was to describe each view as a target point plus a direction and a distance, and let Cesium place the camera in the target's local east-north-up frame. Then the landmark is always centred.
+
+\paragraph{Using Cesium with React.} I kept Cesium code outside React components, in small modules for each layer, and gave every layer its own error handling, so the rest of the app keeps working if one dataset fails to load.
+
+\subsection{What I learned about Norwegian geodata}
+
+The shelters are published by DSB through an OGC Web Feature Service \citep{ogcwfs} in EUREF89 / UTM zone 32N (EPSG:25832), so they had to be converted to longitude and latitude for Cesium. Heights were the bigger lesson. Cesium measures heights above the WGS~84 ellipsoid, while Norwegian heights (NN2000) are measured above the geoid, which lies about 40\,m higher in Trondheim. Mixing the two puts a point about 40\,m too low. The walking network came from OpenStreetMap through the Overpass API \citep{overpass}.
+
+\subsection{The nearest-shelter analysis}
+
+Instead of a routing service, whose API key would be public in the browser, the app downloads the walking network once and searches it with Dijkstra's algorithm \citep{dijkstra1959}, directly in the browser. \Cref{fig:p2-route} shows why this matters: the nearest shelter is 490\,m away in a straight line, but the river is in the way, and the walk over Gamle Bybro is 684\,m. The analysis is simple, though: it ignores hills, stairs and how many people each shelter can take.
+
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\textwidth]{project-2-02-shelter-infobox.png}
-\caption{Clicking a shelter opens Cesium's InfoBox with the DSB attributes: shelter no.~6870, 630 places, and its address. Data: \textcopyright{} DSB (NLOD 2.0); \textcopyright{} OpenStreetMap contributors (ODbL); Cesium ion.}
-\label{fig:p2-infobox}
+\includegraphics[width=\textwidth]{project-2-03-nearest-shelter-route.png}
+\caption{A click south of Nidarosdomen: the nearest shelter is 490\,m away in a straight line, but the walk across the river is 684\,m. Data: \textcopyright{} DSB (NLOD 2.0); \textcopyright{} OpenStreetMap contributors (ODbL); Cesium ion.}
+\label{fig:p2-route}
 \end{figure}
-
-\subsection{Verification}
-
-\begin{itemize}
-  \item \textbf{Unit tests} (Vitest, 54 tests in 11 files). Geodesic distances agree with textbook WGS~84 values and with the GeographicLib reference to within 0.5\,mm. The network tests use a small hand-made river with one bridge, to check that Dijkstra goes round via the bridge, and cover unreachable targets and the straight-line fallback. The shelter parser is tested with valid and deliberately broken WFS responses, and the coordinate conversion with known UTM points. The camera tests check that the camera ends up exactly \code{range} metres from the target in the right direction.
-  \item \textbf{Robustness.} A Playwright script loads the production build three times: normally, with the shelter file blocked, and with the network file blocked. In each case the app stays usable, shows an explanatory message, and (with the network blocked) falls back to straight-line distances. It passed again on 29 October 2026.
-  \item \textbf{Accessibility.} A second script tabs through the panel at both widths with reduced motion and checks that every control has a visible focus outline and can be operated with the keyboard. Text contrast was computed with the WCAG formula from the style tokens (12.7:1 for body text, 5.7:1 for muted text) \citep{wcag-contrast}.
-  \item \textbf{CI and deployment.} GitHub Actions runs lint, format check, tests and build. On the live site, the production Cesium ion token was accepted from the Pages origin (HTTP 200) and rejected from another origin (HTTP 403).
-\end{itemize}
-
-\subsection{Limitations}\label{sec:p2-limits}
-
-\begin{itemize}
-  \item Heights are ellipsoidal, and the +40\,m geoid offset for the camera targets is an approximation. EUREF89 is treated as WGS~84; the size of that difference was not computed in the project.
-  \item The analysis ignores slope, stairs, barriers and opening hours, and it ignores capacity: it always picks the nearest reachable shelter, however full it would be.
-  \item Clicks and shelters snap to the nearest network \emph{node}, not the nearest point on an edge, and the connectors are straight lines that can cross buildings or water.
-  \item The shelter extract is a $20\times20$\,km square, not the municipality, and its completeness was not checked. OSM building completeness and heights depend on volunteer mappers and were not compared with Kartverket's FKB data.
-  \item The search needs a map click, so it is not available from the keyboard. On a phone, the open control sheet covers the map credits.
-  \item The benchmark covers one machine, one view and headless Chromium, with a frame rate capped by the display.
-\end{itemize}

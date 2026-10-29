@@ -1,6 +1,6 @@
-\section{One website and the engineering behind it}\label{sec:website}
+\section{One website}\label{sec:website}
 
-The three apps are built and deployed together as one static site on GitHub Pages \citep{ghpages}. A root script builds the homepage and the three apps into one folder under their paths, and one GitHub Actions workflow publishes it on every push to \code{main}. Every app uses a relative Vite \code{base} (\code{./}), so assets load under any sub-path. Projection Lab runs on Pages in its static data mode (\cref{sec:p1}). Trondheim 3D reads its Cesium ion token from a repository secret, and the production token is restricted to the Pages origin. Each project has its own CI workflow (lint, tests, build): 18 tests for Projection Lab, 54 for Trondheim 3D and 26 for the 3DGS Viewer. After the first deployment, all workflows passed, and a Playwright round trip (homepage, each app, homepage) at 1600 and 390\,px showed no console errors or failed requests (\cref{fig:mobile}).
+The three apps are built and published together as one static website on GitHub Pages \citep{ghpages}. A script builds the homepage and the three apps into one folder, and a GitHub Actions workflow publishes it whenever the main branch changes. Making this work taught me a few practical things about web deployment: every app has to load its files from relative paths so that it works under its own sub-path, a backend cannot run on a static host (hence Projection Lab's static mode), and secrets such as the Cesium token must come from the build system rather than the code. Each project also has its own automatic checks (linting, unit tests and a build) that run on every change, and the apps were checked in a browser at desktop and phone width (\cref{fig:mobile}).
 
 \begin{figure}[htbp]
 \centering
@@ -8,26 +8,26 @@ The three apps are built and deployed together as one static site on GitHub Page
 \begin{subfigure}{0.24\textwidth}\includegraphics[width=\linewidth]{project-1-06-mobile.png}\caption{Projection Lab}\end{subfigure}\hfill
 \begin{subfigure}{0.24\textwidth}\includegraphics[width=\linewidth]{project-2-04-mobile.png}\caption{Trondheim 3D}\end{subfigure}\hfill
 \begin{subfigure}{0.24\textwidth}\includegraphics[width=\linewidth]{project-3-05-mobile.png}\caption{3DGS Viewer}\end{subfigure}
-\caption{The site at phone width (390\,px). Each app links back to the homepage. Data: Natural Earth; \textcopyright{} OpenStreetMap contributors (ODbL); \textcopyright{} DSB (NLOD 2.0); Cesium ion.}
+\caption{The website on a phone. Data: Natural Earth; \textcopyright{} OpenStreetMap contributors (ODbL); \textcopyright{} DSB (NLOD 2.0); Cesium ion.}
 \label{fig:mobile}
 \end{figure}
 
-\section{Discussion}\label{sec:discussion}
+\section{What I gained}\label{sec:reflection}
 
-% TODO (author): expand this reflection in your own words.
-The three projects cover the three themes of the course from different angles. Projection Lab is GI science: a theoretical result ($\sec^2\varphi$ and Jensen's inequality) tested against measurement. Trondheim 3D is GI systems: most of its value lies in combining reference systems, data sources and services, and its analysis shows that a straight-line answer points to the wrong shelter at about one location in five. The 3DGS Viewer shows how far a popular new 3D data type still is from GIS use: without georeferencing it has no CRS, no reliable up direction and no scale.
+% TODO (author): adjust this section to your own experience.
+\paragraph{GIS understanding.} Each project turned a topic from the course into something I could see and test. Projection Lab made map projections concrete: I now understand \emph{why} Mercator exaggerates the far north, not just that it does. Trondheim 3D showed how much of GIS systems work is about making data from different sources agree: Norwegian and global coordinate systems, two kinds of height, a WFS service, OpenStreetMap and Cesium's streamed tiles. The 3DGS Viewer showed both how impressive Gaussian splats are and how far they still are from GIS use without georeferencing.
 
-Working with an AI coding assistant made the projects larger than I could have built alone, but it moved the work from writing code to directing and checking it. The most useful habits were to write the rules down (no invented numbers, verify before claiming), to require a runnable check for every change, and to inspect the screenshots myself. The pivot of the 3DGS project also showed the value of checking data access and licences before building on a dataset.
+\paragraph{Technologies.} I now have hands-on experience with a web GIS stack from database to browser: PostGIS, Python geospatial libraries and an API on the server side, and D3, CesiumJS and three.js in the browser, with React for the interface. I also learned the tooling around them: Docker, automated tests, continuous integration and static hosting.
+
+\paragraph{Working with an AI assistant.} The assistant made it possible to finish three working apps in the time available, but it changed what my work was. Instead of typing code, I spent my time deciding what to build, reading and understanding the code, and checking the result. Three habits made this work: writing the rules down for the assistant (for example, never report a number that has not come from running code), requiring a runnable check for every change, and looking at the screenshots myself. The tutoring phase of Projection Lab was the part where I practised writing code myself; in the later projects the learning came more from directing and reviewing.
+
+\paragraph{Keeping it small.} Choosing small, clearly scoped projects and finishing each one properly worked better for learning than one large project would have. The change of plan in the 3DGS project was a useful reminder to check that data is actually available before building on it.
 
 \section{Conclusion}\label{sec:conclusion}
 
-Mercator inflates the median country area by $1.21\times$ and Greenland by $16.54\times$, and $\sec^2\varphi$ at the centroid predicts the inflation within 1\,\% for 156 of 176 countries while never overestimating it. In central Trondheim, the nearest public shelter on foot differs from the nearest in a straight line at 19\,\% of reachable grid points, and the median walk is 1.34 times the straight line. A Gaussian splat file can be opened and inspected entirely in the browser, but it carries no reference system, up direction or scale. All three apps are tested, documented and live at \siteurl.
+The module gave me practical experience with three sides of GIS: the science behind map projections, the systems needed to combine real geodata in a 3D city model, and a new 3D data type on the web. All three apps are finished, documented and online at \siteurl.
 
 \appendix
-\section{Reproducing the results}\label{app:repro}
-
-From the repository root (Windows PowerShell, Node 24, Python 3.14 with uv): \code{uv run --locked --project "Project 1/backend" pytest}; \code{npm --prefix "Project 2" test} and \code{npm --prefix "Project 3" test} (plus \code{run lint} and \code{run build}); the whole website with \code{npm run site:install} and \code{npm run site:build}. The Projection Lab database stack is described in \code{Project 1/README.md}.
-
 \section{Data credits and licences}\label{app:credits}
 
-Country boundaries: Natural Earth (public domain). Buildings and walking network: \textcopyright{} OpenStreetMap contributors (ODbL). Public shelters: \textcopyright{} DSB (NLOD 2.0). Terrain, imagery and 3D Tiles streaming: Cesium ion. Camera-target heights: Kartverket (CC BY 4.0). SOAR Telescope splat: Luis Cerda (CC BY 4.0). Splat rendering: Spark and three.js (MIT).
+Country boundaries: Natural Earth (public domain). Buildings and walking network: \textcopyright{} OpenStreetMap contributors (ODbL). Public shelters: \textcopyright{} DSB (NLOD 2.0). Terrain, imagery and 3D Tiles streaming: Cesium ion. Splat rendering: Spark and three.js (MIT). The Nugatti splat in \cref{fig:p3-upaxis} is not published.
