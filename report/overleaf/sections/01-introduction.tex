@@ -1,0 +1,28 @@
+\section{Introduction}\label{sec:intro}
+
+The goal of this specialization module was to build practical GIS experience through small, achievable projects. Instead of one large system, I built three web applications. Each one takes a single question from one theme of the course and answers it with real data:
+
+\begin{description}[leftmargin=0pt]
+  \item[Projection Lab (GI science).] How much does the Mercator projection inflate country areas, how does that depend on latitude, and how well does the theoretical area scale factor $\sec^2\varphi$ predict it compared with an equal-area projection (Eckert IV)? (\cref{sec:p1})
+  \item[Trondheim 3D (GI systems).] Where is the nearest public shelter in Trondheim, and how far is the walk there? (\cref{sec:p2})
+  \item[3DGS Viewer (3D GIS).] What does a 3D Gaussian splat file contain, and how well can a static web page open and inspect it entirely on the client? (\cref{sec:p3})
+\end{description}
+
+The three apps are published as one static website on GitHub Pages (\cref{sec:website}). A homepage at \siteurl{} links to each project under its own path (\code{/projection-lab/}, \code{/trondheim-3d/} and \code{/3dgs-viewer/}), and every app links back to it. The source code, the data-preparation scripts and the full development history are in the public repository \url{https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course}.
+
+\subsection{How the work was done}\label{sec:method}
+
+The projects were developed between 8 September and 30 October 2026, in more than 70 commits. Two working rules shaped every project and are worth stating up front, because they decide how far the results in this report can be trusted.
+
+\paragraph{Verify before claiming.} A change was only counted as done after it had been checked with something that can be run: unit tests, linting, a production build, and for user-interface changes a browser check at a desktop width (1600\,px) and a phone width (390\,px), with the screenshot inspected. Every project README records what was verified, how, and what was \emph{not} verified. The numbers in this report come from those records and from a final evidence pass on 29 October 2026, in which the tests were re-run and the key results recomputed from the committed data (\cref{app:repro}). Where a value could not be confirmed, the text says so.
+
+\paragraph{AI-assisted development.} I used the AI coding assistant Claude Code \citep{claudecode} throughout. Its role differed between projects and over time:
+\begin{itemize}
+  \item In the first phases of Projection Lab (September), the assistant worked as a tutor: I wrote and ran the code, and it explained concepts and reviewed my steps.
+  \item In Trondheim 3D and the 3DGS Viewer, and in the final sprint for all three projects (27--30 October), the assistant wrote the code. I set the goals and the scope, decided between alternatives, reviewed the changes and the screenshots, and approved each step.
+\end{itemize}
+Rules for the assistant were kept in \code{CLAUDE.md} files in the repository, for example ``never invent numbers'', ``every result in the docs must come from running code'' and ``work only inside the project folder named in the task''. Using an assistant made the projects larger than I could have built alone in the time, so the learning focus shifted from typing code to understanding, directing and checking it. I return to this in \cref{sec:discussion}.
+
+\subsection{Structure of the report}
+
+\Cref{sec:p1,sec:p2,sec:p3} follow the same pattern for each project: the question, the GIS background, the data, the system, the method, the results, how they were verified, and their limitations. \Cref{sec:website} describes the shared website and the engineering practice behind it. \Cref{sec:discussion} reflects on the module as a whole, and \cref{sec:conclusion} concludes. \Cref{app:repro} lists the commands needed to reproduce the results, and \cref{app:credits} lists data credits and licences.
