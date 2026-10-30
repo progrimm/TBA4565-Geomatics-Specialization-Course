@@ -144,3 +144,7 @@ vite.config.ts.timestamp-*
 
 # Assembled GitHub Pages site (npm run site:build)
 dist-site/
+
+old_reports/
+# Earlier course reports, kept local as style references for the report
+old_reports/
