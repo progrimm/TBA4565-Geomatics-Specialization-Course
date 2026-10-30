@@ -2,7 +2,7 @@
 
 \subsection{Purpose}
 
-Many of the world maps people see use the Mercator projection, where Greenland looks about as large as Africa. Every flat map has to distort the Earth in some way, but few people know how much, or that other projections make different trade-offs. Projection Lab is meant for people without GIS background. It shows one world map with a slider that morphs from Mercator to Eckert IV, an equal-area projection (\cref{fig:p1-endpoints}). Clicking a country shows how much Mercator exaggerates its area, and a chart shows how the exaggeration depends on latitude.
+Many of the world maps people see use the Mercator projection, where Greenland looks about as large as Africa. In September 2026, the UN General Assembly adopted the resolution ``Correct the Map'', which encourages equal-area world maps, such as the Equal Earth projection, instead of Mercator. The resolution is not binding \citep{un-correctmap}. At the same time, France replaced Mercator with the equal-area Eckert IV projection on its official diplomatic maps \citep{connexion-eckert}. This is why I chose this project: I wanted to see for myself how large the difference between Mercator and an equal-area map really is, and to show it to people without GIS background. The app shows one world map with a slider that morphs from Mercator to Eckert IV, an equal-area projection (\cref{fig:p1-endpoints}). Clicking a country shows how much Mercator exaggerates its area, and a chart shows how the exaggeration depends on latitude.
 
 \begin{figure}[htbp]
 \centering
@@ -43,7 +43,7 @@ which is 1 at the equator, 4 at 60\dg{} and 33.2 at 80\dg{}. At the poles the sc
 
 \subsection{Results}
 
-\Cref{tab:p1-top} shows the five countries that Mercator inflates the most. Greenland is shown 16.5 times too large. Over all countries except Antarctica, the median ratio is 1.21. In Eckert IV, every ratio is within $2.5\cdot10^{-6}$ of 1, which confirms that the calculation behaves as expected for an equal-area projection.
+\Cref{tab:p1-top} shows the five countries that Mercator inflates the most. Over all countries except Antarctica, the median ratio is 1.21. In Eckert IV, every ratio is within $2.5\cdot10^{-6}$ of 1, which confirms that the calculation behaves as expected for an equal-area projection.
 
 \begin{table}[htbp]
 \centering

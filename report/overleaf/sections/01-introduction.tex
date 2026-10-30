@@ -24,15 +24,15 @@ Trondheim 3D & GI systems & Where is the nearest public shelter in Trondheim, an
 
 \subsection{Way of working}\label{sec:work}
 
-I used the AI coding assistant Claude Code \citep{claudecode} in all three projects, but in two different roles. In the first part of Projection Lab (September), it worked as a tutor: I wrote and ran the code myself, and the assistant explained concepts and pointed me to the official documentation. From Trondheim 3D onwards, and in the final sprint from 27 to 30 October, the assistant wrote the code. My job was then to set the goals, choose between alternatives, review the changes and check the result in the browser.
+I used the AI coding assistant Claude Code \citep{claudecode} in all three projects, in two different roles. In the first part of Projection Lab, it worked as a tutor: I wrote and ran the code myself, and the assistant explained concepts and pointed me to the official documentation. In the rest of the work, the assistant wrote the code, while I set the goals, chose between alternatives, reviewed the changes and checked the result in the browser.
 
-Two rules applied throughout. A change only counted as done when it had been checked with something that could be run: unit tests, a build, or screenshots at desktop (1600\,px) and phone (390\,px) width. Every number in a project's documentation, and in this report, comes from running code.
+I chose this way of working on purpose. AI assistants are becoming a normal part of software development, and I expect that working in geomatics will involve directing and reviewing such tools as much as writing code by hand. I wanted to experience GIS development from this perspective, while still learning the underlying technologies well enough to understand and check what the assistant made.
 
 \section{Data and tools}\label{sec:data}
 
 All data used in the projects is open, except my own splat capture in \cref{sec:p3}. \Cref{tab:data} lists the datasets, and all screenshots in this report contain data from these sources. \Cref{tab:tools} lists the main tools and libraries, and what each one is used for.
 
-\begin{table}[htbp]
+\begin{table}[!ht]
 \centering
 \caption{Datasets.}
 \label{tab:data}
@@ -54,7 +54,7 @@ Splat files & Own capture; ``SOAR Telescope'' by L.~Cerda \citep{soar} & Not pub
 \end{tabularx}
 \end{table}
 
-\begin{table}[htbp]
+\begin{table}[!ht]
 \centering
 \caption{Main tools and libraries.}
 \label{tab:tools}

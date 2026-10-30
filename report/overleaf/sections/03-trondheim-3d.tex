@@ -15,7 +15,7 @@ The app shows Trondheim with Cesium World Terrain and Cesium OSM Buildings, and 
 
 \subsection{The 3D scene}
 
-A CesiumJS app is built around a \code{Viewer}, which contains the globe, the camera and the default imagery. Terrain and buildings are streamed from Cesium ion and need an access token.
+A CesiumJS app is built around a \code{Viewer}, which contains the globe, the camera and the default imagery.
 
 The buildings are a 3D Tiles dataset \citep{3dtiles}. The city is divided into tiles at several levels of detail, and Cesium only loads the detailed tiles where the camera needs them. The setting \code{maximumScreenSpaceError} controls how much detail is loaded. I tested the value 32 against the default of 16 over Midtbyen. With 32, the building tiles used 33.5\,\% less memory, but many small buildings in the centre were missing, so I kept the default.
 
