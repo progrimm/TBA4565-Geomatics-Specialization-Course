@@ -1,33 +1,43 @@
-\section{One website}\label{sec:website}
+\section{The website}\label{sec:website}
 
-The three apps are built and published together as one static website on GitHub Pages \citep{ghpages}. A script builds the homepage and the three apps into one folder, and a GitHub Actions workflow publishes it whenever the main branch changes. Making this work taught me a few practical things about web deployment: every app has to load its files from relative paths so that it works under its own sub-path, a backend cannot run on a static host (hence Projection Lab's static mode), and secrets such as the Cesium token must come from the build system rather than the code. Each project also has its own automatic checks (linting, unit tests and a build) that run on every change, and the apps were checked in a browser at desktop and phone width (\cref{fig:mobile}).
+The three apps are published as one static website on GitHub Pages \citep{ghpages}. A build script builds the homepage and the three apps into one folder, and a GitHub Actions workflow publishes it every time the main branch changes. Each project also has its own workflow that runs code checks, unit tests and a build.
+
+A static host can only serve files, which had three consequences:
+\begin{itemize}
+  \item Each app lives in its own sub-path, such as \code{/projection-lab/}, so every app loads its files with relative paths.
+  \item Projection Lab cannot use its database and API on the website. In a static mode, the map instead reads two JSON files exported from the same database queries.
+  \item The Cesium ion token for Trondheim 3D ends up in the public JavaScript code. It is stored as a secret in GitHub and added at build time, and in Cesium ion it is limited to read access from the website's address. A request with the token was accepted from the website's address and refused from another address.
+\end{itemize}
+All apps were checked at desktop and phone width (\cref{fig:mobile}).
 
 \begin{figure}[htbp]
 \centering
-\begin{subfigure}{0.24\textwidth}\includegraphics[width=\linewidth]{site-03-homepage-mobile.png}\caption{Homepage}\end{subfigure}\hfill
-\begin{subfigure}{0.24\textwidth}\includegraphics[width=\linewidth]{project-1-06-mobile.png}\caption{Projection Lab}\end{subfigure}\hfill
-\begin{subfigure}{0.24\textwidth}\includegraphics[width=\linewidth]{project-2-04-mobile.png}\caption{Trondheim 3D}\end{subfigure}\hfill
-\begin{subfigure}{0.24\textwidth}\includegraphics[width=\linewidth]{project-3-05-mobile.png}\caption{3DGS Viewer}\end{subfigure}
-\caption{The website on a phone. Data: Natural Earth; \textcopyright{} OpenStreetMap contributors (ODbL); \textcopyright{} DSB (NLOD 2.0); Cesium ion.}
+\hspace*{\fill}\begin{subfigure}{0.19\textwidth}\includegraphics[width=\linewidth]{site-03-homepage-mobile.png}\caption{Homepage}\end{subfigure}\hfill
+\begin{subfigure}{0.19\textwidth}\includegraphics[width=\linewidth]{project-1-06-mobile.png}\caption{Projection Lab}\end{subfigure}\hfill
+\begin{subfigure}{0.19\textwidth}\includegraphics[width=\linewidth]{project-2-04-mobile.png}\caption{Trondheim 3D}\end{subfigure}\hfill
+\begin{subfigure}{0.19\textwidth}\includegraphics[width=\linewidth]{project-3-05-mobile.png}\caption{3DGS Viewer}\end{subfigure}\hspace*{\fill}
+\caption{The website on a phone (390\,px wide).}
 \label{fig:mobile}
 \end{figure}
 
-\section{What I gained}\label{sec:reflection}
+\section{Challenges along the way}\label{sec:challenges}
+
+\begin{itemize}
+  \item \textbf{Data I could not use.} The first version of the 3DGS project showed example splats from Cesium ion and two other providers. The Cesium examples only loaded with Cesium's own evaluation token, not with my account, one dataset depended on a share key that expires in December 2026, and one had no stated licence. A public website cannot depend on that, so I rebuilt the project around local files. I should have checked access and licences before building on the data.
+  \item \textbf{Invalid geometries.} Two countries in Natural Earth, the USA and Sudan, had self-intersecting boundaries. They were repaired with \code{ST\_MakeValid} in PostGIS before any areas were computed.
+  \item \textbf{Poles and the antimeridian.} Antarctica reaches the pole, where Mercator is undefined, and Russia, Fiji and Antarctica are split at 180\dg{}. Both cases needed their own handling and tests in the area calculation.
+  \item \textbf{Camera views.} The first preset views used guessed camera positions and missed their landmarks. Describing each view as a target with a direction and a distance solved this.
+\end{itemize}
+
+\section{Reflection}\label{sec:reflection}
 
 % TODO (author): adjust this section to your own experience.
-\paragraph{GIS understanding.} Each project turned a topic from the course into something I could see and test. Projection Lab made map projections concrete: I now understand \emph{why} Mercator exaggerates the far north, not just that it does. Trondheim 3D showed how much of GIS systems work is about making data from different sources agree: Norwegian and global coordinate systems, two kinds of height, a WFS service, OpenStreetMap and Cesium's streamed tiles. The 3DGS Viewer showed both how impressive Gaussian splats are and how far they still are from GIS use without georeferencing.
+In Projection Lab, computing the areas myself showed me why Mercator exaggerates the far north, and why a country's exaggeration depends on its whole extent and not only its latitude. Trondheim 3D was mostly about making data from different sources fit together: two coordinate systems, two kinds of height, a WFS service, OpenStreetMap and Cesium's streamed data. The 3DGS Viewer showed me that a splat looks impressive but carries less information than GIS data needs, since it has no position, orientation or scale in the real world.
 
-\paragraph{Technologies.} I now have hands-on experience with a web GIS stack from database to browser: PostGIS, Python geospatial libraries and an API on the server side, and D3, CesiumJS and three.js in the browser, with React for the interface. I also learned the tooling around them: Docker, automated tests, continuous integration and static hosting.
+Together, the projects gave me practice with a full web GIS stack, from PostGIS and Python on the server to D3, CesiumJS and three.js in the browser.
 
-\paragraph{Working with an AI assistant.} The assistant made it possible to finish three working apps in the time available, but it changed what my work was. Instead of typing code, I spent my time deciding what to build, reading and understanding the code, and checking the result. Three habits made this work: writing the rules down for the assistant (for example, never report a number that has not come from running code), requiring a runnable check for every change, and looking at the screenshots myself. The tutoring phase of Projection Lab was the part where I practised writing code myself; in the later projects the learning came more from directing and reviewing.
-
-\paragraph{Keeping it small.} Choosing small, clearly scoped projects and finishing each one properly worked better for learning than one large project would have. The change of plan in the 3DGS project was a useful reminder to check that data is actually available before building on it.
+The AI assistant made it possible to finish three working apps in the time I had. The cost is that I wrote little of the code in the later projects myself, so there my learning came from deciding, reviewing and testing rather than from writing code. Besides the two rules in \cref{sec:work}, it helped to look at the screenshots myself instead of trusting a report that a page worked. In Projection Lab, two layout bugs were found that way: a tooltip covering its own point, and overlapping axis labels on narrow screens.
 
 \section{Conclusion}\label{sec:conclusion}
 
-The module gave me practical experience with three sides of GIS: the science behind map projections, the systems needed to combine real geodata in a 3D city model, and a new 3D data type on the web. All three apps are finished, documented and online at \siteurl.
-
-\appendix
-\section{Data credits and licences}\label{app:credits}
-
-Country boundaries: Natural Earth (public domain). Buildings and walking network: \textcopyright{} OpenStreetMap contributors (ODbL). Public shelters: \textcopyright{} DSB (NLOD 2.0). Terrain, imagery and 3D Tiles streaming: Cesium ion. Splat rendering: Spark and three.js (MIT). The Nugatti splat in \cref{fig:p3-upaxis} is not published.
+In this report I have described three small web GIS projects. Projection Lab measures how much the Mercator projection inflates the area of each country and compares it with the theoretical $\sec^2\varphi$. Trondheim 3D combines terrain, buildings and DSB's public shelters in CesiumJS, and finds the nearest shelter along the walking network. The 3DGS Viewer opens Gaussian splat files in the browser and shows what they contain and what they lack as geodata. All three apps are published together on one website.

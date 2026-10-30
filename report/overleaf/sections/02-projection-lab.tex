@@ -1,8 +1,8 @@
-\section{Projection Lab: seeing map distortion}\label{sec:p1}
+\section{Projection Lab}\label{sec:p1}
 
 \subsection{Purpose}
 
-Most of us learned what the world looks like from Mercator maps, where Greenland appears about as large as Africa. Every flat map has to distort the round Earth somehow, but few people know how, or that other world maps make different trade-offs. Projection Lab is meant for everyday users rather than GIS experts: one world map with a slider that morphs smoothly from Mercator to Eckert IV, an equal-area projection (\cref{fig:p1-endpoints}). Watching Greenland, Canada and Russia shrink while Africa keeps its size makes the distortion visible without any formulas. Clicking a country shows how much Mercator exaggerates its area, and a short ``Method'' section explains the ideas in plain language.
+Many of the world maps people see use the Mercator projection, where Greenland looks about as large as Africa. Every flat map has to distort the Earth in some way, but few people know how much, or that other projections make different trade-offs. Projection Lab is meant for people without GIS background. It shows one world map with a slider that morphs from Mercator to Eckert IV, an equal-area projection (\cref{fig:p1-endpoints}). Clicking a country shows how much Mercator exaggerates its area, and a chart shows how the exaggeration depends on latitude.
 
 \begin{figure}[htbp]
 \centering
@@ -12,40 +12,66 @@ Most of us learned what the world looks like from Mercator maps, where Greenland
 \end{subfigure}\hfill
 \begin{subfigure}{0.49\textwidth}
   \includegraphics[width=\linewidth]{project-1-02-eckert-iv.png}
-  \caption{Eckert IV (equal-area)}
+  \caption{Eckert IV}
 \end{subfigure}
-\caption{The two ends of the slider, with Greenland selected. In Mercator, Greenland is shown about 16.5 times too large; in Eckert IV it has its true relative size. Country boundaries: Natural Earth (public domain).}
+\caption{The two ends of the slider in Projection Lab, with Greenland selected.}
 \label{fig:p1-endpoints}
 \end{figure}
 
-\subsection{What I built}
+\subsection{Theory}
 
-\begin{itemize}
-  \item A morphing world map with a blend slider, drawn in the browser with D3.
-  \item Red ``distortion circles'': 30 circles of the same size on the globe, drawn through the current projection, as a simple version of Tissot's indicatrix (\cref{fig:p1-blend}). In Mercator they stay round but grow towards the poles; in Eckert IV they keep their area but get squashed.
-  \item A panel for the selected country, comparing its true area with its Mercator and Eckert IV areas.
-  \item A chart of distortion against latitude for all 177 countries, which shows the pattern at a glance: the farther from the equator, the larger the exaggeration.
-\end{itemize}
+The Mercator projection is conformal: it keeps angles and local shapes. To do this, it stretches the map by the same factor in the east--west and north--south directions, and this factor grows with latitude $\varphi$ as $\sec\varphi$ \citep{snyder1987}. Areas are therefore scaled by
+\begin{equation}
+  k_{\text{area}} = \sec^2\varphi ,
+\end{equation}
+which is 1 at the equator, 4 at 60\dg{} and 33.2 at 80\dg{}. At the poles the scale is infinite, so Mercator maps are cut off, usually at about 85.05\dg{}. Eckert IV is an equal-area projection: every area keeps its true relative size, but shapes are sheared towards the edges of the map. No flat map can keep both shapes and areas.
+
+\subsection{Method}
+
+\paragraph{The map.} In D3, a projection is a function from longitude and latitude to screen coordinates. The app blends the two projections by interpolating their outputs, $(1-t)\cdot\text{Mercator} + t\cdot\text{Eckert IV}$, where $t$ is the slider value. The blended maps are neither conformal nor equal-area, so the app only reports areas for the two ends of the slider. As a simple version of Tissot's indicatrix, the map can show 30 red circles, each with a radius of 3\dg{} on the globe. Drawn through the current projection, they stay round but grow towards the poles in Mercator, and keep their area but get squashed in Eckert IV (\cref{fig:p1-blend}).
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.8\textwidth]{project-1-03-blend-50-circles.png}
-\caption{Halfway between the projections, with the distortion circles. All circles are the same size on the globe; how they are drawn shows where the map stretches. Data: Natural Earth.}
+\includegraphics[width=0.5\textwidth]{project-1-03-blend-50-circles.png}
+\caption{The map halfway between the two projections, with the distortion circles.}
 \label{fig:p1-blend}
 \end{figure}
 
-\subsection{Technologies and what I learned}
+\paragraph{Area calculation.} The country boundaries are stored in PostGIS. The areas are computed once, in Python, and stored in a separate table. For each country, the script computes the area on a sphere ($R = 6\,371\,007$\,m) with pyproj, projects the boundary to Mercator and Eckert IV, and computes the planar area of each with Shapely. The area ratio is the projected area divided by the spherical area. The boundary lines are treated as great-circle arcs. Before projecting, they are split into segments of at most 5\,km, so that the projected outline follows the arcs. As a check, the ratio could change by less than $10^{-5}$ when going from 10\,km to 5\,km segments. Antarctica reaches the pole, where Mercator is undefined, so it is clipped at 85.05\dg{} and left out of the statistics. The script also computes $\sec^2\varphi$ at each country's centroid latitude, to compare the theory with the measured ratio.
 
-\paragraph{D3 and map projections.} The frontend uses React and d3-geo \citep{d3}. I learned that a projection in D3 is just a function from longitude and latitude to screen coordinates, so two projections can be blended by interpolating their outputs. The blend itself is neither conformal nor equal-area, which is why the app only reports areas at the two ends of the slider.
+\paragraph{Server side.} A small FastAPI service reads the countries and the areas from PostGIS and serves them to the map, and Docker Compose runs the database, the API and the web server together. The published website cannot run a server, so it uses a static copy of the same data (\cref{sec:website}).
 
-\paragraph{The idea behind the distortion.} Building the area calculation made the theory concrete. Mercator preserves angles and local shapes, but stretches the map by the same factor in both directions, and that factor grows with latitude ($\sec\varphi$). Area is therefore stretched by $\sec^2\varphi$: not at all at the equator, four times at 60\dg{}, and without limit at the poles, which is why Mercator maps are cut off around 85\dg{}. An equal-area projection like Eckert IV keeps every area correct but has to bend shapes instead. No flat map can do both, and seeing this happen on the slider is the main message of the app.
+\subsection{Results}
 
-\paragraph{PostGIS, pyproj and Shapely.} The country data (Natural Earth, 1:110m \citep{naturalearth}) is stored in PostgreSQL with PostGIS. Here I learned the difference between PostGIS \code{geometry} and \code{geography}: the same area query returns square degrees on one and square metres on the other. I also met real data problems: two countries (the USA and Sudan) had invalid geometries that had to be repaired, Antarctica reaches the pole where Mercator is undefined, and some countries cross the 180\dg{} meridian. The areas themselves are computed once in Python with pyproj \citep{pyproj} and Shapely \citep{shapely} and stored in the database.
+\Cref{tab:p1-top} shows the five countries that Mercator inflates the most. Greenland is shown 16.5 times too large. Over all countries except Antarctica, the median ratio is 1.21. In Eckert IV, every ratio is within $2.5\cdot10^{-6}$ of 1, which confirms that the calculation behaves as expected for an equal-area projection.
 
-\paragraph{FastAPI, Docker and a static version.} A small FastAPI service \citep{fastapi} serves the data to the frontend, and Docker Compose runs the database, the API and the web server together, so the whole stack can be rebuilt from scratch with a few commands. GitHub Pages cannot run a backend, so I also added a static mode in which the frontend reads exported JSON files instead of the API. This taught me to think about where an app will run before deciding how it gets its data.
+\begin{table}[htbp]
+\centering
+\caption{The five countries with the largest Mercator area ratio.}
+\label{tab:p1-top}
+\small
+\begin{tabular}{lr}
+\toprule
+Country & Mercator area / true area \\
+\midrule
+Greenland & 16.54 \\
+Norway & 9.38 \\
+Iceland & 5.64 \\
+Finland & 5.47 \\
+Canada & 5.21 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\paragraph{Working as a learner.} The first phases (September) were done in tutoring mode: I wrote the code myself with the assistant explaining and reviewing. The goals were to rebuild my coding fluency, practise debugging and get into the habit of reading official documentation (D3, PostGIS, PROJ, FastAPI). Extending the project from Greenland to every country was done later, in the sprint, with the assistant writing the code.
+The chart in \cref{fig:p1-chart} plots each country's ratio against its centroid latitude, together with the $\sec^2\varphi$ curve. For 156 of 176 countries, the ratio is within 1\,\% of $\sec^2\varphi$ at the centroid. No country lies below the curve. The countries far above it span a large range of latitudes: Norway's ratio is 1.60 times its prediction (Svalbard reaches 80.7\dg{}N), Greenland's 1.57 and Canada's 1.50. The reason is that a country's ratio is an average of $\sec^2\varphi$ over its whole area. Since $\sec^2\varphi$ grows faster and faster towards the poles, the northern parts pull this average above the value at the centroid.
 
-\subsection{Result}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.55\textwidth]{project-1-05-distortion-chart-hover.png}
+\caption{Mercator area ratio against centroid latitude for all countries, with the $\sec^2\varphi$ curve.}
+\label{fig:p1-chart}
+\end{figure}
 
-The finished app makes the distortion easy to see: Greenland is shown about 16.5 times too large in Mercator, while countries near the equator are barely affected. A main limitation is that the areas describe simplified 1:110m boundaries, not official national areas. The map itself is also not fully usable with a keyboard or screen reader.
+\subsection{Limitations}
+
+The areas describe the simplified 1:110m boundaries, not official national areas. The ratios use a sphere; the WGS~84 ellipsoidal area of each country, which PostGIS also stores, differs from the spherical area by between $-0.45$\,\% and $+0.81$\,\%. The map itself cannot be used with a keyboard, and the app has not been tested with a screen reader.

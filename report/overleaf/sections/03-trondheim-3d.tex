@@ -1,48 +1,47 @@
-\section{Trondheim 3D: learning CesiumJS}\label{sec:p2}
+\section{Trondheim 3D}\label{sec:p2}
 
 \subsection{Purpose}
 
-CesiumJS \citep{cesiumjs} is one of the most widely used libraries for 3D maps and digital globes on the web, and I wanted to learn it properly. The best way seemed to be to build something real in a place I know: a 3D model of Trondheim with terrain, buildings and one open dataset. I chose DSB's register of public shelters (\emph{tilfluktsrom}), because it raises a simple, practical question: which shelter is closest, and how far is the walk?
+CesiumJS \citep{cesiumjs} is one of the most used libraries for 3D maps and digital globes on the web, and I wanted to learn it. I chose to build a 3D model of Trondheim, a city I know, with terrain, buildings and one open Norwegian dataset. The dataset is DSB's register of public shelters (\emph{tilfluktsrom}), because it leads to a simple practical question: which shelter is closest, and how far is the walk?
 
-\subsection{What I built}
-
-\begin{itemize}
-  \item A full-screen 3D view of Trondheim with Cesium World Terrain and Cesium OSM Buildings (\cref{fig:p2-overview}).
-  \item The public shelters as points on the map. Clicking one shows its number, capacity and address.
-  \item A control panel with preset camera views (Midtbyen, Nidarosdomen, Bakklandet) and layer switches, which turns into a bottom sheet on phones.
-  \item ``Nearest shelter'': click the ground, and the app finds the nearest shelter along the OpenStreetMap walking network and draws the route (\cref{fig:p2-route}).
-\end{itemize}
+The app shows Trondheim with Cesium World Terrain and Cesium OSM Buildings, and the shelters as points (\cref{fig:p2-overview}). A control panel has three preset camera views (Midtbyen, Nidarosdomen and Bakklandet) and switches for the layers.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{project-2-01-midtbyen-buildings.png}
-\caption{Trondheim 3D: OpenStreetMap buildings on Cesium World Terrain, with the public shelters as orange points. Data: \textcopyright{} OpenStreetMap contributors (ODbL); Cesium ion; \textcopyright{} DSB (NLOD 2.0).}
+\includegraphics[width=0.55\textwidth]{project-2-01-midtbyen-buildings.png}
+\caption{Trondheim 3D: buildings on terrain, with the public shelters as orange points.}
 \label{fig:p2-overview}
 \end{figure}
 
-\subsection{What I learned about CesiumJS}
+\subsection{The 3D scene}
 
-\paragraph{The Viewer and Cesium ion.} Everything starts with a \code{Viewer}, which brings a globe, a camera and default imagery. Terrain and buildings are streamed from Cesium ion, which needs an access token. Because a web app's code is public, the token is visible to anyone; I learned to use a separate production token that only works from my own website.
+A CesiumJS app is built around a \code{Viewer}, which contains the globe, the camera and the default imagery. Terrain and buildings are streamed from Cesium ion and need an access token.
 
-\paragraph{3D Tiles.} The buildings are Cesium OSM Buildings, streamed as 3D Tiles \citep{3dtiles}: the city is split into tiles at several levels of detail, and Cesium loads finer tiles only where the camera needs them. One setting, \code{maximumScreenSpaceError}, controls this trade-off. I tested a coarser value to save memory, but small buildings in the centre disappeared, so I kept the default.
+The buildings are a 3D Tiles dataset \citep{3dtiles}. The city is divided into tiles at several levels of detail, and Cesium only loads the detailed tiles where the camera needs them. The setting \code{maximumScreenSpaceError} controls how much detail is loaded. I tested the value 32 against the default of 16 over Midtbyen. With 32, the building tiles used 33.5\,\% less memory, but many small buildings in the centre were missing, so I kept the default.
 
-\paragraph{Entities, primitives and picking.} The shelters are \emph{entities} loaded from GeoJSON, which come with built-in selection and an info box. The buildings are a \emph{primitive}, the lower-level and faster way to draw large data. Picking showed the difference in practice: a click on a building or shelter selects that object, while a click on the ground returns a position on the terrain, which starts the nearest-shelter search.
+Cesium has two ways of drawing data. The shelters are \emph{entities} loaded from GeoJSON, which come with selection and an info box with the shelter's number, capacity and address. The buildings are a \emph{primitive}, a lower-level type meant for large datasets. When the user clicks the map, the app first checks whether an object was hit. A click on a building or a shelter selects it, while a click on the ground gives a position on the terrain, which starts the shelter search below.
 
-\paragraph{The camera.} My first preset views used guessed camera positions and missed their landmarks. The fix was to describe each view as a target point plus a direction and a distance, and let Cesium place the camera in the target's local east-north-up frame. Then the landmark is always centred.
+\subsection{Coordinates and heights}
 
-\paragraph{Using Cesium with React.} I kept Cesium code outside React components, in small modules for each layer, and gave every layer its own error handling, so the rest of the app keeps working if one dataset fails to load.
+DSB publishes the shelters through an OGC Web Feature Service (WFS) \citep{ogcwfs} as GML in EUREF89 / UTM zone 32N (EPSG:25832). A script fetches them once, converts them to longitude and latitude with proj4js, and saves them as GeoJSON in the app. The 12 shelters have room for 5\,268 people in total.
 
-\subsection{What I learned about Norwegian geodata}
+Heights were harder. Cesium measures heights above the WGS~84 ellipsoid, while Norwegian heights (NN2000) are measured from a surface close to the geoid, which lies about 40\,m above the ellipsoid in Trondheim. If an NN2000 height is used directly in Cesium, the point ends up about 40\,m too low. Each preset view therefore aims at a landmark whose ground height I looked up in Kartverket's height service, plus 40\,m. The camera is placed relative to this target in the target's local east--north--up frame, given as a direction and a distance, so the landmark is always in the middle of the view.
 
-The shelters are published by DSB through an OGC Web Feature Service \citep{ogcwfs} in EUREF89 / UTM zone 32N (EPSG:25832), so they had to be converted to longitude and latitude for Cesium. Heights were the bigger lesson. Cesium measures heights above the WGS~84 ellipsoid, while Norwegian heights (NN2000) are measured above the geoid, which lies about 40\,m higher in Trondheim. Mixing the two puts a point about 40\,m too low. The walking network came from OpenStreetMap through the Overpass API \citep{overpass}.
+\subsection{Nearest-shelter analysis}
 
-\subsection{The nearest-shelter analysis}
+The walking network was downloaded from OpenStreetMap with the Overpass API, using only roads and paths that are open to pedestrians. In the app, the network becomes a graph: the OSM nodes are vertices, and each road segment is an edge weighted by its length on the ellipsoid. When the user clicks the ground, the click and the shelters are snapped to their nearest node, and Dijkstra's algorithm \citep{dijkstra1959} searches outwards from the click until it reaches the first shelter. The route is drawn on the ground, and the panel shows both the walking distance and the straight-line distance. I chose to run the search in the browser instead of using a routing service, because the service's API key would be visible to anyone in the app's code, and its free daily quota could run out.
 
-Instead of a routing service, whose API key would be public in the browser, the app downloads the walking network once and searches it with Dijkstra's algorithm \citep{dijkstra1959}, directly in the browser. \Cref{fig:p2-route} shows why this matters: the nearest shelter is 490\,m away in a straight line, but the river is in the way, and the walk over Gamle Bybro is 684\,m. The analysis is simple, though: it ignores hills, stairs and how many people each shelter can take.
+\Cref{fig:p2-route} shows why the walking distance matters. From a point south of Nidarosdomen, the nearest shelter is 490\,m away in a straight line, but the river is in the way, and the walk over Gamle Bybro is 684\,m.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{project-2-03-nearest-shelter-route.png}
-\caption{A click south of Nidarosdomen: the nearest shelter is 490\,m away in a straight line, but the walk across the river is 684\,m. Data: \textcopyright{} DSB (NLOD 2.0); \textcopyright{} OpenStreetMap contributors (ODbL); Cesium ion.}
+\includegraphics[width=0.55\textwidth]{project-2-03-nearest-shelter-route.png}
+\caption{Walking route from a point south of Nidarosdomen to the nearest shelter.}
 \label{fig:p2-route}
 \end{figure}
+
+To see how often this happens, I ran the search from 900 points in a regular grid over the area of the shelters. A shelter could be reached from 884 of them. For 168 of these points (19\,\%), the nearest shelter on foot was a different one than the nearest in a straight line. The median walking distance was 1.34 times the straight-line distance.
+
+\subsection{Limitations}
+
+The analysis does not consider hills, stairs, barriers or how many people each shelter can take. The click is snapped to the nearest node, not the nearest point on a road, and the short connection to that node is a straight line. The 40\,m geoid offset is an approximation for Trondheim, not a value from a geoid model. The search needs a click on the map, so it cannot be used with a keyboard.

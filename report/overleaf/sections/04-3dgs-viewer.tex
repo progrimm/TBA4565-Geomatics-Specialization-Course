@@ -1,42 +1,50 @@
-\section{3DGS Viewer: learning Gaussian splatting on the web}\label{sec:p3}
+\section{3DGS Viewer}\label{sec:p3}
 
 \subsection{Purpose}
 
-3D Gaussian splatting \citep{kerbl2023} is a new way to capture real places and objects in 3D from ordinary photos or video, and it is quickly showing up in GIS and digital-twin tools. I wanted to understand what a splat actually is, how it can be shown in a web browser, and what a working implementation looks like. The result is a viewer where you open your own splat file and inspect it; the file is read in the browser and never uploaded.
+3D Gaussian splatting \citep{kerbl2023} is a fairly new method for capturing real places and objects in 3D from ordinary photos or video, and it is starting to appear in GIS and digital-twin software. I wanted to find out what a splat file contains and how it can be shown in a web browser. The project started as a CesiumJS globe with a gallery of georeferenced splats, but was rebuilt as a viewer for local files when the gallery data turned out to be unavailable to me (\cref{sec:challenges}). The user opens their own splat file, and the file is read in the browser without being uploaded anywhere.
 
-\paragraph{A change of plan.} The first version was a CesiumJS globe with a gallery of georeferenced splats from around the world. It turned out that the example splats only loaded with a special evaluation token from Cesium, not with my own account, and another dataset depended on a share key that expires in December 2026. A public website cannot rely on that, so I rebuilt the project as a viewer for local files. The lesson was to check data access and licences \emph{before} building on a dataset.
+\subsection{What a splat file contains}
 
-\subsection{What I built}
+A splat scene is a large number of small, semi-transparent 3D ellipsoids (Gaussians). Each one has a position, a size along three axes, a rotation, an opacity and a colour that changes with the viewing direction. A mesh describes surfaces, and a point cloud has points without size; a Gaussian has both an extent and an orientation. The Gaussians are fitted so that the scene looks like the input photos from every camera position, which is why splats can look very realistic.
 
+The most common file format is PLY, where each splat is one record with a list of named values. The header of my own test capture lists 154\,055 splats with 62 values each. Of these, 45 describe how the colour changes with the viewing direction, as spherical-harmonic coefficients of degree 3. This explains why splat files are large, and why compressed formats such as SPZ \citep{spz} and SOG \citep{playcanvas-sog} exist.
+
+\subsection{The viewer}
+
+The viewer uses Spark \citep{spark}, a splat renderer built on three.js \citep{threejs}. It has four functions:
 \begin{itemize}
-  \item Open a splat file by dialog or drag and drop (PLY, SPZ, \code{.splat}, \code{.ksplat} or SOG).
-  \item A ``file facts'' panel that reads the file header: number of splats, size, colour detail and extent.
-  \item An up-axis switch and a reset button, because splat files do not agree on which way is up.
-  \item A two-point distance tool.
+  \item Open a file (PLY, SPZ, \code{.splat}, \code{.ksplat} or SOG) with a file dialog or by drag and drop.
+  \item Show facts about the file, read from the PLY header by the app's own code: number of splats, values per splat, colour degree and extent (\cref{fig:p3-upaxis}). A PLY file without splat properties, for example a mesh, is rejected with a message.
+  \item Change which axis points up, and reset the view.
+  \item Measure the distance between two points.
 \end{itemize}
+Captures often contain stray splats far away from the scene, called floaters. If the camera were placed to show the full extent, the scene would appear small in the middle of the screen. The viewer therefore frames the central 96\,\% of the splats along each axis.
 
-\subsection{What I learned about Gaussian splats}
+To measure, the user clicks two points. Each click sends a ray from the camera through the mouse position into the scene, and the first splat it hits is used. The distance is the straight line between the two points in the file's own coordinates.
 
-\paragraph{What a splat is.} A splat scene is a cloud of hundreds of thousands of small, semi-transparent, coloured 3D blobs (Gaussians). Each has a position, a size and orientation, an opacity and a colour that changes with the viewing angle. Unlike a mesh, there are no surfaces; unlike a point cloud, each point has a shape. The blobs are optimised so that the scene \emph{looks} right from the photos, which is why splats look so realistic.
+\subsection{Splats as geodata}
 
-\paragraph{What is inside the file.} Reading the PLY header myself showed that most of each record is colour: of the 59 values stored per splat in a typical file, 45 describe how the colour changes with viewing direction. This explains why splat files are large and why compressed formats such as SPZ and SOG exist.
-
-\paragraph{Splats and GIS.} Testing with real files showed what a splat does \emph{not} contain. It has no coordinate reference system, and it does not say which way is up: the files I tested were upright with $-Y$ as up, the usual convention for 3DGS training output, but lay on their side with $+Z$, the usual convention in GIS (\cref{fig:p3-upaxis}). It also has no real scale: measuring across the lid of a jar gave 1.075 ``units'', and nothing in the file says what a unit is. To use splats in GIS, they must be georeferenced, for example with GNSS or ground control points, and can then be streamed onto a globe as 3D Tiles \citep{3dtiles,khr-gaussian-splatting}, which is what my first version tried to do.
+Testing with real files showed what a splat file does \emph{not} contain. It has no coordinate reference system, and it does not record which way is up. My capture was upright with $-Y$ up, the usual convention for 3DGS training output, but lay on its side with $+Z$ up, the usual convention in GIS (\cref{fig:p3-upaxis}). The file also has no known scale. The distance across the lid of the jar (\cref{fig:p3-measure}) is 1.075 ``units'', and nothing in the file says what a unit is. To use a splat in GIS, it has to be georeferenced, for example with GNSS positions for the photos or with ground control points. It can then be placed on a globe as 3D Tiles with the glTF extension for Gaussian splats \citep{3dtiles,khr-gaussian-splatting}, which is what the first version of this project tried to show.
 
 \begin{figure}[htbp]
 \centering
-\begin{subfigure}{0.49\textwidth}
+\begin{subfigure}{0.325\textwidth}
   \includegraphics[width=\linewidth]{project-3-02-loaded-file-facts.png}
-  \caption{Up axis $-Y$: upright}
+  \caption{Up axis $-Y$}
 \end{subfigure}\hfill
-\begin{subfigure}{0.49\textwidth}
+\begin{subfigure}{0.325\textwidth}
   \includegraphics[width=\linewidth]{project-3-03-up-axis-wrong-plus-z.png}
-  \caption{Up axis $+Z$: on its side}
+  \caption{Up axis $+Z$}
+\end{subfigure}\hfill
+\begin{subfigure}{0.325\textwidth}
+  \includegraphics[width=\linewidth]{project-3-04-measure-lid-diameter.png}
+  \caption{Measuring the lid}\label{fig:p3-measure}
 \end{subfigure}
-\caption{A splat of a Nugatti jar in the viewer, with the file facts in the panel. The file does not say which way is up, so the same data appears upright or on its side depending on the convention. Rendering: Spark and three.js (MIT).}
+\caption{My own splat capture of a jar in the viewer: (a) and (b) show the same file with two up-axis conventions, and (c) shows a two-point measurement.}
 \label{fig:p3-upaxis}
 \end{figure}
 
-\subsection{What I learned about the web technology}
+\subsection{Limitations}
 
-The viewer uses Spark \citep{spark}, a splat renderer built on three.js \citep{threejs}, the most common 3D library for the web. I learned how a three.js scene is organised (renderer, scene, camera and controls), how picking works by casting a ray from the mouse into the scene, and why the splats must be sorted by depth every time the view changes. Reading files locally, with no server or upload, keeps the app simple and private, but the renderer makes the download large before anything can be shown. Stray blobs far from the scene (``floaters'') are common in captures, so the camera is framed on the central part of the scene rather than on all splats.
+Only uncompressed PLY files have been tested in the browser. The other formats depend on Spark's loaders and have not been tested here. The whole file is read into memory, and the largest file tested was 47\,MB. The app's JavaScript is 1.17\,MB (compressed) and has to be downloaded before a file can be opened. Measuring needs a mouse or touch screen.

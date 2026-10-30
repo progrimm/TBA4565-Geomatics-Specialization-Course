@@ -1,4 +1,4 @@
-% TBA4565 module report. Compiler: pdfLaTeX (Overleaf default); bibliography: BibTeX via natbib.
+% TBA4565 module report. Compiler: pdfLaTeX (Overleaf default); bibliography: BibTeX via natbib (numeric).
 \documentclass[11pt,a4paper]{article}
 
 \usepackage[utf8]{inputenc}
@@ -11,52 +11,46 @@
 \usepackage{booktabs}
 \usepackage{tabularx}
 \usepackage{array}
-\usepackage{xcolor}
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{enumitem}
-\usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,fit,calc}
-\usepackage[authoryear,round]{natbib}
+\usepackage[numbers,sort&compress]{natbib}
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
 \usepackage[nameinlink,capitalise]{cleveref}
 
 \graphicspath{{figures/}}
-\definecolor{ntnublue}{HTML}{00509E}
 \setlist{itemsep=2pt,topsep=4pt}
 \captionsetup{font=small,labelfont=bf}
 \setlength{\parskip}{4pt}
-
-% Shared TikZ styles for the architecture diagrams.
-\tikzset{
-  box/.style={draw=ntnublue, rounded corners=2pt, fill=ntnublue!6, align=center,
-    font=\footnotesize, text width=#1, minimum height=0.95cm, inner sep=3pt},
-  box/.default=2.7cm,
-  store/.style={box=#1, fill=white, draw=black!55},
-  store/.default=2.7cm,
-  flow/.style={-{Stealth[length=2mm]}, thick, black!70},
-  lab/.style={font=\scriptsize, midway, fill=white, inner sep=1pt},
-}
+\renewcommand{\bibfont}{\footnotesize}
+\setlength{\bibsep}{0pt}
 
 \newcommand{\code}[1]{\texttt{#1}}
 \newcommand{\dg}{\ensuremath{^\circ}}
 \newcommand{\siteurl}{\url{https://progrimm.github.io/TBA4565-Geomatics-Specialization-Course/}}
-
-\title{\textbf{My GIS module}\\[4pt]
-  \large Three small web GIS projects in GI science, GI systems and 3D GIS}
-\author{Åmund Grimstad\\[2pt]
-  \small TBA4565 Specialization Subject: GI Science and Systems\\
-  \small Norwegian University of Science and Technology (NTNU), autumn 2026}
-\date{30 October 2026}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
 
 \begin{document}
-\maketitle
 
-\begin{abstract}
-\noindent
-This report describes three small web GIS projects I built in the specialization module TBA4565 in autumn 2026, and what I learned from building them. \emph{Projection Lab} is an interactive world map that lets anyone see how the Mercator projection distorts the size of countries compared with an equal-area map. \emph{Trondheim 3D} is a 3D model of my own city, built to learn CesiumJS, with public shelters and a walking route to the nearest one. \emph{3DGS Viewer} opens 3D Gaussian splat files in the browser, built to learn how this new kind of 3D data works on the web. The three apps are published together on one website, \siteurl. The report focuses on the purpose of each project, the technologies behind it and the experience I gained, rather than on detailed numerical results.
-\end{abstract}
+\begin{titlepage}
+\centering
+{\large Norwegian University of Science and Technology (NTNU)\\
+Department of Civil and Environmental Engineering\par}
+\vspace{4cm}
+{\large TBA4565 Specialization Subject: GI Science and Systems\par}
+\vspace{0.8cm}
+{\huge\bfseries My GIS module\par}
+\vspace{0.4cm}
+{\Large Three small web GIS projects\par}
+\vfill
+{\large Author: Åmund Grimstad\par}
+\vspace{0.3cm}
+{\large Date: 30.10.2026\par}
+\vspace{0.3cm}
+{\footnotesize Website:\\ \siteurl\par}
+\end{titlepage}
 
 \tableofcontents
 \clearpage
@@ -67,7 +61,7 @@ This report describes three small web GIS projects I built in the specialization
 \input{sections/04-3dgs-viewer}
 \input{sections/05-website}
 
-\bibliographystyle{plainnat}
+\bibliographystyle{IEEEtran}
 \bibliography{references}
 
 \end{document}

@@ -1,34 +1,80 @@
 \section{Introduction}\label{sec:intro}
 
-The goal of this module was to build practical GIS experience through small, achievable projects. Instead of one large system, I made three web applications, one for each theme of the course. Each project had a clear purpose and a set of technologies I wanted to learn (\cref{tab:overview}).
+\subsection{Background and goal}
+
+The module covers three themes: GI science, GI systems and 3D GIS. Instead of one large project, I chose to make one small web application for each theme. Each project starts from a single question (\cref{tab:overview}), and I wanted every app to be finished and usable by others, not only by me. The three apps are therefore published together on one website, \siteurl, where a homepage links to each of them (\cref{fig:mobile} in \cref{sec:website}). The source code is in the public repository \url{https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course}.
 
 \begin{table}[htbp]
 \centering
-\caption{The three projects at a glance.}
+\caption{The three projects.}
 \label{tab:overview}
 \small
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.3cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{4.6cm}}
+\begin{tabularx}{\textwidth}{L{2.6cm} L{1.7cm} Y}
 \toprule
-Project & Purpose & Main technologies \\
+Project & Theme & Question \\
 \midrule
-Projection Lab (GI science) & Help everyday people see how map projections distort the world, by morphing between Mercator and an equal-area map. & D3 (d3-geo), React, PostGIS, pyproj, FastAPI, Docker \\
+Projection Lab & GI science & How much does the Mercator projection inflate the area of each country, and how does this depend on latitude? \\
 \addlinespace
-Trondheim 3D (GI systems) & Get familiar with CesiumJS by building a 3D model of Trondheim with open data and one small analysis. & CesiumJS, Cesium ion, 3D Tiles, OGC WFS, OpenStreetMap \\
+Trondheim 3D & GI systems & Where is the nearest public shelter in Trondheim, and how far is the walk? \\
 \addlinespace
-3DGS Viewer (3D GIS) & Get familiar with 3D Gaussian splatting on the web, and see how a viewer is implemented. & Spark, three.js, WebGL \\
+3DGS Viewer & 3D GIS & What does a 3D Gaussian splat file contain, and can it be opened and inspected in a browser without a server? \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-All three apps are published as one static website on GitHub Pages: a homepage at \siteurl{} links to each project, and every app links back to it (\cref{fig:homepage}). The code and its full history are in the public repository \url{https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course}.
+\subsection{Way of working}\label{sec:work}
 
-\begin{figure}[htbp]
+I used the AI coding assistant Claude Code \citep{claudecode} in all three projects, but in two different roles. In the first part of Projection Lab (September), it worked as a tutor: I wrote and ran the code myself, and the assistant explained concepts and pointed me to the official documentation. From Trondheim 3D onwards, and in the final sprint from 27 to 30 October, the assistant wrote the code. My job was then to set the goals, choose between alternatives, review the changes and check the result in the browser.
+
+Two rules applied throughout. A change only counted as done when it had been checked with something that could be run: unit tests, a build, or screenshots at desktop (1600\,px) and phone (390\,px) width. Every number in a project's documentation, and in this report, comes from running code.
+
+\section{Data and tools}\label{sec:data}
+
+All data used in the projects is open, except my own splat capture in \cref{sec:p3}. \Cref{tab:data} lists the datasets, and all screenshots in this report contain data from these sources. \Cref{tab:tools} lists the main tools and libraries, and what each one is used for.
+
+\begin{table}[htbp]
 \centering
-\includegraphics[width=0.85\textwidth]{site-01-homepage-desktop.png}
-\caption{The ``My GIS module'' homepage, which links to the three projects.}
-\label{fig:homepage}
-\end{figure}
+\caption{Datasets.}
+\label{tab:data}
+\small
+\begin{tabularx}{\textwidth}{L{3.6cm} L{2.6cm} L{1.9cm} Y}
+\toprule
+Dataset & Source & Licence & Description \\
+\midrule
+Admin 0 Countries, 1:110m & Natural Earth \citep{naturalearth} & Public domain & Boundaries of 177 countries (GeoJSON, WGS 84). Used in Projection Lab. \\
+\addlinespace
+Public shelters (\emph{Tilfluktsrom -- offentlige}) & DSB, WFS service \citep{dsbwfs} & NLOD 2.0 & 12 shelters with number, capacity and address, in EUREF89 / UTM zone 32N. Used in Trondheim 3D. \\
+\addlinespace
+Walking network & OpenStreetMap, Overpass API \citep{overpass} & ODbL & Footways, paths and streets around the shelters: 164\,294 nodes and 32\,944 ways. Used in Trondheim 3D. \\
+\addlinespace
+Cesium World Terrain and Cesium OSM Buildings & Cesium ion & Cesium ion terms; buildings ODbL & Global terrain and OpenStreetMap buildings, streamed as needed. Used in Trondheim 3D. \\
+\addlinespace
+Splat files & Own capture; ``SOAR Telescope'' by L.~Cerda \citep{soar} & Not published; CC BY 4.0 & Test files for the 3DGS Viewer. The app itself ships no data. \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
-\paragraph{How I worked.} I used the AI coding assistant Claude Code \citep{claudecode} throughout, in two different roles. In the first part of Projection Lab, it acted as a tutor: I wrote and ran the code myself, and it explained concepts and pointed me to the official documentation. In Trondheim 3D, the 3DGS Viewer and the final sprint (27--30 October), it wrote the code while I set the goals, chose between alternatives, reviewed the changes and checked the result in the browser. Two habits held throughout: a change only counted as done when it had been checked with something runnable (tests, a build, or a screenshot at desktop and phone width), and every project README records what was verified and what was not. I reflect on this way of working in \cref{sec:reflection}.
-
-The rest of the report has one section per project (\cref{sec:p1,sec:p2,sec:p3}), each covering the purpose, what I built, the technologies and what I learned. \Cref{sec:website} describes the shared website, and \cref{sec:reflection} sums up what I gained.
+\begin{table}[htbp]
+\centering
+\caption{Main tools and libraries.}
+\label{tab:tools}
+\small
+\begin{tabularx}{\textwidth}{L{3.6cm} L{2.6cm} Y}
+\toprule
+Tool & Project & Function \\
+\midrule
+D3 (d3-geo) \citep{d3} & Projection Lab & Projects and draws the world map in the browser \\
+PostgreSQL with PostGIS & Projection Lab & Stores the countries; geodesic area with \code{ST\_Area} \citep{postgis-starea} \\
+GDAL ogr2ogr \citep{gdal-ogr2ogr} & Projection Lab & Imports the GeoJSON file into PostGIS \\
+pyproj \citep{pyproj} and Shapely \citep{shapely} & Projection Lab & Spherical, Mercator and Eckert IV areas \\
+FastAPI \citep{fastapi} & Projection Lab & Web API between the database and the map \\
+Docker Compose & Projection Lab & Runs the database, the API and the web server together \\
+CesiumJS \citep{cesiumjs} and Cesium ion & Trondheim 3D & 3D globe, terrain and streaming of 3D Tiles \\
+proj4js & Trondheim 3D & Converts the shelters from EPSG:25832 to WGS 84 \\
+Spark \citep{spark} and three.js \citep{threejs} & 3DGS Viewer & Renders Gaussian splats with WebGL \\
+React, Vite & All & User interface and build \\
+Vitest, pytest, ESLint & All & Unit tests and code checks \\
+GitHub Actions and Pages \citep{ghpages} & All & Automatic checks and hosting of the website \\
+\bottomrule
+\end{tabularx}
+\end{table}
