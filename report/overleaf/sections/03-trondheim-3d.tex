@@ -2,7 +2,7 @@
 
 \subsection{Purpose}
 
-CesiumJS \citep{cesiumjs} is one of the most used libraries for 3D maps and digital globes on the web, and I wanted to learn it. I chose to build a 3D model of Trondheim, a city I know, with terrain, buildings and one open Norwegian dataset. The dataset is DSB's register of public shelters (\emph{tilfluktsrom}), because it leads to a simple practical question: which shelter is closest, and how far is the walk?
+CesiumJS \citep{cesiumjs} is one of the most used libraries for 3D maps and digital globes on the web, and I wanted to learn it. I chose to implement a 3D model of Trondheim, with terrain, buildings and one open Norwegian dataset. The dataset is DSB's register of public shelters (\emph{tilfluktsrom}), because it leads to a simple practical question: which shelter is closest, and how far is the walk?
 
 The app shows Trondheim with Cesium World Terrain and Cesium OSM Buildings, and the shelters as points (\cref{fig:p2-overview}). A control panel has three preset camera views (Midtbyen, Nidarosdomen and Bakklandet) and switches for the layers.
 
@@ -40,8 +40,6 @@ The walking network was downloaded from OpenStreetMap with the Overpass API, usi
 \label{fig:p2-route}
 \end{figure}
 
-To see how often this happens, I ran the search from 900 points in a regular grid over the area of the shelters. A shelter could be reached from 884 of them. For 168 of these points (19\,\%), the nearest shelter on foot was a different one than the nearest in a straight line. The median walking distance was 1.34 times the straight-line distance.
-
 \subsection{Limitations}
 
-The analysis does not consider hills, stairs, barriers or how many people each shelter can take. The click is snapped to the nearest node, not the nearest point on a road, and the short connection to that node is a straight line. The 40\,m geoid offset is an approximation for Trondheim, not a value from a geoid model. The search needs a click on the map, so it cannot be used with a keyboard.
+The analysis does not consider hills, stairs, barriers or how many people each shelter can take. The click is snapped to the nearest node, not the nearest point on a road, and the short connection to that node is a straight line. The 40\,m geoid offset is an approximation for Trondheim, not a value from a geoid model.
