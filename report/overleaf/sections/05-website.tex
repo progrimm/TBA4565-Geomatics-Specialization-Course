@@ -34,8 +34,6 @@ All apps were checked at desktop and phone width (\cref{fig:mobile}).
 % TODO (author): adjust this section to your own experience.
 In Projection Lab, computing the areas myself showed me why Mercator exaggerates the far north, and why a country's exaggeration depends on its whole extent and not only its latitude. Trondheim 3D was mostly about making data from different sources fit together: two coordinate systems, two kinds of height, a WFS service, OpenStreetMap and Cesium's streamed data. The 3DGS Viewer showed me that a splat looks impressive but carries less information than GIS data needs, since it has no position, orientation or scale in the real world.
 
-Together, the projects gave me practice with a full web GIS stack, from PostGIS and Python on the server to D3, CesiumJS and three.js in the browser.
-
 The AI assistant made it possible to finish three working apps in the time I had. The cost is that I wrote little of the code in the later projects myself, so there my learning came from deciding, reviewing and testing rather than from writing code. It helped to require a runnable check for every change, such as unit tests, a build or screenshots, and to look at the screenshots myself instead of trusting a report that a page worked. In Projection Lab, two layout bugs were found that way: a tooltip covering its own point, and overlapping axis labels on narrow screens.
 
 \section{Conclusion}\label{sec:conclusion}
