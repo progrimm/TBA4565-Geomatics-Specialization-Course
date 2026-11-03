@@ -196,3 +196,75 @@ export function ssimMap(a, b, width, height, { windowSize = 11, sigma = 1.5 } = 
 export function ssim(a, b, width, height, { mask, ...options } = {}) {
   return meanOver(ssimMap(a, b, width, height, options), mask);
 }
+
+/**
+ * Histogram of the per-pixel error: the mean absolute R, G, B difference, rounded to whole
+ * 8-bit levels (0–255).
+ * @param {Uint8Array | Uint8ClampedArray} a - RGBA bytes.
+ * @param {Uint8Array | Uint8ClampedArray} b - RGBA bytes, same size.
+ * @param {Uint8Array} [mask] - one byte per pixel; only non-zero pixels are counted.
+ * @returns {Uint32Array} 256 counts.
+ */
+export function errorHistogram(a, b, mask) {
+  const counts = new Uint32Array(256);
+  for (let i = 0; i < a.length; i += 4) {
+    if (mask && !mask[i / 4]) continue;
+    const error =
+      Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]);
+    counts[Math.round(error / 3)] += 1;
+  }
+  return counts;
+}
+
+/**
+ * Summary of an error histogram from errorHistogram.
+ * @param {Uint32Array | number[]} counts - 256 counts.
+ * @param {number} threshold - error level for `over` (e.g. 26 ≈ 10 % of the range).
+ * @returns {{count: number, mean: number, median: number, p95: number, over: number}}
+ *   mean/median/p95 in levels (0–255); over = share of pixels with error ≥ threshold.
+ */
+export function histogramStats(counts, threshold) {
+  const count = counts.reduce((sum, n) => sum + n, 0);
+  if (count === 0) return { count, mean: NaN, median: NaN, p95: NaN, over: NaN };
+  let sum = 0;
+  let above = 0;
+  counts.forEach((n, level) => {
+    sum += n * level;
+    if (level >= threshold) above += n;
+  });
+  // The smallest level at which the cumulative share reaches p.
+  const quantile = (p) => {
+    let seen = 0;
+    for (let level = 0; level < counts.length; level++) {
+      seen += counts[level];
+      if (seen >= p * count) return level;
+    }
+    return counts.length - 1;
+  };
+  return {
+    count,
+    mean: sum / count,
+    median: quantile(0.5),
+    p95: quantile(0.95),
+    over: above / count,
+  };
+}
+
+/**
+ * Mean signed difference a − b per channel: a colour or brightness offset between a render
+ * and a photo.
+ * @param {Uint8Array | Uint8ClampedArray} a - RGBA bytes.
+ * @param {Uint8Array | Uint8ClampedArray} b - RGBA bytes, same size.
+ * @param {Uint8Array} [mask] - one byte per pixel; only non-zero pixels are counted.
+ * @returns {number[]} [R, G, B] in 8-bit levels; NaN for an empty mask.
+ */
+export function meanSignedDifference(a, b, mask) {
+  const sum = [0, 0, 0];
+  let count = 0;
+  for (let i = 0; i < a.length; i += 4) {
+    if (mask && !mask[i / 4]) continue;
+    count += 1;
+    for (let c = 0; c < 3; c++) sum[c] += a[i + c] - b[i + c];
+  }
+  return sum.map((value) => (count === 0 ? NaN : value / count));
+}

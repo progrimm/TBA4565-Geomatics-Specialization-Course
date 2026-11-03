@@ -1,5 +1,6 @@
 import { EVALUATION } from '../config.js';
 import { formatNumber } from '../utils/format.js';
+import PhotoDetail from './PhotoDetail.jsx';
 
 const db = (value) => (Number.isFinite(value) ? value.toFixed(2) : '–');
 const ratio = (value) => (Number.isFinite(value) ? value.toFixed(3) : '–');
@@ -47,10 +48,12 @@ function download(text, fileName) {
 /**
  * PSNR and SSIM of this pane's splat against the photos.
  * @param {{evaluation: ReturnType<typeof import('../hooks/useEvaluation.js').useEvaluation>,
- *   photos: {name: string, role: string, file: File | null}[], splatName: string}} props
+ *   photos: {name: string, role: string, file: File | null}[], splatName: string,
+ *   photo: {name: string, file: File | null} | null, onShowDifference: () => void}} props
+ *   photo: the chosen photo, which can be evaluated on its own.
  */
-export default function EvaluationTool({ evaluation, photos, splatName }) {
-  const { results, progress, seconds, evaluate, cancel } = evaluation;
+export default function EvaluationTool({ evaluation, photos, splatName, photo, onShowDifference }) {
+  const { results, progress, seconds, evaluate, cancel, detail, analysing, analyse } = evaluation;
   const rows = photos
     .filter((photo) => results.has(photo.name))
     .map((photo) => ({ name: photo.name, role: photo.role, metrics: results.get(photo.name) }));
@@ -71,6 +74,16 @@ export default function EvaluationTool({ evaluation, photos, splatName }) {
             Test photos only
           </button>
         )}
+        {photo?.file && (
+          <button
+            className="chip"
+            type="button"
+            disabled={running || analysing !== null}
+            onClick={() => analyse(photo)}
+          >
+            {analysing === photo.name ? 'Evaluating…' : `Evaluate ${photo.name}`}
+          </button>
+        )}
         {running && (
           <button className="chip" type="button" onClick={cancel}>
             Cancel
@@ -80,7 +93,15 @@ export default function EvaluationTool({ evaluation, photos, splatName }) {
       <p className="tool__note" role="status">
         {running && `Rendering and comparing ${progress.done} / ${progress.total}…`}
         {!running && seconds !== null && `${rows.length} photos in ${seconds.toFixed(1)} s.`}
+        {!photo && 'Choose a photo under Photos (COLMAP) to evaluate it on its own.'}
       </p>
+      {detail && detail.name === photo?.name && (
+        <PhotoDetail
+          detail={detail}
+          role={photos.find((candidate) => candidate.name === detail.name)?.role}
+          onShowDifference={onShowDifference}
+        />
+      )}
       {rows.length > 0 && (
         <>
           <table className="metrics">

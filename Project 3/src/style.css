@@ -437,6 +437,111 @@ body {
   box-shadow: 0 0 4px rgb(0 0 0 / 60%);
 }
 
+.photo-overlay__legend {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: rgb(15 42 71 / 75%);
+  color: var(--stage-text);
+  font-size: 0.7rem;
+}
+
+/* The same scale as differenceImage in utils/metrics.js: black, red, yellow, white. */
+.photo-overlay__ramp {
+  display: block;
+  width: 120px;
+  height: 8px;
+  border-radius: 2px;
+  background: linear-gradient(to right, #000 0%, #f00 33.3%, #ff0 66.7%, #fff 100%);
+}
+
+.photo-overlay__ticks {
+  display: flex;
+  justify-content: space-between;
+}
+
+.photo-overlay__readout {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  width: 210px;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  box-sizing: border-box;
+}
+
+.photo-detail {
+  margin: var(--space-3) var(--space-3) 0;
+  padding-top: var(--space-2);
+  border-top: 1px dashed var(--border);
+}
+
+.photo-detail__title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.photo-detail .facts,
+.photo-detail .tool__actions,
+.photo-detail .tool__note {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.facts--spaced {
+  margin-top: var(--space-2);
+}
+
+.histogram {
+  margin: var(--space-2) 0 0;
+}
+
+.histogram__caption,
+.histogram__readout,
+.histogram__axis {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.histogram__caption {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.histogram__chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.histogram__grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.histogram__tick {
+  fill: var(--text-muted);
+  font-size: 8px;
+}
+
+.histogram__bar {
+  fill: var(--accent);
+}
+
+.histogram__bar--hover {
+  fill: var(--accent-dark);
+}
+
 .photo-overlay__tag {
   position: absolute;
   bottom: var(--space-2);

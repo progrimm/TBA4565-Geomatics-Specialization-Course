@@ -73,16 +73,17 @@ export default function SplatPane({
   const [photoName, setPhotoName] = useState(null);
   useEffect(() => viewer?.onPhotoView(setPhotoName), [viewer]);
   const evaluation = useEvaluation(viewer, photos, facts);
-  const { difference, showDifference } = evaluation;
+  const { detail, analysing, analyse } = evaluation;
 
   // The difference image of the photo looked through, computed when that mode is chosen.
   const differenceFor =
     compare.mode === 'difference' && facts && photo && photoName === photo.name ? photo.name : null;
   useEffect(() => {
-    if (!differenceFor || difference?.name === differenceFor) return;
+    if (!differenceFor || detail?.name === differenceFor || analysing) return;
     const target = photos.find((candidate) => candidate.name === differenceFor);
-    if (target) showDifference(target);
-  }, [differenceFor, difference, photos, showDifference]);
+    if (target) analyse(target);
+  }, [differenceFor, detail, analysing, photos, analyse]);
+  const shownDetail = detail && photo && detail.name === photo.name ? detail : null;
 
   const splitTitle = canSplit ? undefined : `At most ${MAX_PANES} panes`;
 
@@ -103,7 +104,17 @@ export default function SplatPane({
           />
           <MeasureTool measurement={measurement} />
           {photos.length > 0 && (
-            <EvaluationTool evaluation={evaluation} photos={photos} splatName={facts.name} />
+            <EvaluationTool
+              evaluation={evaluation}
+              photos={photos}
+              splatName={facts.name}
+              photo={photo}
+              onShowDifference={() => {
+                if (!photo || !viewer) return;
+                viewer.viewPhoto(photo);
+                onCompare({ ...compare, mode: 'difference' });
+              }}
+            />
           )}
         </>
       )}
@@ -180,13 +191,8 @@ export default function SplatPane({
           {!facts && !loading && !photoName && <EmptyState onChoose={choose} />}
           {photo && photoName === photo.name && (
             <PhotoOverlay
-              url={
-                compare.mode === 'difference'
-                  ? difference?.name === photo.name
-                    ? difference.url
-                    : null
-                  : photo.url
-              }
+              url={compare.mode === 'difference' ? (shownDetail?.url ?? null) : photo.url}
+              detail={compare.mode === 'difference' ? shownDetail : null}
               note={compare.mode === 'difference' ? 'difference: render vs photo' : null}
               width={photo.intrinsics.width}
               height={photo.intrinsics.height}

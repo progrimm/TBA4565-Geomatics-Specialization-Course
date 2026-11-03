@@ -2,8 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
   alphaMask,
   differenceImage,
+  errorHistogram,
+  histogramStats,
   flipRows,
   meanOver,
+  meanSignedDifference,
   psnr,
   ssim,
   ssimMap,
@@ -125,5 +128,38 @@ describe('masks and helpers', () => {
     const a = new Uint8Array([0, 0, 0, 255, 0, 0, 0, 255]);
     const b = new Uint8Array([0, 0, 0, 255, 255, 255, 255, 255]);
     expect([...differenceImage(a, b, 4)]).toEqual([0, 0, 0, 255, 255, 255, 255, 255]);
+  });
+});
+
+describe('error distribution', () => {
+  // Three pixels: no error, an error of 30 levels on every channel, and one masked out.
+  const a = new Uint8Array([10, 10, 10, 255, 40, 40, 40, 255, 0, 0, 0, 0]);
+  const b = new Uint8Array([10, 10, 10, 255, 10, 10, 10, 255, 255, 255, 255, 255]);
+  const mask = new Uint8Array([1, 1, 0]);
+
+  it('counts the mean absolute RGB error per pixel', () => {
+    const counts = errorHistogram(a, b, mask);
+    expect(counts[0]).toBe(1);
+    expect(counts[30]).toBe(1);
+    expect(counts.reduce((sum, n) => sum + n, 0)).toBe(2);
+    expect(errorHistogram(a, b)[255]).toBe(1);
+  });
+
+  it('summarises a histogram', () => {
+    const counts = new Uint32Array(256);
+    counts[0] = 50;
+    counts[10] = 45;
+    counts[200] = 5;
+    const stats = histogramStats(counts, 26);
+    expect(stats.count).toBe(100);
+    expect(stats.mean).toBeCloseTo((45 * 10 + 5 * 200) / 100, 10);
+    expect(stats.median).toBe(0);
+    expect(stats.p95).toBe(10);
+    expect(stats.over).toBeCloseTo(0.05, 10);
+    expect(histogramStats(new Uint32Array(256), 26).mean).toBeNaN();
+  });
+
+  it('gives the signed offset per channel', () => {
+    expect(meanSignedDifference(a, b, mask)).toEqual([15, 15, 15]);
   });
 });

@@ -43,6 +43,15 @@ function fail(text, error) {
  */
 
 /**
+ * @typedef {{name: string, width: number, height: number, url: string, metrics: PhotoMetrics,
+ *   histogram: Uint32Array, histogramSplat: Uint32Array, offset: number[],
+ *   render: Uint8Array, photo: Uint8ClampedArray}} PhotoDetail
+ *   One photo in detail: the difference image (url), error histograms of the whole photo and
+ *   of the splat area, the mean signed difference render − photo (R, G, B levels, splat area),
+ *   and both images for reading single pixels.
+ */
+
+/**
  * PSNR and SSIM of one pane's splat against the COLMAP photos, rendered at each photo's
  * camera and size; the metrics run in a Web Worker. Results are cleared when the pane opens
  * another splat, and a running evaluation stops.
@@ -51,13 +60,14 @@ function fail(text, error) {
  * @param {unknown} splatKey - changes when the pane opens another splat.
  * @returns {{results: Map<string, PhotoMetrics>, progress: {done: number, total: number} | null,
  *   seconds: number | null, evaluate: (onlyTest: boolean) => Promise<void>, cancel: () => void,
- *   difference: {name: string, url: string} | null, showDifference: (photo: object) => void}}
+ *   detail: PhotoDetail | null, analysing: string | null, analyse: (photo: object) => void}}
  */
 export function useEvaluation(viewer, photos, splatKey) {
   const [results, setResults] = useState(() => new Map());
   const [progress, setProgress] = useState(null);
   const [seconds, setSeconds] = useState(null);
-  const [difference, setDifference] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const [analysing, setAnalysing] = useState(null);
   const [resultsKey, setResultsKey] = useState(splatKey);
   // Bumped to stop a running evaluation (new splat, cancel, unmount).
   const run = useRef(0);
@@ -71,21 +81,25 @@ export function useEvaluation(viewer, photos, splatKey) {
     setResultsKey(splatKey);
     setResults(new Map());
     setSeconds(null);
-    setDifference(null);
+    setDetail(null);
   }
 
+  // Bumped for another splat or unmount, so an analysis started before is dropped.
+  const generation = useRef(0);
   useEffect(() => {
     run.current += 1;
+    generation.current += 1;
   }, [splatKey]);
 
   useEffect(
     () => () => {
       run.current += 1;
+      generation.current += 1;
       worker.current?.terminate();
     },
     [],
   );
-  useEffect(() => () => difference && URL.revokeObjectURL(difference.url), [difference]);
+  useEffect(() => () => detail && URL.revokeObjectURL(detail.url), [detail]);
 
   /** Send one job to the worker (started on first use) and wait for its answer. */
   const compute = useCallback((message, transfer) => {
@@ -137,7 +151,7 @@ export function useEvaluation(viewer, photos, splatKey) {
           previous = compute(
             { render, photo: pixels, width, height, threshold: EVALUATION.coverageThreshold },
             [render.buffer, pixels.buffer],
-          ).then((metrics) => {
+          ).then(({ metrics }) => {
             if (token !== run.current) return;
             setResults((current) => new Map(current).set(photo.name, metrics));
             setProgress({ done: index + 1, total: list.length });
@@ -160,29 +174,53 @@ export function useEvaluation(viewer, photos, splatKey) {
     setProgress(null);
   }, []);
 
-  const showDifference = useCallback(
+  /** One photo in detail; its metrics also go into the results table. */
+  const analyse = useCallback(
     async (photo) => {
       if (!viewer || !photo.file) return;
+      const current = generation.current;
+      setAnalysing(photo.name);
       try {
         const { render, pixels, width, height } = await images(photo);
-        const { difference: rgba } = await compute(
+        // Copies stay here for the pixel readout; the originals go to the worker.
+        const kept = { render: render.slice(), photo: pixels.slice() };
+        const data = await compute(
           {
             render,
             photo: pixels,
             width,
             height,
+            threshold: EVALUATION.coverageThreshold,
             gain: EVALUATION.differenceGain,
-            difference: true,
+            detail: true,
           },
           [render.buffer, pixels.buffer],
         );
-        setDifference({ name: photo.name, url: await imageUrl(rgba, width, height) });
+        const url = await imageUrl(data.difference, width, height);
+        if (current !== generation.current) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        setResults((map) => new Map(map).set(photo.name, data.metrics));
+        setDetail({
+          name: photo.name,
+          width,
+          height,
+          url,
+          metrics: data.metrics,
+          histogram: data.histogram,
+          histogramSplat: data.histogramSplat,
+          offset: data.offset,
+          ...kept,
+        });
       } catch (error) {
-        fail('Could not compute the difference image', error);
+        if (current === generation.current) fail(`Could not evaluate ${photo.name}`, error);
+      } finally {
+        if (current === generation.current) setAnalysing(null);
       }
     },
     [viewer, images, compute],
   );
 
-  return { results, progress, seconds, evaluate, cancel, difference, showDifference };
+  return { results, progress, seconds, evaluate, cancel, detail, analysing, analyse };
 }
