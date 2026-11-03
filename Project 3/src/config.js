@@ -44,8 +44,54 @@ export const DEFAULT_UP_AXIS = '-y';
 /** Measurement markers: diameter as a fraction of the view height, and colour. */
 export const MARKER = { screenSize: 0.025, color: '#f5a623' };
 
-/** Renderer clear colour behind the splat: NTNU navy, as --stage in style.css. */
-export const BACKGROUND = '#0f2a47';
+/**
+ * Backgrounds behind the splats (all panes). Colour backgrounds are a plain clear colour;
+ * navy is NTNU navy, as --stage in style.css. Sky and space are generated in the browser
+ * (viewer/backgrounds.js), so no image is downloaded.
+ */
+export const BACKGROUNDS = [
+  { id: 'navy', label: 'Navy', color: '#0f2a47' },
+  { id: 'black', label: 'Black', color: '#000000' },
+  { id: 'sky', label: 'Sky' },
+  { id: 'space', label: 'Space' },
+];
+export const DEFAULT_BACKGROUND = 'navy';
+
+/**
+ * Sky background: three.js's Sky shader (Preetham daylight model with clouds), rendered
+ * once into a cube map. Scattering parameters as in the three.js Sky example; the sun is
+ * placed by elevation above the horizon and azimuth (degrees). exposure scales the sky's
+ * light before tone mapping (as renderer.toneMappingExposure in the example). Below the
+ * horizon the sky fades to groundColor over groundFade (sine of the angle below the horizon).
+ */
+export const SKY = {
+  turbidity: 2,
+  rayleigh: 1,
+  mieCoefficient: 0.005,
+  mieDirectionalG: 0.8,
+  cloudCoverage: 0.4,
+  sunElevationDeg: 25,
+  sunAzimuthDeg: 200,
+  exposure: 0.5,
+  groundColor: '#5b6452',
+  groundFade: 0.06,
+  cubeSize: 512,
+};
+
+/**
+ * Space background: a generated starfield, drawn on a 2:1 (equirectangular) canvas.
+ * Stars are spread evenly over the sphere; the Milky Way is a band of extra faint stars
+ * and glow around a great circle tilted by bandTiltDeg, bandWidthDeg wide (1 σ).
+ */
+export const STARS = {
+  seed: 7,
+  count: 9000,
+  bandCount: 30000,
+  bandGlowCount: 700,
+  bandTiltDeg: 60,
+  bandWidthDeg: 8,
+  textureWidth: 4096,
+};
 
 /**
  * At most this many panes (each its own WebGL view and splat). Browsers allow about 16

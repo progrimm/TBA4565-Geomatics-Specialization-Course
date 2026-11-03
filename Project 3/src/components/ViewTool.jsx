@@ -1,14 +1,32 @@
+import { BACKGROUNDS } from '../config.js';
+
 /**
- * Settings for all panes: linked cameras.
- * @param {{linked: boolean, onLinked: (linked: boolean) => void, canLink: boolean}} props
+ * Settings for all panes: background and linked cameras.
+ * @param {{background: string, onBackground: (id: string) => void, linked: boolean,
+ *   onLinked: (linked: boolean) => void, canLink: boolean}} props
  */
-export default function ViewTool({ linked, onLinked, canLink }) {
+export default function ViewTool({ background, onBackground, linked, onLinked, canLink }) {
   return (
     <section className="tool" aria-labelledby="view-heading">
       <h2 className="tool__summary" id="view-heading">
         All panes
       </h2>
-      <div className="tool__actions">
+      <div className="tool__actions" role="group" aria-label="Background">
+        <span className="tool__label">Background</span>
+        {BACKGROUNDS.map(({ id, label }) => (
+          <button
+            key={id}
+            className="chip"
+            type="button"
+            aria-pressed={background === id}
+            onClick={() => onBackground(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <p className="tool__note">Sky and space are drawn in the browser and stay level (+Y up).</p>
+      <div className="tool__actions tool__actions--spaced">
         <button
           className="chip"
           type="button"

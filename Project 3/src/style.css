@@ -16,7 +16,7 @@
   --border: #c9d9ec;
   --shadow: 0 8px 32px rgb(15 42 71 / 22%);
   --glass: blur(14px) saturate(140%);
-  /* The 3D stage behind the panel: NTNU navy (the renderer clears to config.js BACKGROUND). */
+  /* The 3D stage around the panes: NTNU navy, as the default 'navy' in config.js BACKGROUNDS. */
   --stage: #0f2a47;
   --stage-text: #fff;
   --stage-muted: #c9d9ec;
@@ -312,6 +312,10 @@ body {
   padding: 0 var(--space-3);
 }
 
+.tool__actions--spaced {
+  margin-top: var(--space-3);
+}
+
 .chip {
   padding: var(--space-1) var(--space-3);
   border: 1px solid var(--border);
@@ -604,6 +608,8 @@ body {
   padding: var(--space-4);
   border: 1px dashed var(--stage-muted);
   border-radius: var(--radius);
+  /* Readable over every background, including the bright sky. */
+  background: rgb(15 42 71 / 75%);
   color: var(--stage-muted);
   text-align: center;
   box-sizing: border-box;

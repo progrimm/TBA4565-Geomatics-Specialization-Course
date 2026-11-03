@@ -5,13 +5,14 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { SparkRenderer, SplatMesh } from '@sparkjsdev/spark';
 import {
-  BACKGROUND,
   CAMERA,
   CORE_FRACTION,
   CORE_MAX_SAMPLES,
+  DEFAULT_BACKGROUND,
   DEFAULT_UP_AXIS,
   MARKER,
 } from '../config.js';
+import { createBackground } from './backgrounds.js';
 import {
   boundsSize,
   cameraForBounds,
@@ -61,15 +62,26 @@ function circleTexture() {
  *   getView: () => CameraView,
  *   setView: (view: CameraView) => void,
  *   onViewChange: (callback: () => void) => () => void,
+ *   setBackground: (id: string) => void,
  *   dispose: () => void,
  * }}
  */
 export function createSplatViewer(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
   renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setClearColor(BACKGROUND);
 
   const scene = new THREE.Scene();
+  let background = null;
+  let backgroundId = null;
+  function setBackground(id) {
+    if (id === backgroundId) return;
+    const next = createBackground(renderer, id);
+    background?.dispose();
+    background = next;
+    backgroundId = id;
+    scene.background = next.value;
+  }
+  setBackground(DEFAULT_BACKGROUND);
   const spark = new SparkRenderer({ renderer });
   scene.add(spark);
 
@@ -249,6 +261,7 @@ export function createSplatViewer(canvas) {
     lineMaterial.dispose();
     mesh?.dispose();
     spark.dispose();
+    background.dispose();
     renderer.dispose();
   }
 
@@ -261,6 +274,7 @@ export function createSplatViewer(canvas) {
     getView,
     setView,
     onViewChange,
+    setBackground,
     dispose,
   };
 }

@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState } from 'react';
-import { MAX_PANES, MIN_PANE_FRACTION, MOBILE_QUERY } from './config.js';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { DEFAULT_BACKGROUND, MAX_PANES, MIN_PANE_FRACTION, MOBILE_QUERY } from './config.js';
 import { useFileDropGuard } from './hooks/useFileOpener.js';
 import { useLinkedCameras } from './hooks/useLinkedCameras.js';
 import { useMediaQuery } from './hooks/useMediaQuery.js';
@@ -26,6 +26,7 @@ export default function App() {
   // The panes' viewers by pane id, for the settings that span panes.
   const [viewers, setViewers] = useState({});
   const [linked, setLinked] = useState(false);
+  const [background, setBackground] = useState(DEFAULT_BACKGROUND);
   const stacked = useMediaQuery(MOBILE_QUERY);
   useFileDropGuard();
   const syncFrom = useLinkedCameras(viewers, linked);
@@ -40,6 +41,11 @@ export default function App() {
       return next;
     });
   }, []);
+
+  // One background for all panes, so they are compared on equal terms. A new pane gets it too.
+  useEffect(() => {
+    for (const viewer of Object.values(viewers)) viewer.setBackground(background);
+  }, [viewers, background]);
 
   const ids = paneIds(layout);
   const canSplit = ids.length < MAX_PANES;
@@ -79,7 +85,13 @@ export default function App() {
       {/* The panel comes first, so keyboard users reach the file button before the views. */}
       <ControlPanel>
         <div ref={setPanelSlot} />
-        <ViewTool linked={linked} onLinked={link} canLink={ids.length > 1} />
+        <ViewTool
+          background={background}
+          onBackground={setBackground}
+          linked={linked}
+          onLinked={link}
+          canLink={ids.length > 1}
+        />
       </ControlPanel>
       <main className="stage">
         <PaneLayout
