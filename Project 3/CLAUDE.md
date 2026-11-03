@@ -22,6 +22,9 @@ page open and inspect it entirely on the client?"
   active pane portals its tools into the panel. Linked cameras toggle.
 - Backgrounds for all panes: navy (default), black, sky (three.js Sky cube
   map), space (generated starfield).
+- COLMAP photos (undistorted pinhole workspace): frustums, photo view at a
+  photo's exact camera with swipe/blend/difference, hold-out split, PSNR/SSIM
+  per pane (whole photo and splat area) in a Web Worker, CSV export.
 - File facts: format, size, splat count, extent with/without floaters, PLY
   header (encoding, properties, SH degree).
 - Orientation fix (up axis +Y/-Y/+Z/-Z) and reset view.
@@ -46,6 +49,8 @@ App.jsx – composes hooks and components
 config.js – constants: formats, camera, up axes, markers, panes, backgrounds, homepage link
 viewer/splatViewer.js – three.js + Spark scene, no React
 viewer/backgrounds.js – colour, sky and starfield backgrounds, no React
+viewer/photoCameras.js – COLMAP camera frustums, no React
+workers/ – Web Worker for PSNR/SSIM
 hooks/ – React hooks bridging React and the viewer (viewer, file opening, measurement, linked cameras)
 components/ – React UI: panel, pane layout, pane, file opener, facts, orientation, measurement, "All panes", messages
 state/ – small framework-independent stores (messages)
@@ -108,3 +113,5 @@ tests/ – Vitest unit tests
 - 2026-11-03: tiled comparison (up to 4 panes, dividers, linked cameras) and
   backgrounds (navy, black, sky, space). Verified with the nugatti exports;
   see README Verification.
+- 2026-11-03: COLMAP photo comparison and PSNR/SSIM. Results on the nugatti
+  exports in README Verification; the colour offset there is not explained yet.

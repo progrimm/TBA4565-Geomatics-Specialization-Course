@@ -53,6 +53,20 @@ and inspect it entirely on the client?_
   in the same frame, for example exports of the same capture, with the same up axis.
 - **Backgrounds** for all panes: NTNU navy (the default), black, sky and space. Sky and space are
   generated in the browser; no image is downloaded.
+- **Photos from COLMAP.** "Open COLMAP folder" reads the undistorted workspace the splat was
+  trained from (`dense/` with `sparse/` and `images/`, or a project with `sparse/0/`), as
+  `cameras.bin`/`images.bin` or the `.txt` files. The cameras are drawn as frustums around the
+  splat in every pane. Choosing a photo puts the active pane (all panes when cameras are linked)
+  exactly at the photo's camera, and the photo is laid over the view: Swipe (draggable line),
+  Blend (opacity), Photo, Splat (outline only) or Difference (error image). Orbiting leaves the
+  photo view.
+- **Train/test split.** "Test photos: every Nth" marks every Nth photo by sorted name as a test
+  photo (held out in training), as the reference 3DGS code (`llffhold = 8`) and gsplat
+  (`test_every = 8`) do. 0 means all photos were training photos. Set it as in training.
+- **PSNR and SSIM per pane.** "Evaluate all photos" (or only the test photos) renders the pane's
+  splat at every photo's camera and full size, compares it with the photo, and shows the means
+  per role, a table per photo and a CSV download. "Splat area" columns (PSNR\*, SSIM\*) count
+  only the pixels the splat covers, for splats cropped to an object.
 - **Splat count** counts splats with finite centres; NaN splats are skipped.
 - **Errors** are shown as messages, and the viewer keeps working. This covers unsupported
   extensions, PLY files without splat properties (a mesh or a plain point cloud) and files Spark
@@ -102,14 +116,18 @@ src/
   viewer/splatViewer.js  three.js + Spark scene (no React): load, frame, orient, pick, markers,
                          camera view for linking, background
   viewer/backgrounds.js  colour, sky cube map and starfield backgrounds (no React)
+  viewer/photoCameras.js frustums of the COLMAP photos (no React)
+  workers/               Web Worker for PSNR, SSIM and the difference image
   hooks/                 React hooks: the viewer and its load state, file opening and
-                         drag and drop per pane, measurement, linked cameras, media query
+                         drag and drop per pane, measurement, linked cameras, media query,
+                         COLMAP photos, evaluation
   components/            React UI: panel, tiled pane layout and dividers, pane, file button and
-                         empty state, facts, orientation, measurement, "All panes", messages
+                         empty state, facts, orientation, measurement, "All panes", photos,
+                         photo overlay, evaluation, messages
   state/                 framework-independent message store
   utils/                 pure helpers: PLY header, file formats, bounds and camera framing,
                          up-axis rotations, distance, formatting, pane layout tree, star
-                         positions
+                         positions, COLMAP parsing, photo cameras, PSNR/SSIM
 tests/                   Vitest unit tests for the pure helpers and the message store
 ```
 
@@ -189,6 +207,39 @@ Main design choices:
   the projection). A tilted band of faint stars and glow is the Milky Way. A seeded random
   generator (mulberry32) gives the same sky on every load.
 
+- **COLMAP photo → three.js camera** (`utils/colmap.js`, `utils/photoCamera.js`). COLMAP stores
+  for each image the world-to-camera rotation R (quaternion qw qx qy qz) and translation t
+  ([output format](https://colmap.github.io/format.html)); the camera centre is C = −Rᵀt. COLMAP's
+  camera looks along +z with y down, a three.js camera along −z with y up, so the camera-to-world
+  rotation is Rᵀ · diag(1, −1, −1). The poses are used inside the model group, so the up-axis fix
+  turns them with the splat. COLMAP 3.12 adds `rigs.bin` and `frames.bin`, but `images.bin` keeps
+  its layout. Only the undistorted pinhole models (PINHOLE, SIMPLE_PINHOLE) are accepted: a
+  three.js camera has no lens distortion, and 3DGS trains on the undistorted images too.
+- **Projection from the intrinsics.** The projection matrix is built from fx, fy, cx and cy, so
+  an off-centre principal point is kept. It is then scaled so that the photo's frame fits inside
+  the pane (letterboxed), and the photo overlay uses the same rectangle (`fitRect`). A unit test
+  projects a 3D point both the COLMAP way and through the three.js camera and gets the same pixel.
+  In photo view, OrbitControls is paused: its `lookAt` would level out the photo's roll. Any
+  orbit, pan or zoom leaves photo view, and the view is then a novel view with no photo to
+  compare.
+- **Evaluation renders.** A second `SparkRenderer` with a render `target` of the photo's size
+  renders offscreen (Spark's "additional viewpoints"); `await update()` waits until the splats
+  are sorted for that camera, and `renderReadTarget()` returns the RGBA bytes (bottom row first,
+  so they are flipped). The background is transparent black, the 3DGS default, and the alpha
+  channel gives the splat's coverage. The photo is decoded with `createImageBitmap` ignoring
+  EXIF rotation and colour profiles (`imageOrientation: 'none'`,
+  `colorSpaceConversion: 'none'`), as COLMAP and the training code read the raw pixels.
+- **Metrics as in the 3DGS evaluation** (`utils/metrics.js`): PSNR = 10 · log10(1 / MSE) over
+  R, G, B in [0, 1]; SSIM (Wang et al. 2004) with an 11 × 11 Gaussian window, σ = 1.5, zero
+  padding, C1 = 0.01², C2 = 0.03², averaged over pixels and channels. A unit test checks the
+  separable implementation against a direct one. The means per role are means of the per-photo
+  values. LPIPS is not computed: it needs a neural network. SSIM on a 1539 × 2058 photo runs in a
+  [Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API), so the page
+  stays responsive, and the next photo is rendered while the worker compares the previous one.
+- **Training vs test photos.** A photo that was used in training only measures how well the
+  splat fits its training data. Only held-out test photos measure novel views. Between the
+  photos there is no ground truth at all, so those views can only be judged by eye.
+
 ## Background: 3D Gaussian splatting
 
 **What it is.** 3D Gaussian splatting (Kerbl et al., 2023) represents a scene as millions of
@@ -256,6 +307,8 @@ Real-Time Radiance Field Rendering", _ACM Transactions on Graphics_ 42(4), July 
   page does not scroll. Opening a file, splitting and closing panes, moving a divider (arrow
   keys), choosing the background and the up axis, linking cameras, resetting the view and
   clearing a measurement all work from the keyboard.
+- **Photos.** The photo list is a native `<select>`, with previous/next buttons; the swipe line
+  can also be moved with the "Swipe position" slider, and the metrics are tables with headers.
 - **Not keyboard-accessible:** picking measurement points needs a pointer (mouse or touch), and
   the panel says so. Escape stops measuring.
 - **Messages.** Loading and error messages are in an `aria-live="polite"` region, and errors use
@@ -283,6 +336,12 @@ Real-Time Radiance Field Rendering", _ACM Transactions on Graphics_ 42(4), July 
   Distances are in file units, and the up-axis choice covers only 90° steps about x.
 - **Measurement accuracy.** A pick hits the nearest splat ellipsoid along the ray, not a surface.
   Semi-transparent floaters in front of the scene can be hit first.
+- **Photo comparison.** Only undistorted pinhole COLMAP models. The photos must be the images the
+  model was trained on (same pixels); a different exposure, white balance or crop shows up as
+  error. Training-time appearance models (per-image exposure) are not reproduced. Metrics are
+  computed at the camera's full size; a model trained on downscaled images is compared with the
+  full-size photos. No LPIPS. Choosing a COLMAP folder lists every file in it, so a very large
+  workspace takes longer to open.
 - **Formats tested.** Plain PLY and single-file SOG were opened in the browser. Compressed PLY is
   recognised from its header (unit-tested), but Spark's decoding of it was not tried. SPZ, .splat
   and .ksplat are read by Spark's own loaders and were not tested here.
@@ -299,6 +358,14 @@ floaters). The SH 1 PLY is 15.3 MiB with 26 properties per splat, the SH 3 PLY 3
 properties, and the SOG 3.6 MiB. So they share one frame, which is the case that linked cameras
 are for.
 
+The photo comparison (2026-11-03) used the same capture's COLMAP workspace,
+`nugatti/dense/`: COLMAP 3.12 output after `image_undistorter`, one PINHOLE camera of
+1539 × 2058 px (fx = fy = 1591.52, cx = 769.5, cy = 1029.0) and 44 iPhone 13 photos. The
+splats are in the COLMAP frame: before building anything, the median splat centre
+(0.096, 2.005, 0.856) was compared with the median sparse point (0.066, 2.209, 0.888), read with
+a Python script. The splats were trained on all 44 photos and then cropped to the cup and the
+square of table under it.
+
 Verification used the "SOAR Telescope" splat by Luis Cerda
 ([source](https://github.com/khyron/Gaussian-Splatting),
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)), converted to a standard PLY in
@@ -307,6 +374,58 @@ third-party data credits; Spark (MIT, World Labs) and three.js (MIT) are its ren
 libraries.
 
 ## Verification
+
+2026-11-03, COLMAP photos and PSNR/SSIM:
+
+- `npm run lint`: no problems. `npm run format:check`: all files pass. `npm test`: 12 files,
+  65 tests passed. New: `colmap.test.js` (synthetic `.bin` and `.txt` files, distorted models,
+  folder layouts), `photoCamera.test.js` (a 3D point lands on the same pixel through COLMAP's
+  pinhole and through the three.js camera, also letterboxed; C = −Rᵀt; frustum corners; the
+  split rule) and `metrics.test.js` (PSNR from its definition, SSIM against a direct
+  non-separable implementation, masks, row flip). `npm run build`: 3,539.97 kB of JavaScript
+  (1,183.61 kB gzip) plus a 2.30 kB worker.
+- The parsers on the real `nugatti/dense/sparse` (Node): 44 images read in 10.0 ms; hold-out 8
+  makes IMG_6424, 6432, 6440, 6448, 6456 and 6464 the test photos.
+- Playwright on `vite preview` (headless Chromium, `--use-angle=d3d11`) at 1600 × 900 and
+  390 × 844, screenshots looked at, no console errors:
+  - Opening `nugatti/dense` through the folder input: "dense: 44 photos, PINHOLE
+    1539 × 2058 px". Zoomed out, the 44 frustums form a ring around the splat.
+  - Choosing IMG_6440: the pane goes to its camera and the photo lines up with the splat in
+    Swipe and in Blend at 0.5 (the cup's outline and lettering continue across the swipe line).
+    Orbiting removes the overlay. At 390 px the photo fits the narrow pane.
+  - The difference image of IMG_6440 is upright and lines up with the photo.
+  - For IMG_6424, the render and the photo bytes were saved from the page (temporary debug code,
+    removed again) and looked at: same pose, same framing.
+- Results, "Evaluate all photos" on each export, hold-out set to 8 only to exercise the split
+  (the models were trained on all photos, so all 44 are training views). Means over all 44
+  photos from the downloaded CSVs:
+
+  | Export   | PSNR (dB) | SSIM  | PSNR\* (dB) | SSIM\* | Coverage | Time    |
+  | -------- | --------- | ----- | ----------- | ------ | -------- | ------- |
+  | PLY SH 1 | 5.14      | 0.116 | 21.12       | 0.695  | 14.0 %   | 88.8 s  |
+  | PLY SH 2 | 5.14      | 0.120 | 21.26       | 0.721  | 14.0 %   | 100.7 s |
+  | PLY SH 3 | 5.14      | 0.122 | 20.99       | 0.732  | 14.0 %   | 102.5 s |
+  | SOG SH 3 | 5.13      | 0.121 | 21.10       | 0.730  | 13.9 %   | 97.7 s  |
+
+  \* only pixels with render alpha ≥ 0.5. Time: the app's own timing for all 44 photos, in
+  headless Chromium on this machine (before pipelining render and comparison, the SH 3 PLY
+  took 136.3 s).
+
+- What the numbers say: the whole-photo PSNR of about 5 dB is no measure of quality here,
+  because the splat is cropped and covers only 14 % of each photo; the rest is black against
+  the room. Inside the splat area, SSIM rises with the SH degree (0.695 → 0.721 → 0.732) and
+  the SOG is close to the PLY with the same degree (0.730 against 0.732), while PSNR stays
+  around 21 dB for all. For fully covered pixels of IMG_6424 (alpha ≥ 250/255), the render was
+  on average brighter than the photo: mean R, G, B 138.9, 91.9, 81.8 against 132.6, 78.9, 71.2.
+  Why is **not verified**: possible causes are the crop (splats behind the surface were removed),
+  an exposure or appearance model in training, or a colour-handling difference between
+  LichtFeld Studio and Spark. Comparing with the PSNR that LichtFeld Studio reports for the
+  training images would tell; that was not done.
+- **Not verified:** a model trained with held-out test photos (so no real novel-view numbers
+  yet), the `.txt` model format and `sparse/0` layouts on real data (unit tests only), SSIM
+  against a reference implementation such as the 3DGS repository's (only against a direct
+  implementation of the same formula), real phones, Firefox and Safari (`createImageBitmap`
+  options and `OffscreenCanvas` are needed), and the evaluation with several panes at once.
 
 2026-11-03, tiled panes, linked cameras and backgrounds:
 
@@ -404,6 +523,10 @@ All of that code, its README (with the alignment and benchmark results) and the 
 git history at commit `9442d81`.
 
 ## Status
+
+COLMAP photos and metrics (2026-11-03): the cameras of the capture as frustums, photo view at
+each photo's exact camera with swipe, blend and difference, a train/test hold-out setting, and
+PSNR/SSIM per pane with CSV export. See [Verification](#verification).
 
 Tiled comparison and backgrounds (2026-11-03): up to four panes with draggable dividers, linked
 cameras, and navy, black, sky and space backgrounds. See [Verification](#verification).
