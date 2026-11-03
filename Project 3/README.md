@@ -3,7 +3,8 @@
 A static web app for opening your own 3D Gaussian splat (3DGS) file and inspecting it in the
 browser. You open or drop a `.ply`, `.spz`, `.splat`, `.ksplat` or `.sog` file. The app renders
 it with [Spark](https://sparkjs.dev/docs/) on [three.js](https://threejs.org/docs/) and shows
-what the file contains. The file is read in the browser and never uploaded.
+what the file contains. The file is read in the browser and never uploaded. Up to four splats can
+be compared side by side in tiled panes.
 
 It is a learning project for TBA4565 at NTNU (3D GIS). It was split out of
 [Project 2, Trondheim 3D](../Project%202/README.md) on 2026-10-27 and first had a CesiumJS globe
@@ -15,8 +16,9 @@ and inspect it entirely on the client?_
 
 ## Features
 
-- **Open a file.** Use the "Open splat file" button or drop a file anywhere on the page. A
-  full-page overlay shows while a file is dragged over it. The file is read with
+- **Open a file.** Use the "Open splat file in Pane N" button in the panel, the folder button in
+  a pane's bar, or drop a file on a pane. An overlay shows on the pane while a file is dragged
+  over it. The file is read with
   [`File.arrayBuffer()`](https://developer.mozilla.org/en-US/docs/Web/API/Blob/arrayBuffer) and
   passed to Spark as bytes
   (`new SplatMesh({ fileBytes, fileName })`, [Spark docs](https://sparkjs.dev/docs/)). There is no
@@ -40,6 +42,17 @@ and inspect it entirely on the client?_
 - **Navigation.** Drag to orbit, right-drag to pan, scroll to zoom
   ([`OrbitControls`](https://threejs.org/docs/#examples/en/controls/OrbitControls)). With the
   view focused, the arrow keys pan and Shift + arrows orbit.
+- **Tiled panes (up to 4).** Like a tiling terminal (Terminator), each pane's bar has buttons to
+  split it right or down and to close it. The dividers between panes can be dragged, or focused
+  and moved with the arrow keys. Each pane has its own view, splat, facts, up axis and
+  measurement. Clicking or focusing a pane makes it active (outlined); the panel shows the active
+  pane's tools. Pane numbers stay with a pane, and a new pane takes the lowest free number. On
+  narrow screens (640 px or less) every split stacks vertically.
+- **Linked cameras.** "Link cameras" copies the active pane's camera to the others, and from then
+  on the other panes follow whichever pane is moved. This lines the splats up only when they are
+  in the same frame, for example exports of the same capture, with the same up axis.
+- **Backgrounds** for all panes: NTNU navy (the default), black, sky and space. Sky and space are
+  generated in the browser; no image is downloaded.
 - **Splat count** counts splats with finite centres; NaN splats are skipped.
 - **Errors** are shown as messages, and the viewer keeps working. This covers unsupported
   extensions, PLY files without splat properties (a mesh or a plain point cloud) and files Spark
@@ -84,15 +97,19 @@ format check, tests and build on every push and pull request that touches `Proje
 src/
   main.jsx               React root only
   App.jsx                composes the hooks and components
-  config.js              constants: formats, camera, up axes, markers, homepage link
-  viewer/splatViewer.js  three.js + Spark scene (no React): load, frame, orient, pick, markers
+  config.js              constants: formats, camera, up axes, markers, panes, backgrounds,
+                         homepage link
+  viewer/splatViewer.js  three.js + Spark scene (no React): load, frame, orient, pick, markers,
+                         camera view for linking, background
+  viewer/backgrounds.js  colour, sky cube map and starfield backgrounds (no React)
   hooks/                 React hooks: the viewer and its load state, file opening and
-                         drag and drop, measurement
-  components/            React UI: panel, file button and empty state, facts, orientation,
-                         measurement, messages
+                         drag and drop per pane, measurement, linked cameras, media query
+  components/            React UI: panel, tiled pane layout and dividers, pane, file button and
+                         empty state, facts, orientation, measurement, "All panes", messages
   state/                 framework-independent message store
   utils/                 pure helpers: PLY header, file formats, bounds and camera framing,
-                         up-axis rotations, distance, formatting
+                         up-axis rotations, distance, formatting, pane layout tree, star
+                         positions
 tests/                   Vitest unit tests for the pure helpers and the message store
 ```
 
@@ -116,6 +133,61 @@ Main design choices:
   markers are transparent sprites with `renderOrder = 1` and no depth test, so they draw after
   the splats and stay visible. They have a fixed size on screen, whatever the scale of the
   scene.
+
+- **One viewer per pane.** Each pane runs its own `createSplatViewer`: its own
+  `WebGLRenderer` (one WebGL context), `SparkRenderer`, camera and controls. The engine code did
+  not have to change for this. Spark's decode and sort workers are one shared pool for the page
+  (`workerPool` in Spark 2.4.0, at most 4 workers), so they are not multiplied by the panes.
+  Browsers limit a page to a number of live WebGL contexts (about 16 in Chromium), and the open
+  splats share the machine's memory, so `MAX_PANES` in `config.js` is 4. The panes split the
+  screen between them, so together they draw about as many pixels as one full-screen view.
+- **A layout tree, rendered flat.** The layout is a binary tree (`utils/layout.js`): a leaf is a
+  pane, an inner node splits its area in two (`row` = side by side, `column` = stacked) at a
+  `ratio`. Rendering the panes nested inside the tree would make React remount a pane, and so
+  destroy its WebGL context and splat, whenever it is split or its neighbour is closed, because
+  its place in the element tree changes. `computeLayout` therefore turns the tree into a flat
+  list of rectangles (fractions of the area), and the panes are one keyed list of absolutely
+  positioned elements. A pane's identity is only its `key`
+  ([React: preserving state](https://react.dev/learn/preserving-and-resetting-state)).
+- **Dividers** follow the ARIA
+  [window splitter pattern](https://www.w3.org/WAI/ARIA/apg/patterns/windowsplitter/):
+  `role="separator"` with `aria-valuenow`, focusable, moved with the arrow keys. Dragging uses
+  [`setPointerCapture`](https://developer.mozilla.org/en-US/docs/Web/API/Element/setPointerCapture),
+  so the drag keeps going over a canvas. The canvases already follow their size through the
+  viewer's `ResizeObserver`.
+- **The active pane portals its tools.** The active pane renders its own file button, facts,
+  orientation and measurement sections into the panel with
+  [`createPortal`](https://react.dev/reference/react-dom/createPortal). Each pane keeps its own
+  hooks and state, and the panel looks as before. The "All panes" section (backgrounds, link) is
+  owned by `App`.
+- **Linked cameras** copy the camera position and the orbit target, in the viewer frame (after
+  the up-axis fix), from the moved pane to the others. They listen to OrbitControls' `change`
+  event; `setView` does not report its own change, so two linked panes do not echo each other.
+- **Backgrounds live in the world frame.** They are set as
+  [`scene.background`](https://threejs.org/docs/#api/en/scenes/Scene.background), which three.js
+  draws at infinity: it turns with the camera, but not with the model group. So after the
+  up-axis fix the sky's horizon is level and the splat stands on it. With a wrong up axis the
+  splat tilts while the horizon stays level, which makes the orientation fix easy to see.
+- **Sky** is three.js's [`Sky`](https://threejs.org/docs/#examples/en/objects/Sky) shader: the
+  Preetham daylight model (Rayleigh and Mie scattering, with clouds in three.js r186). It is
+  rendered once per pane into a cube map with a
+  [`CubeCamera`](https://threejs.org/docs/#api/en/cameras/CubeCamera). A Sky mesh in the scene
+  would cost a draw every frame and would depend on the camera's far plane, which here is set
+  from the splat's size. The shader outputs high-dynamic-range light and expects the renderer to
+  tone-map it. Renderer tone mapping would also change the splat colours, and a render target
+  gets none, so a filmic curve (Narkowicz's fit of ACES) is baked into the sky shader. Below the
+  horizon the sky fades to a plain ground colour, so the usual view from above does not look into
+  white haze. The first version without the baked curve rendered almost white; that was seen in
+  the screenshots and fixed.
+- **Space** is a starfield drawn once on a 2:1 canvas and used as an equirectangular texture
+  ([`EquirectangularReflectionMapping`](https://threejs.org/docs/#api/en/constants/Textures)).
+  An equirectangular image is the plate carrée projection of the sphere, so it has the same area
+  distortion as in Project 1: rows near the poles cover little area. Stars placed evenly in the
+  image would crowd at the poles. `uniformSpherePoint` instead takes the height y uniform in
+  [−1, 1] (by Archimedes' hat-box theorem, equal heights of a sphere have equal areas), and each
+  star is drawn `1 / cos(latitude)` wider so it stays round on the sphere (Tissot's indicatrix of
+  the projection). A tilted band of faint stars and glow is the Milky Way. A seeded random
+  generator (mulberry32) gives the same sky on every load.
 
 ## Background: 3D Gaussian splatting
 
@@ -172,13 +244,18 @@ Real-Time Radiance Field Rendering", _ACM Transactions on Graphics_ 42(4), July 
 
 ## Accessibility
 
-- **Keyboard.** The panel comes first in the DOM. The tab order goes from "← My GIS module" to
-  the panel toggle, the "Open splat file" button, the facts' `<details>`, then the up-axis
-  chips. All are native `<button>`/`<a>`/`<summary>` elements with a 2 px `:focus-visible`
-  outline. The canvas is focusable (`tabindex="0"`) and described by a hidden text that lists
+- **Keyboard.** The panel comes first in the DOM. With two empty panes, the tab order is
+  "← My GIS module" → "Hide controls" → "Open splat file in Pane 2" → the four background chips
+  → "Link cameras" → Pane 1's bar ("Open a splat file in Pane 1", "Split Pane 1 right",
+  "Split Pane 1 down", "Close Pane 1") → Pane 1's view → its "choose one" → the same for Pane 2
+  → the divider. With a file open, the facts' `<details>`, the up-axis chips and the measure
+  buttons come after the open button. Focusing a pane makes it active. All are native
+  `<button>`/`<a>`/`<summary>` elements with a 2 px `:focus-visible` outline. Each canvas is
+  focusable (`tabindex="0"`) and described by a hidden text that lists
   the mouse and keyboard controls. With the canvas focused, the arrow keys move the view and the
-  page does not scroll. Opening a file, choosing the up axis, resetting the view and clearing a
-  measurement all work from the keyboard.
+  page does not scroll. Opening a file, splitting and closing panes, moving a divider (arrow
+  keys), choosing the background and the up axis, linking cameras, resetting the view and
+  clearing a measurement all work from the keyboard.
 - **Not keyboard-accessible:** picking measurement points needs a pointer (mouse or touch), and
   the panel says so. Escape stops measuring.
 - **Messages.** Loading and error messages are in an `aria-live="polite"` region, and errors use
@@ -192,19 +269,35 @@ Real-Time Radiance Field Rendering", _ACM Transactions on Graphics_ 42(4), July 
 - **Memory.** The whole file is read into memory, and Spark then builds its own packed copy. The
   browser's memory is the limit, and the app sets no size limit of its own. Only a 47 MB file was
   tested (see [Verification](#verification)).
-- **One file at a time**, and only single-file formats. A multi-file SOG (`meta.json` plus
-  images) or a 3D Tiles tileset cannot be opened.
+- **Up to four files**, one per pane, and only single-file formats. A multi-file SOG
+  (`meta.json` plus images) or a 3D Tiles tileset cannot be opened. Each pane keeps its own copy
+  of its splat in CPU and GPU memory, so four large files need four times the memory. Memory use
+  and frame rate with four panes were not measured. All panes render every frame, also when
+  nothing moves.
+- **Linked cameras are only as good as the frames.** Linking copies camera poses; it does not
+  align splats. Splats from different captures, or with different up axes, do not line up.
+- **One drop, one file.** Dropping several files on a pane opens only the first.
+- **Desktop panel column.** On wide screens the panes start right of the panel, also when the
+  panel is collapsed.
 - **No real-world frame or scale.** See [Background](#background-3d-gaussian-splatting).
   Distances are in file units, and the up-axis choice covers only 90° steps about x.
 - **Measurement accuracy.** A pick hits the nearest splat ellipsoid along the ray, not a surface.
   Semi-transparent floaters in front of the scene can be hit first.
-- **Formats tested.** Only plain PLY was opened in the browser. Compressed PLY is recognised
-  from its header (unit-tested), but Spark's decoding of it was not tried. SPZ, .splat, .ksplat and SOG are read by
-  Spark's own loaders and were not tested here.
-- **Bundle size.** 1,168.1 kB of gzipped JavaScript must download before the first file can be
+- **Formats tested.** Plain PLY and single-file SOG were opened in the browser. Compressed PLY is
+  recognised from its header (unit-tested), but Spark's decoding of it was not tried. SPZ, .splat
+  and .ksplat are read by Spark's own loaders and were not tested here.
+- **Bundle size.** 1,175.9 kB of gzipped JavaScript must download before the first file can be
   opened. Vite warns about the chunk size. Code-splitting Spark was not tried.
 
 ## Test data
+
+The tiled panes (2026-11-03) were checked with the author's own "nugatti" capture, exported from
+the same training as PLY with SH degree 1, 2 and 3 and as SOG with SH degree 3. These files are
+not in the repo. As read by the app, the SH 1 PLY, the SH 3 PLY and the SOG each have 154 055
+splats and the same extent, 1.897 × 1.555 × 1.573 units (2.027 × 1.993 × 1.673 units with
+floaters). The SH 1 PLY is 15.3 MiB with 26 properties per splat, the SH 3 PLY 36.4 MiB with 62
+properties, and the SOG 3.6 MiB. So they share one frame, which is the case that linked cameras
+are for.
 
 Verification used the "SOAR Telescope" splat by Luis Cerda
 ([source](https://github.com/khyron/Gaussian-Splatting),
@@ -214,6 +307,41 @@ third-party data credits; Spark (MIT, World Labs) and three.js (MIT) are its ren
 libraries.
 
 ## Verification
+
+2026-11-03, tiled panes, linked cameras and backgrounds:
+
+- `npm run lint`: no problems. `npm run format:check`: "All matched files use Prettier code
+  style!" `npm test`: 9 files, 40 tests passed (new: `layout.test.js` for split, close, divider
+  clamping and the flat layout, and `stars.test.js`, which checks that the stars are spread
+  evenly on the sphere: mean |y| close to 1/2 and about 13.4 % of them above 60° latitude).
+  `npm run build`: one JS file of 3,517.34 kB (1,175.85 kB gzip).
+- Playwright on `vite preview` (headless Chromium, `--use-angle=d3d11`) at 1600 × 900 and
+  390 × 844, with the screenshots looked at, and no console errors in any run:
+  - Split to four panes (Pane 1 | Pane 2 over Pane 3 | Pane 4); the split buttons are disabled at
+    four. The SH 1, SH 2 and SH 3 PLY and the SOG opened in one pane each, and all four render.
+  - Dragging the middle divider 250 px changed the canvas widths from 626/626 px to 871/381 px
+    (`aria-valuenow` 69); ArrowLeft on the focused divider gave 64.
+  - Clicking Pane 3 showed its file (`nugatti_plySH3.ply`) in the panel and "Open splat file in
+    Pane 3". Closing Pane 2 kept the other three splats and their numbers (1, 3, 4); the next
+    split was numbered Pane 2 and became active.
+  - Linked cameras, compared by screenshots of Pane 2's canvas: with nothing moving, two shots
+    1 s apart are identical; unlinked, orbiting Pane 1 leaves Pane 2 unchanged; turning the link
+    on and orbiting Pane 1 changes Pane 2 to the same view; unlinked again, Pane 2 stays.
+  - Each background chip is pressed in turn and the screenshots show navy, black, sky (blue
+    zenith, haze at the horizon, ground below) and the starfield with the Milky Way band. In
+    three runs, the click plus a fixed 0.8 s wait took 0.85–0.98 s for navy, black and sky and
+    1.48–1.72 s for space, chosen for the first time on the page (two panes). So drawing the
+    starfield canvas takes in the order of 0.7–0.9 s here; this is a rough timing, not a
+    benchmark.
+  - With the sky and +Z as up axis, the splat tilts while the horizon stays level.
+  - Measuring in Pane 2 gave "Distance: 0.457 units" with both markers visible.
+  - At 390 px, the split panes stack vertically, the bottom sheet shows the active pane's facts,
+    and the space background renders in both panes.
+- **Not verified:** frame rate and memory with four panes, real phones, Firefox and Safari, a
+  screen reader with the panes and dividers, drag and drop onto a pane with a real drag (only
+  the file inputs were used), and files larger than 36 MiB in several panes.
+
+2026-10-28, after the rebuild:
 
 2026-10-28, after the rebuild:
 
@@ -277,6 +405,9 @@ git history at commit `9442d81`.
 
 ## Status
 
+Tiled comparison and backgrounds (2026-11-03): up to four panes with draggable dividers, linked
+cameras, and navy, black, sky and space backgrounds. See [Verification](#verification).
+
 The rebuild as a file viewer is done (2026-10-28).
 
 Website (2026-10-28, sprint session 9): the app is built into `/3dgs-viewer/` of the "My GIS
@@ -298,7 +429,8 @@ NTNU design (2026-10-28): the panel is white with navy text and NTNU-blue button
 switches, like the module homepage. The 3D stage behind it is NTNU navy: the renderer clears to
 `BACKGROUND` in `config.js` with
 [`WebGLRenderer.setClearColor`](https://threejs.org/docs/#api/en/renderers/WebGLRenderer.setClearColor),
-and the empty state and drop overlay use light text on it. The measurement markers stay orange,
+and the empty state and drop overlay use light text on it (since 2026-11-03 the colour is the
+`navy` entry of `BACKGROUNDS`, set as `scene.background`). The measurement markers stay orange,
 so they stand out on any splat. Computed with the WCAG formula, the panel over the navy stage
 gives 13.0:1 for normal text, 5.8:1 for muted text and 7.1:1 for NTNU blue. The light text of the
 empty state has 10.1:1 on navy. Lint, format check, tests (26) and build pass, and screenshots at

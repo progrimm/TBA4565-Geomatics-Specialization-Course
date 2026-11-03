@@ -15,8 +15,13 @@ page open and inspect it entirely on the client?"
 
 ## Features (scope)
 
-- Open a file (button or drag and drop anywhere); the file never leaves the
+- Open a file (button or drag and drop on a pane); the file never leaves the
   browser. No server, no token.
+- Tiled panes (up to 4, `MAX_PANES`): split right/down, close, draggable and
+  arrow-key dividers; each pane has its own viewer, splat and tools; the
+  active pane portals its tools into the panel. Linked cameras toggle.
+- Backgrounds for all panes: navy (default), black, sky (three.js Sky cube
+  map), space (generated starfield).
 - File facts: format, size, splat count, extent with/without floaters, PLY
   header (encoding, properties, SH degree).
 - Orientation fix (up axis +Y/-Y/+Z/-Z) and reset view.
@@ -38,12 +43,13 @@ page open and inspect it entirely on the client?"
 src/
 main.jsx – React root only
 App.jsx – composes hooks and components
-config.js – constants: formats, camera, up axes, markers, homepage link
+config.js – constants: formats, camera, up axes, markers, panes, backgrounds, homepage link
 viewer/splatViewer.js – three.js + Spark scene, no React
-hooks/ – React hooks bridging React and the viewer (viewer, file opening, measurement)
-components/ – React UI: panel, file opener, facts, orientation, measurement, messages
+viewer/backgrounds.js – colour, sky and starfield backgrounds, no React
+hooks/ – React hooks bridging React and the viewer (viewer, file opening, measurement, linked cameras)
+components/ – React UI: panel, pane layout, pane, file opener, facts, orientation, measurement, "All panes", messages
 state/ – small framework-independent stores (messages)
-utils/ – pure helpers (PLY header, formats, bounds, orientation, distance, formatting)
+utils/ – pure helpers (PLY header, formats, bounds, orientation, distance, formatting, layout tree, stars)
 tests/ – Vitest unit tests
 
 ## Code standards
@@ -97,4 +103,8 @@ tests/ – Vitest unit tests
   `/3dgs-viewer/` by the root `npm run site:build`.
 - 2026-10-28: live on GitHub Pages at `/3dgs-viewer/`.
 - 2026-10-28: NTNU design. White panel, NTNU-blue accent, navy stage (`BACKGROUND` in config.js,
-  `renderer.setClearColor`). Measurement markers stay orange.
+  `renderer.setClearColor`; since 2026-11-03 `BACKGROUNDS` and `scene.background`).
+  Measurement markers stay orange.
+- 2026-11-03: tiled comparison (up to 4 panes, dividers, linked cameras) and
+  backgrounds (navy, black, sky, space). Verified with the nugatti exports;
+  see README Verification.
