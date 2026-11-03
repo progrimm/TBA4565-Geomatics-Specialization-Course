@@ -23,7 +23,7 @@ export default function ViewTool({ background, onBackground, linked, onLinked, c
           </button>
         ))}
       </div>
-      <p className="tool__note">Sky and space are drawn in the browser and stay level (+Y up).</p>
+      <p className="tool__note">The sky is drawn in the browser and stays level (+Y up).</p>
       <div className="tool__actions tool__actions--spaced">
         <button
           className="chip"

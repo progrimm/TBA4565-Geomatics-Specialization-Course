@@ -11,7 +11,15 @@ import {
   ssim,
   ssimMap,
 } from '../src/utils/metrics.js';
-import { seededRandom } from '../src/utils/stars.js';
+
+/** Repeatable pseudo-random numbers in [0, 1) for the noise test (a linear congruential generator). */
+function seededRandom(seed) {
+  let state = seed;
+  return () => {
+    state = (state * 1664525 + 1013904223) % 2 ** 32;
+    return state / 2 ** 32;
+  };
+}
 
 const W = 48;
 const H = 32;

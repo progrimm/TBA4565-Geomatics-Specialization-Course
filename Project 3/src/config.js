@@ -46,14 +46,13 @@ export const MARKER = { screenSize: 0.025, color: '#f5a623' };
 
 /**
  * Backgrounds behind the splats (all panes). Colour backgrounds are a plain clear colour;
- * navy is NTNU navy, as --stage in style.css. Sky and space are generated in the browser
+ * navy is NTNU navy, as --stage in style.css. The sky is generated in the browser
  * (viewer/backgrounds.js), so no image is downloaded.
  */
 export const BACKGROUNDS = [
   { id: 'navy', label: 'Navy', color: '#0f2a47' },
   { id: 'black', label: 'Black', color: '#000000' },
   { id: 'sky', label: 'Sky' },
-  { id: 'space', label: 'Space' },
 ];
 export const DEFAULT_BACKGROUND = 'navy';
 
@@ -76,21 +75,6 @@ export const SKY = {
   groundColor: '#5b6452',
   groundFade: 0.06,
   cubeSize: 512,
-};
-
-/**
- * Space background: a generated starfield, drawn on a 2:1 (equirectangular) canvas.
- * Stars are spread evenly over the sphere; the Milky Way is a band of extra faint stars
- * and glow around a great circle tilted by bandTiltDeg, bandWidthDeg wide (1 σ).
- */
-export const STARS = {
-  seed: 7,
-  count: 9000,
-  bandCount: 30000,
-  bandGlowCount: 700,
-  bandTiltDeg: 60,
-  bandWidthDeg: 8,
-  textureWidth: 4096,
 };
 
 /**

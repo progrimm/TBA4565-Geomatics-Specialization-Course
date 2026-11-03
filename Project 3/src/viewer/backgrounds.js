@@ -1,11 +1,10 @@
-// Backgrounds behind the splat: a colour, a sky cube map or a starfield. No React here.
+// Backgrounds behind the splat: a colour or a sky cube map. No React here.
 // They are set as scene.background, which three.js draws at infinity in the world frame
 // (+y up), so they turn with the camera but not with the up-axis fix of the model.
 // three.js: https://threejs.org/docs/#api/en/scenes/Scene.background
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { BACKGROUNDS, SKY, STARS } from '../config.js';
-import { bandPoint, seededRandom, toEquirect, uniformSpherePoint } from '../utils/stars.js';
+import { BACKGROUNDS, SKY } from '../config.js';
 
 /** Ground colour below the horizon, in the renderer's linear working space. */
 const GROUND = new THREE.Color(SKY.groundColor);
@@ -25,9 +24,6 @@ const SKY_TONE_MAPPING = `
   gl_FragColor.rgb = mix(gl_FragColor.rgb,
     vec3(${GROUND.r.toFixed(4)}, ${GROUND.g.toFixed(4)}, ${GROUND.b.toFixed(4)}), ground);
 `;
-
-/** Star colours from hot (blue-white) to cool (orange), as CSS rgb triples. */
-const STAR_COLOURS = ['200 215 255', '235 240 255', '255 250 240', '255 230 200', '255 205 160'];
 
 /**
  * Sky: render three.js's Sky shader once into a cube map with a CubeCamera
@@ -62,75 +58,6 @@ function createSky(renderer) {
   return { value: target.texture, dispose: () => target.dispose() };
 }
 
-/** The starfield canvas, drawn once and shared by all panes (each uploads its own texture). */
-let starCanvas = null;
-
-/**
- * Draw an ellipse that is wider towards the poles, so a round star or glow stays round once
- * the plate carrée image is wrapped onto the sphere (a circle of radius r at latitude φ spans
- * r / cos φ in longitude: Tissot's indicatrix of the projection). Drawn twice near the
- * left/right edge, where the image wraps around.
- */
-function drawDot(context, width, height, direction, radius, fill) {
-  const { u, v, latitude } = toEquirect(direction);
-  const x = u * width;
-  const y = (1 - v) * height; // canvas y runs down; v = 1 is the top (+y)
-  const rx = Math.min(width / 4, radius / Math.max(Math.cos(latitude), 0.02));
-  context.fillStyle = fill;
-  for (const offset of [0, -width, width]) {
-    if (offset !== 0 && Math.abs(x + offset - width / 2) > width / 2 + rx) continue;
-    context.beginPath();
-    context.ellipse(x + offset, y, rx, radius, 0, 0, 2 * Math.PI);
-    context.fill();
-  }
-}
-
-function drawStarfield() {
-  const width = STARS.textureWidth;
-  const height = width / 2;
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext('2d');
-  context.fillStyle = '#000';
-  context.fillRect(0, 0, width, height);
-  const random = seededRandom(STARS.seed);
-  const band = () => bandPoint(random, STARS.bandTiltDeg, STARS.bandWidthDeg);
-
-  // Milky Way: soft glow, then many faint stars, both concentrated along the band.
-  for (let i = 0; i < STARS.bandGlowCount; i++) {
-    const tint = random() < 0.5 ? '150 160 220' : '200 180 210';
-    drawDot(context, width, height, band(), 20 + 60 * random(), `rgb(${tint} / 3%)`);
-  }
-  for (let i = 0; i < STARS.bandCount; i++) {
-    drawDot(context, width, height, band(), 0.6 + 0.6 * random(), `rgb(220 225 255 / 35%)`);
-  }
-  // Stars all over the sky: most are faint (brightness ~ random³).
-  for (let i = 0; i < STARS.count; i++) {
-    const brightness = random() ** 3;
-    const colour = STAR_COLOURS[Math.floor(random() * STAR_COLOURS.length)];
-    const alpha = Math.round(30 + 70 * brightness);
-    drawDot(
-      context,
-      width,
-      height,
-      uniformSpherePoint(random),
-      0.7 + 1.8 * brightness,
-      `rgb(${colour} / ${alpha}%)`,
-    );
-  }
-  return canvas;
-}
-
-/** Space: the starfield as an equirectangular background texture. */
-function createSpace() {
-  starCanvas ??= drawStarfield();
-  const texture = new THREE.CanvasTexture(starCanvas);
-  texture.mapping = THREE.EquirectangularReflectionMapping;
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return { value: texture, dispose: () => texture.dispose() };
-}
-
 /**
  * Create a background for one renderer (textures belong to one WebGL context).
  * @param {THREE.WebGLRenderer} renderer
@@ -143,5 +70,5 @@ export function createBackground(renderer, id) {
   const entry = BACKGROUNDS.find((background) => background.id === id);
   if (!entry) throw new Error(`Unknown background: ${id}`);
   if (entry.color) return { value: new THREE.Color(entry.color), dispose() {} };
-  return id === 'sky' ? createSky(renderer) : createSpace();
+  return createSky(renderer);
 }
