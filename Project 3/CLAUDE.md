@@ -24,7 +24,8 @@ page open and inspect it entirely on the client?"
   map), space (generated starfield).
 - COLMAP photos (undistorted pinhole workspace): frustums, photo view at a
   photo's exact camera with swipe/blend/difference, hold-out split, PSNR/SSIM
-  per pane (whole photo and splat area) in a Web Worker, CSV export.
+  per pane (whole photo and splat area) in a Web Worker, CSV export; one photo
+  in detail: error histogram, offset, pixel readout on the difference image.
 - File facts: format, size, splat count, extent with/without floaters, PLY
   header (encoding, properties, SH degree).
 - Orientation fix (up axis +Y/-Y/+Z/-Z) and reset view.

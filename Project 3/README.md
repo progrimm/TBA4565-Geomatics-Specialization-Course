@@ -67,6 +67,12 @@ and inspect it entirely on the client?_
   splat at every photo's camera and full size, compares it with the photo, and shows the means
   per role, a table per photo and a CSV download. "Splat area" columns (PSNR\*, SSIM\*) count
   only the pixels the splat covers, for splats cropped to an object.
+- **One photo in numbers.** "Evaluate IMG_….JPEG" evaluates only the chosen photo. It shows PSNR
+  and SSIM, the coverage, the mean colour offset render − photo per channel, and the per-pixel
+  error (mean |render − photo| over R, G, B) as mean, median, 95th percentile, share of pixels
+  with an error of 10 % or more, and a histogram in 1 % bins (hover a bar for its value), over
+  the splat area or the whole photo. The difference image in the pane gets a colour scale, and
+  hovering it shows the pixel's render and photo RGB values and its error.
 - **Splat count** counts splats with finite centres; NaN splats are skipped.
 - **Errors** are shown as messages, and the viewer keeps working. This covers unsupported
   extensions, PLY files without splat properties (a mesh or a plain point cloud) and files Spark
@@ -236,6 +242,13 @@ Main design choices:
   values. LPIPS is not computed: it needs a neural network. SSIM on a 1539 × 2058 photo runs in a
   [Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API), so the page
   stays responsive, and the next photo is rendered while the worker compares the previous one.
+- **Error in numbers.** PSNR and SSIM compress a photo into one number each. The per-pixel
+  error histogram shows how the error is spread: many small errors (blur, noise) or few large
+  ones (missing or wrong geometry, floaters). The colour offset (mean signed difference) shows a
+  systematic brightness or colour shift, which raises the error everywhere without being visible
+  as a structure in the difference image. Percentiles come from the 256-level histogram, so they
+  are exact to one 8-bit level. The difference colour scale is black–red–yellow–white, a
+  luminance-ordered "heat" scale, so more error is always brighter.
 - **Training vs test photos.** A photo that was used in training only measures how well the
   splat fits its training data. Only held-out test photos measure novel views. Between the
   photos there is no ground truth at all, so those views can only be judged by eye.
@@ -421,6 +434,19 @@ libraries.
   an exposure or appearance model in training, or a colour-handling difference between
   LichtFeld Studio and Spark. Comparing with the PSNR that LichtFeld Studio reports for the
   training images would tell; that was not done.
+- One photo in detail (2026-11-03, after the batch run above): `npm test` 12 files, 68 tests
+  (new: error histogram, its summary statistics, signed offset). Playwright at 1600 × 900 and
+  390 × 844 with the SH 3 PLY, screenshots looked at, no console errors:
+  - "Evaluate IMG_6424.JPEG" took 4.0 s (3.6 s at 390 px) and gave PSNR 5.50 dB whole and
+    21.92 dB splat area, SSIM 0.148 and 0.730, coverage 17.1 %: the same as the batch CSV row
+    for that photo. Colour offset over the splat area: R +3.5, G +13.4, B +14.7 levels (render
+    brighter). Error in the splat area: mean 6.1 %, median 5.1 %, 95th percentile 14.9 %,
+    16.4 % of pixels at 10 % or more; whole photo: mean 44.2 %, median 53.7 %, 80.6 % of
+    pixels at 10 % or more (the cropped-away room).
+  - Hovering the 5–6 % bar: "11.04 % of pixels (59 744)".
+  - Hovering the difference image on the cup: pixel 677, 1070, render 200 160 160, photo
+    221 150 156, error 4.6 % (by hand: (21 + 10 + 4) / 3 = 11.7 levels = 4.6 %). At 390 px the
+    readout stays inside the pane.
 - **Not verified:** a model trained with held-out test photos (so no real novel-view numbers
   yet), the `.txt` model format and `sparse/0` layouts on real data (unit tests only), SSIM
   against a reference implementation such as the 3DGS repository's (only against a direct
