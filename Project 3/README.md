@@ -51,8 +51,8 @@ and inspect it entirely on the client?_
 - **Linked cameras.** "Link cameras" copies the active pane's camera to the others, and from then
   on the other panes follow whichever pane is moved. This lines the splats up only when they are
   in the same frame, for example exports of the same capture, with the same up axis.
-- **Backgrounds** for all panes: NTNU navy (the default), black, sky and space. Sky and space are
-  generated in the browser; no image is downloaded.
+- **Backgrounds** for all panes: NTNU navy (the default), black and sky. The sky is generated in
+  the browser; no image is downloaded.
 - **Photos from COLMAP.** "Open COLMAP folder" reads the undistorted workspace the splat was
   trained from (`dense/` with `sparse/` and `images/`, or a project with `sparse/0/`), as
   `cameras.bin`/`images.bin` or the `.txt` files. The cameras are drawn as frustums around the
@@ -126,7 +126,7 @@ src/
                          homepage link
   viewer/splatViewer.js  three.js + Spark scene (no React): load, frame, orient, pick, markers,
                          camera view for linking, background
-  viewer/backgrounds.js  colour, sky cube map and starfield backgrounds (no React)
+  viewer/backgrounds.js  colour and sky cube map backgrounds (no React)
   viewer/photoCameras.js frustums of the COLMAP photos (no React)
   workers/               Web Worker for PSNR, SSIM and the difference image
   hooks/                 React hooks: the viewer and its load state, file opening and
@@ -135,10 +135,10 @@ src/
   components/            React UI: panel, tiled pane layout and dividers, pane, file button and
                          empty state, facts, orientation, measurement, "All panes", photos,
                          photo overlay, evaluation, messages
-  state/                 framework-independent message store
+  state/                 framework-independent stores: messages, which tools are open
   utils/                 pure helpers: PLY header, file formats, bounds and camera framing,
-                         up-axis rotations, distance, formatting, pane layout tree, star
-                         positions, COLMAP parsing, photo cameras, PSNR/SSIM
+                         up-axis rotations, distance, formatting, pane layout tree, COLMAP
+                         parsing, photo cameras, PSNR/SSIM
 tests/                   Vitest unit tests for the pure helpers and the message store
 ```
 
@@ -208,15 +208,15 @@ Main design choices:
   horizon the sky fades to a plain ground colour, so the usual view from above does not look into
   white haze. The first version without the baked curve rendered almost white; that was seen in
   the screenshots and fixed.
-- **Space** is a starfield drawn once on a 2:1 canvas and used as an equirectangular texture
-  ([`EquirectangularReflectionMapping`](https://threejs.org/docs/#api/en/constants/Textures)).
-  An equirectangular image is the plate carrée projection of the sphere, so it has the same area
-  distortion as in Project 1: rows near the poles cover little area. Stars placed evenly in the
-  image would crowd at the poles. `uniformSpherePoint` instead takes the height y uniform in
-  [−1, 1] (by Archimedes' hat-box theorem, equal heights of a sphere have equal areas), and each
-  star is drawn `1 / cos(latitude)` wider so it stays round on the sphere (Tissot's indicatrix of
-  the projection). A tilted band of faint stars and glow is the Milky Way. A seeded random
-  generator (mulberry32) gives the same sky on every load.
+- **Look: square geometry and fiducial marks** (`style.css`). The panel is a full-height
+  sidebar, and boxes, buttons, fields, toasts and pane frames have square corners, like a survey
+  sheet. Rounded on purpose are only the shared "← My GIS module" link (the same in every app of
+  the module), the measurement markers and the ends of the histogram bars. Option groups (up
+  axis, background, comparison mode) are segmented controls whose buttons share their borders.
+  The memorable element is the fiducial marks: each view and the photo frame carry corner marks
+  like those on an aerial photo, which photogrammetry uses for the photo's interior orientation.
+  Titles use the homepage's display face, Bricolage Grotesque, self-hosted with
+  `@fontsource-variable/bricolage-grotesque` 5.3.0, so the page makes no request to a font CDN.
 
 - **COLMAP photo → three.js camera** (`utils/colmap.js`, `utils/photoCamera.js`). COLMAP stores
   for each image the world-to-camera rotation R (quaternion qw qx qy qz) and translation t
@@ -314,7 +314,7 @@ Real-Time Radiance Field Rendering", _ACM Transactions on Graphics_ 42(4), July 
 ## Accessibility
 
 - **Keyboard.** The panel comes first in the DOM. With two empty panes, the tab order is
-  "← My GIS module" → "Hide controls" → "Open splat file in Pane 2" → the four background chips
+  "← My GIS module" → "Hide controls" → "Open splat file in Pane 2" → the three background chips
   → "Link cameras" → Pane 1's bar ("Open a splat file in Pane 1", "Split Pane 1 right",
   "Split Pane 1 down", "Close Pane 1") → Pane 1's view → its "choose one" → the same for Pane 2
   → the divider. With a file open, the facts' `<details>`, the up-axis chips and the measure
@@ -395,6 +395,21 @@ third-party data credits; Spark (MIT, World Labs) and three.js (MIT) are its ren
 libraries.
 
 ## Verification
+
+2026-11-03, redesign and space background removed:
+
+- `npm run lint`: no problems. `npm run format:check`: all files pass. `npm test`: 11 files,
+  63 tests passed (the starfield tests went with the starfield). `npm run build` passes and
+  bundles the font files (latin 78.15 kB woff2).
+- Playwright on `vite preview` at 1600 × 900 (also 1600 × 3000 to see the whole panel) and
+  390 × 844, screenshots looked at, no console errors: the background chips are Navy, Black and
+  Sky; of all elements on the empty page, only the "← My GIS module" link has a border radius;
+  the panel's scroll width equals its width at 1600 and 390 px. With two panes, linked
+  cameras, a photo in Swipe and the Difference view with the pixel readout, no text overlaps:
+  the photo label, the colour scale and the readout stay apart, and the pane's own corner marks
+  are hidden while the photo frame shows its own. A first pass showed a double rule with a gap
+  between the last pane tool and "All panes", and small tick marks in the middle of each pane
+  side that read as stray dashes; both were removed.
 
 2026-11-03, COLMAP photos and PSNR/SSIM:
 
@@ -555,6 +570,12 @@ libraries.
 
 ## History
 
+A **space background** (2026-11-03) was removed the same day at the user's request. It was a
+starfield on an equirectangular canvas, with the stars spread evenly over the sphere (height y
+uniform in [−1, 1], by Archimedes' hat-box theorem) rather than evenly in the image, which would
+crowd them at the poles: the same area distortion of the plate carrée projection as in Project 1.
+Its code (`utils/stars.js`, `tests/stars.test.js`) is in git history at commit `6373519`.
+
 Sessions 6–8 (2026-10-27/28) built a CesiumJS 1.146 globe gallery of four georeferenced splats:
 three public Cesium ion assets and one Bentley iTwin reality-data tileset. It had a
 georeferencing inspector, a measurement tool, an alignment check against terrain, imagery and
@@ -575,12 +596,16 @@ git history at commit `9442d81`.
 
 ## Status
 
+Redesign (2026-11-03): square sidebar layout with fiducial-marked views, the homepage's display
+font, and the space background removed. See [Verification](#verification).
+
 COLMAP photos and metrics (2026-11-03): the cameras of the capture as frustums, photo view at
 each photo's exact camera with swipe, blend and difference, a train/test hold-out setting, and
 PSNR/SSIM per pane with CSV export. See [Verification](#verification).
 
 Tiled comparison and backgrounds (2026-11-03): up to four panes with draggable dividers, linked
-cameras, and navy, black, sky and space backgrounds. See [Verification](#verification).
+cameras, and navy, black, sky and space backgrounds (space removed later, see
+[History](#history)). See [Verification](#verification).
 
 The rebuild as a file viewer is done (2026-10-28).
 

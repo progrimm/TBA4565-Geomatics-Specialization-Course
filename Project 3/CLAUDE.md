@@ -21,7 +21,7 @@ page open and inspect it entirely on the client?"
   arrow-key dividers; each pane has its own viewer, splat and tools; the
   active pane portals its tools into the panel. Linked cameras toggle.
 - Backgrounds for all panes: navy (default), black, sky (three.js Sky cube
-  map), space (generated starfield).
+  map). The space background was removed on 2026-11-03.
 - COLMAP photos (undistorted pinhole workspace): frustums, photo view at a
   photo's exact camera with swipe/blend/difference, hold-out split, PSNR/SSIM
   per pane (whole photo and splat area) in a Web Worker, CSV export; one photo
@@ -50,13 +50,13 @@ main.jsx – React root only
 App.jsx – composes hooks and components
 config.js – constants: formats, camera, up axes, markers, panes, backgrounds, homepage link
 viewer/splatViewer.js – three.js + Spark scene, no React
-viewer/backgrounds.js – colour, sky and starfield backgrounds, no React
+viewer/backgrounds.js – colour and sky backgrounds, no React
 viewer/photoCameras.js – COLMAP camera frustums, no React
 workers/ – Web Worker for PSNR/SSIM
 hooks/ – React hooks bridging React and the viewer (viewer, file opening, measurement, linked cameras)
 components/ – React UI: panel, pane layout, pane, file opener, facts, orientation, measurement, "All panes", messages
 state/ – small framework-independent stores (messages)
-utils/ – pure helpers (PLY header, formats, bounds, orientation, distance, formatting, layout tree, stars)
+utils/ – pure helpers (PLY header, formats, bounds, orientation, distance, formatting, layout tree, COLMAP, photo cameras, metrics)
 tests/ – Vitest unit tests
 
 ## Code standards
@@ -117,3 +117,6 @@ tests/ – Vitest unit tests
   see README Verification.
 - 2026-11-03: COLMAP photo comparison and PSNR/SSIM. Results on the nugatti
   exports in README Verification; the colour offset there is not explained yet.
+- 2026-11-03: redesign: square sidebar layout, segmented option groups, fiducial
+  corner marks on views; Bricolage Grotesque (homepage font) for titles. Keep
+  rounded corners only on the home link, markers and histogram bar ends.
