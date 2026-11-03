@@ -1,50 +1,89 @@
-import { useSplatViewer } from './hooks/useSplatViewer.js';
-import { useMeasurement } from './hooks/useMeasurement.js';
-import { useFileOpener } from './hooks/useFileOpener.js';
+import { useRef, useState } from 'react';
+import { MAX_PANES, MIN_PANE_FRACTION, MOBILE_QUERY } from './config.js';
+import { useFileDropGuard } from './hooks/useFileOpener.js';
+import { useMediaQuery } from './hooks/useMediaQuery.js';
+import { closePane, createLayout, paneIds, setRatio, splitPane } from './utils/layout.js';
 import ControlPanel from './components/ControlPanel.jsx';
-import FileOpener, { DropOverlay, EmptyState } from './components/FileOpener.jsx';
-import SplatFacts from './components/SplatFacts.jsx';
-import OrientationTool from './components/OrientationTool.jsx';
-import MeasureTool from './components/MeasureTool.jsx';
+import PaneLayout from './components/PaneLayout.jsx';
+import SplatPane from './components/SplatPane.jsx';
 import Messages from './components/Messages.jsx';
 
+const paneId = (number) => `pane-${number}`;
+const FIRST_PANE = paneId(1);
+const CONTROLS_ID = 'view-controls';
+
+/** "Pane 2" for pane-2. Numbers stay with a pane, so closing one does not rename the others. */
+const paneLabel = (id) => `Pane ${id.slice('pane-'.length)}`;
+
 export default function App() {
-  const { canvasRef, viewer, loading, facts, upAxis, setUpAxis, open } = useSplatViewer();
-  const measurement = useMeasurement(viewer, canvasRef, facts);
-  const opener = useFileOpener(open);
+  const [layout, setLayout] = useState(() => createLayout(FIRST_PANE));
+  const [activeId, setActiveId] = useState(FIRST_PANE);
+  // Callback ref as state: the panes re-render (and portal their tools) once the slot exists.
+  const [panelSlot, setPanelSlot] = useState(null);
+  const nextSplit = useRef(1);
+  const stacked = useMediaQuery(MOBILE_QUERY);
+  useFileDropGuard();
+
+  const ids = paneIds(layout);
+  const canSplit = ids.length < MAX_PANES;
+
+  const split = (id, direction) => {
+    if (!canSplit) return;
+    // The lowest free number, so labels stay within 1..MAX_PANES.
+    let number = 1;
+    while (ids.includes(paneId(number))) number += 1;
+    const newId = paneId(number);
+    setLayout(splitPane(layout, id, direction, newId, `split-${nextSplit.current++}`));
+    setActiveId(newId);
+  };
+
+  const close = (id) => {
+    const next = closePane(layout, id);
+    if (next === layout) return;
+    setLayout(next);
+    if (id === activeId) {
+      // The neighbour in reading order becomes active.
+      const rest = paneIds(next);
+      setActiveId(rest[Math.min(ids.indexOf(id), rest.length - 1)]);
+    }
+  };
+
+  const moveDivider = (splitId, ratio) =>
+    setLayout((current) => setRatio(current, splitId, ratio, MIN_PANE_FRACTION));
 
   return (
     <>
-      {/* The panel comes first, so keyboard users reach the file button before the view. */}
+      {/* The panel comes first, so keyboard users reach the file button before the views. */}
       <ControlPanel>
-        <FileOpener opener={opener} loading={loading} />
-        {facts && (
-          <>
-            <SplatFacts facts={facts} />
-            <OrientationTool
-              upAxis={upAxis}
-              onUpAxis={setUpAxis}
-              onReset={() => viewer?.resetView()}
-            />
-            <MeasureTool measurement={measurement} />
-          </>
-        )}
+        <div ref={setPanelSlot} />
       </ControlPanel>
       <main className="stage">
-        <canvas
-          ref={canvasRef}
-          className="stage__canvas"
-          tabIndex={0}
-          aria-label={facts ? `3D view of ${facts.name}` : '3D view, no splat open'}
-          aria-describedby="view-controls"
+        <PaneLayout
+          layout={layout}
+          stacked={stacked}
+          onRatio={moveDivider}
+          renderPane={(id, rect) => (
+            <SplatPane
+              key={id}
+              id={id}
+              label={paneLabel(id)}
+              rect={rect}
+              active={id === activeId}
+              canSplit={canSplit}
+              canClose={ids.length > 1}
+              panelSlot={panelSlot}
+              onActivate={setActiveId}
+              onSplit={split}
+              onClose={close}
+              describedBy={CONTROLS_ID}
+            />
+          )}
         />
-        <p className="sr-only" id="view-controls">
+        <p className="sr-only" id={CONTROLS_ID}>
           Drag to orbit, right-drag to pan, scroll to zoom. With the view focused: arrow keys pan,
           Shift + arrows orbit.
         </p>
-        {!facts && !loading && <EmptyState onChoose={opener.choose} />}
       </main>
-      {opener.dragging && <DropOverlay />}
       <Messages />
     </>
   );

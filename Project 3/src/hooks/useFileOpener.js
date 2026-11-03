@@ -1,21 +1,25 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-/** id of the one file input (in FileOpener); the other "choose" buttons click it. */
-export const FILE_INPUT_ID = 'splat-file';
+const hasFiles = (event) => event.dataTransfer?.types.includes('Files');
 
 /**
- * Opening a file by file dialog or by dropping it anywhere on the page. The file
- * is only read in the browser; nothing is uploaded.
+ * Opening a file in one pane, by its file dialog or by dropping a file on the pane. The
+ * file is only read in the browser; nothing is uploaded.
  * @param {(file: File) => void} onOpen
- * @returns {{onInputChange: (event: Event) => void, choose: () => void, dragging: boolean}}
+ * @param {import('react').RefObject<HTMLElement>} targetRef - the pane that accepts drops.
+ * @returns {{inputRef: import('react').RefObject<HTMLInputElement>,
+ *   onInputChange: (event: Event) => void, choose: () => void, dragging: boolean}}
+ *   Render a hidden file input with inputRef and onInputChange; choose() opens its dialog.
  */
-export function useFileOpener(onOpen) {
+export function useFileOpener(onOpen, targetRef) {
   const [dragging, setDragging] = useState(false);
+  const inputRef = useRef(null);
 
   useEffect(() => {
+    const target = targetRef.current;
+    if (!target) return undefined;
     // dragenter/dragleave also fire for every child element, so count them.
     let depth = 0;
-    const hasFiles = (event) => event.dataTransfer?.types.includes('Files');
     const onEnter = (event) => {
       if (!hasFiles(event)) return;
       depth += 1;
@@ -27,7 +31,7 @@ export function useFileOpener(onOpen) {
       if (depth === 0) setDragging(false);
     };
     const onOver = (event) => {
-      // Without preventDefault the browser would open the file itself.
+      // Without preventDefault the pane would not accept the drop.
       if (hasFiles(event)) event.preventDefault();
     };
     const onDrop = (event) => {
@@ -38,17 +42,17 @@ export function useFileOpener(onOpen) {
       const [file] = event.dataTransfer.files;
       if (file) onOpen(file);
     };
-    window.addEventListener('dragenter', onEnter);
-    window.addEventListener('dragleave', onLeave);
-    window.addEventListener('dragover', onOver);
-    window.addEventListener('drop', onDrop);
+    target.addEventListener('dragenter', onEnter);
+    target.addEventListener('dragleave', onLeave);
+    target.addEventListener('dragover', onOver);
+    target.addEventListener('drop', onDrop);
     return () => {
-      window.removeEventListener('dragenter', onEnter);
-      window.removeEventListener('dragleave', onLeave);
-      window.removeEventListener('dragover', onOver);
-      window.removeEventListener('drop', onDrop);
+      target.removeEventListener('dragenter', onEnter);
+      target.removeEventListener('dragleave', onLeave);
+      target.removeEventListener('dragover', onOver);
+      target.removeEventListener('drop', onDrop);
     };
-  }, [onOpen]);
+  }, [onOpen, targetRef]);
 
   const onInputChange = useCallback(
     (event) => {
@@ -60,7 +64,25 @@ export function useFileOpener(onOpen) {
     [onOpen],
   );
 
-  const choose = useCallback(() => document.getElementById(FILE_INPUT_ID)?.click(), []);
+  const choose = useCallback(() => inputRef.current?.click(), []);
 
-  return { onInputChange, choose, dragging };
+  return { inputRef, onInputChange, choose, dragging };
+}
+
+/**
+ * Stop the browser from opening a file that is dropped outside the panes (it would leave
+ * the app). Drops on a pane are handled by that pane's useFileOpener.
+ */
+export function useFileDropGuard() {
+  useEffect(() => {
+    const guard = (event) => {
+      if (hasFiles(event)) event.preventDefault();
+    };
+    window.addEventListener('dragover', guard);
+    window.addEventListener('drop', guard);
+    return () => {
+      window.removeEventListener('dragover', guard);
+      window.removeEventListener('drop', guard);
+    };
+  }, []);
 }

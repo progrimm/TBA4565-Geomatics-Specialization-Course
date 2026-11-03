@@ -36,20 +36,23 @@ export function paneIds(node) {
  * @param {string} paneId - the pane to split.
  * @param {'row' | 'column'} direction
  * @param {string} newId - id of the new pane (must be unused).
+ * @param {string} splitId - id of the new split (must be unused).
  * @returns {LayoutNode} the same tree if paneId is not in it.
  */
-export function splitPane(node, paneId, direction, newId) {
+export function splitPane(node, paneId, direction, newId, splitId) {
   if (node.type === 'pane') {
     if (node.id !== paneId) return node;
     return {
       type: 'split',
-      id: `split-${newId}`,
+      id: splitId,
       direction,
       ratio: 0.5,
       children: [node, createLayout(newId)],
     };
   }
-  const children = node.children.map((child) => splitPane(child, paneId, direction, newId));
+  const children = node.children.map((child) =>
+    splitPane(child, paneId, direction, newId, splitId),
+  );
   return children.every((child, i) => child === node.children[i]) ? node : { ...node, children };
 }
 

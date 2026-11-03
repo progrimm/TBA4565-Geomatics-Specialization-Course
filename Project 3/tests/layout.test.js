@@ -11,22 +11,22 @@ import {
 /** Four panes: a | b on top of c | d, made by splitting like a user would. */
 function grid() {
   let tree = createLayout('a');
-  tree = splitPane(tree, 'a', 'column', 'c');
-  tree = splitPane(tree, 'a', 'row', 'b');
-  return splitPane(tree, 'c', 'row', 'd');
+  tree = splitPane(tree, 'a', 'column', 'c', 's1');
+  tree = splitPane(tree, 'a', 'row', 'b', 's2');
+  return splitPane(tree, 'c', 'row', 'd', 's3');
 }
 
 const area = ({ w, h }) => w * h;
 
 describe('splitPane', () => {
   it('puts the new pane right of or below the split pane', () => {
-    expect(paneIds(splitPane(createLayout('a'), 'a', 'row', 'b'))).toEqual(['a', 'b']);
+    expect(paneIds(splitPane(createLayout('a'), 'a', 'row', 'b', 's1'))).toEqual(['a', 'b']);
     expect(paneIds(grid())).toEqual(['a', 'b', 'c', 'd']);
   });
 
   it('returns the same tree for an unknown pane', () => {
     const tree = grid();
-    expect(splitPane(tree, 'x', 'row', 'e')).toBe(tree);
+    expect(splitPane(tree, 'x', 'row', 'e', 's4')).toBe(tree);
   });
 });
 
@@ -51,7 +51,7 @@ describe('closePane', () => {
 
 describe('setRatio', () => {
   it('moves a divider and clamps it', () => {
-    const tree = splitPane(createLayout('a'), 'a', 'row', 'b');
+    const tree = splitPane(createLayout('a'), 'a', 'row', 'b', 's1');
     expect(setRatio(tree, tree.id, 0.3, 0.1).ratio).toBe(0.3);
     expect(setRatio(tree, tree.id, 0.01, 0.1).ratio).toBe(0.1);
     expect(setRatio(tree, tree.id, 2, 0.1).ratio).toBe(0.9);
@@ -66,7 +66,7 @@ describe('setRatio', () => {
 
 describe('computeLayout', () => {
   it('tiles the whole area without overlap', () => {
-    const { panes, dividers } = computeLayout(setRatio(grid(), 'split-c', 0.3, 0.1));
+    const { panes, dividers } = computeLayout(setRatio(grid(), 's1', 0.3, 0.1));
     expect(panes.map((pane) => pane.id)).toEqual(['a', 'b', 'c', 'd']);
     expect(panes.reduce((sum, pane) => sum + area(pane.rect), 0)).toBeCloseTo(1);
     expect(panes.find((pane) => pane.id === 'c').rect).toEqual({ x: 0, y: 0.3, w: 0.5, h: 0.7 });

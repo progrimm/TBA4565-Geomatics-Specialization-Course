@@ -1,36 +1,27 @@
-import { ACCEPT, FORMATS } from '../config.js';
-import { FILE_INPUT_ID } from '../hooks/useFileOpener.js';
+import { FORMATS } from '../config.js';
 
 const EXTENSIONS = Object.keys(FORMATS).map((extension) => `.${extension}`);
 
 /**
- * The file button in the panel (and the hidden file input it opens).
- * @param {{opener: ReturnType<typeof import('../hooks/useFileOpener.js').useFileOpener>,
- *   loading: boolean}} props
+ * The file button in the panel, for the active pane.
+ * @param {{paneLabel: string, onChoose: () => void, loading: boolean}} props
  */
-export default function FileOpener({ opener, loading }) {
+export default function FileOpener({ paneLabel, onChoose, loading }) {
   return (
     <>
-      <input
-        id={FILE_INPUT_ID}
-        type="file"
-        accept={ACCEPT}
-        hidden
-        onChange={opener.onInputChange}
-      />
-      <button className="open-button" type="button" onClick={opener.choose} disabled={loading}>
-        {loading ? 'Opening…' : 'Open splat file'}
+      <button className="open-button" type="button" onClick={onChoose} disabled={loading}>
+        {loading ? 'Opening…' : `Open splat file in ${paneLabel}`}
       </button>
       <p className="tool__note">
-        Or drop a file anywhere: {EXTENSIONS.join(', ')}. The file stays in this browser; nothing is
-        uploaded.
+        {paneLabel} is the outlined pane. Or drop a file on any pane: {EXTENSIONS.join(', ')}. The
+        file stays in this browser; nothing is uploaded.
       </p>
     </>
   );
 }
 
 /**
- * Prompt in the middle of the empty view.
+ * Prompt in the middle of an empty pane.
  * @param {{onChoose: () => void}} props
  */
 export function EmptyState({ onChoose }) {
@@ -48,11 +39,11 @@ export function EmptyState({ onChoose }) {
   );
 }
 
-/** Shown over the page while a file is dragged over it. */
+/** Shown over a pane while a file is dragged over it. */
 export function DropOverlay() {
   return (
     <div className="drop-overlay" aria-hidden="true">
-      Drop to open
+      Drop to open here
     </div>
   );
 }
