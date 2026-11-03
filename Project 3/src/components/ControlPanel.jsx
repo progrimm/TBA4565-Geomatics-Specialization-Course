@@ -97,9 +97,7 @@ export default function ControlPanel({ children }) {
           ← My GIS module
         </a>
         <header className="panel__header">
-          <h1 className="panel__title">
-            3DGS <span className="panel__accent">Viewer</span>
-          </h1>
+          <h1 className="panel__title">3DGS Viewer</h1>
           <button
             className="panel__toggle"
             type="button"

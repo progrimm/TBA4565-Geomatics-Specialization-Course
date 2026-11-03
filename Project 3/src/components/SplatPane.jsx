@@ -193,7 +193,7 @@ export default function SplatPane({
             <PhotoOverlay
               url={compare.mode === 'difference' ? (shownDetail?.url ?? null) : photo.url}
               detail={compare.mode === 'difference' ? shownDetail : null}
-              note={compare.mode === 'difference' ? 'difference: render vs photo' : null}
+              note={compare.mode === 'difference' ? 'difference, render − photo' : null}
               width={photo.intrinsics.width}
               height={photo.intrinsics.height}
               name={photo.name}

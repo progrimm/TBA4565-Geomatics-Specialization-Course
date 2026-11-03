@@ -129,8 +129,8 @@ export default function PhotosTool({ photos, onSelect }) {
             {list.map((photo) => (
               <option key={photo.name} value={photo.name}>
                 {photo.name}
-                {photo.role === 'test' ? ' · test' : ''}
-                {photo.file ? '' : ' · no image'}
+                {photo.role === 'test' ? ' (test)' : ''}
+                {photo.file ? '' : ' (no image file)'}
               </option>
             ))}
           </select>

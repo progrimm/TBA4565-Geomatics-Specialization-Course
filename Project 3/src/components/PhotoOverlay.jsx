@@ -145,7 +145,7 @@ export default function PhotoOverlay({
           )}
           <span className="photo-overlay__tag">
             {name}
-            {note && ` · ${note}`}
+            {note && ` (${note})`}
             {!url && (mode === 'difference' ? ' (computing…)' : ' (image file not found)')}
           </span>
         </div>
@@ -159,7 +159,7 @@ export default function PhotoOverlay({
           <span>Photo {readout.photo.join(' ')}</span>
           <span>
             Error {((readout.error / 255) * 100).toFixed(1)} %
-            {readout.alpha < EVALUATION.coverageThreshold * 255 ? ' · not splat area' : ''}
+            {readout.alpha < EVALUATION.coverageThreshold * 255 ? ' (outside the splat area)' : ''}
           </span>
         </div>
       )}
