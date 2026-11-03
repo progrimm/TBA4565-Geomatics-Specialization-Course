@@ -5,10 +5,11 @@ import { fitRect } from '../utils/photoCamera.js';
  * The photo over a pane in photo view, in the same letterboxed rectangle as the render (see
  * photoProjection), shown as the comparison mode asks: an outline only, the photo, a swipe
  * (photo left of the line) or a blend.
- * @param {{url: string | null, width: number, height: number, name: string,
+ * @param {{url: string | null, width: number, height: number, name: string, note: string | null,
  *   mode: string, amount: number, onAmount: (amount: number) => void}} props
+ *   url: the photo, or in difference mode the difference image (null while computing).
  */
-export default function PhotoOverlay({ url, width, height, name, mode, amount, onAmount }) {
+export default function PhotoOverlay({ url, width, height, name, note, mode, amount, onAmount }) {
   const ref = useRef(null);
   const [view, setView] = useState(null);
 
@@ -69,7 +70,8 @@ export default function PhotoOverlay({ url, width, height, name, mode, amount, o
           )}
           <span className="photo-overlay__tag">
             {name}
-            {!url && ' (image file not found)'}
+            {note && ` · ${note}`}
+            {!url && (mode === 'difference' ? ' (computing…)' : ' (image file not found)')}
           </span>
         </div>
       )}

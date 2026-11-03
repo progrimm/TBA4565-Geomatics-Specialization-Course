@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { psnr, ssim } from '../src/utils/metrics.js';
+import {
+  alphaMask,
+  differenceImage,
+  flipRows,
+  meanOver,
+  psnr,
+  ssim,
+  ssimMap,
+} from '../src/utils/metrics.js';
 import { seededRandom } from '../src/utils/stars.js';
 
 const W = 48;
@@ -92,5 +100,30 @@ describe('ssim', () => {
 
   it('rejects images of different sizes', () => {
     expect(() => ssim(image(), image().subarray(4), W, H)).toThrow('differ in size');
+  });
+});
+
+describe('masks and helpers', () => {
+  it('counts only masked pixels in PSNR and SSIM', () => {
+    const a = new Uint8Array([10, 10, 10, 255, 0, 0, 0, 0]);
+    const b = new Uint8Array([10, 10, 10, 255, 200, 200, 200, 0]);
+    const { mask, coverage } = alphaMask(a, 0.5);
+    expect([...mask]).toEqual([1, 0]);
+    expect(coverage).toBe(0.5);
+    expect(psnr(a, b, mask)).toBe(Infinity);
+    expect(psnr(a, b, new Uint8Array(2))).toBeNaN();
+    const map = ssimMap(image(), image(1), W, H);
+    expect(ssim(image(), image(1), W, H)).toBeCloseTo(meanOver(map), 10);
+  });
+
+  it('flips rows', () => {
+    const rows = new Uint8Array([1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3]);
+    expect([...flipRows(rows, 1, 3)]).toEqual([3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1]);
+  });
+
+  it('draws no difference black and a large one white', () => {
+    const a = new Uint8Array([0, 0, 0, 255, 0, 0, 0, 255]);
+    const b = new Uint8Array([0, 0, 0, 255, 255, 255, 255, 255]);
+    expect([...differenceImage(a, b, 4)]).toEqual([0, 0, 0, 255, 255, 255, 255, 255]);
   });
 });

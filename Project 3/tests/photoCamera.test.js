@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { PerspectiveCamera, Vector3 } from 'three';
-import { cameraPose, fitRect, photoProjection, photoRoles } from '../src/utils/photoCamera.js';
+import {
+  cameraPose,
+  fitRect,
+  frustumCorners,
+  photoProjection,
+  photoRoles,
+} from '../src/utils/photoCamera.js';
 
 const INTRINSICS = { fx: 1591.52, fy: 1500, cx: 700.25, cy: 1100.5, width: 1539, height: 2058 };
 
@@ -88,5 +94,18 @@ describe('photoRoles', () => {
   it('sorts by code point like Python', () => {
     const roles = photoRoles(['b.jpg', 'B.jpg', 'a.jpg'], 2);
     expect([...roles.keys()]).toEqual(['B.jpg', 'a.jpg', 'b.jpg']);
+  });
+});
+
+describe('frustumCorners', () => {
+  it('puts the image corners on the photo frustum at the given depth', () => {
+    const camera = threeCamera({ qvec: [1, 0, 0, 0], tvec: [0, 0, 0] });
+    const [topLeft, , bottomRight] = frustumCorners(INTRINSICS, 2);
+    // In camera coordinates; the camera above sits at the origin with this orientation.
+    const toWorld = (p) => new Vector3(...p).applyQuaternion(camera.quaternion);
+    const a = toWorld(topLeft).project(camera);
+    const b = toWorld(bottomRight).project(camera);
+    expect([a.x, a.y]).toEqual([expect.closeTo(-1, 6), expect.closeTo(1, 6)]);
+    expect([b.x, b.y]).toEqual([expect.closeTo(1, 6), expect.closeTo(-1, 6)]);
   });
 });

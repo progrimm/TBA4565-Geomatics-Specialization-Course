@@ -24,6 +24,7 @@ import {
 } from '../utils/bounds.js';
 import { upAxisRotation } from '../utils/orientation.js';
 import { fitRect, photoProjection } from '../utils/photoCamera.js';
+import { flipRows } from '../utils/metrics.js';
 
 /**
  * @typedef {{numSplats: number, fullSize: number[], coreSize: number[]}} SplatStats
@@ -72,6 +73,7 @@ function circleTexture() {
  *   exitPhotoView: () => void,
  *   photoName: () => string | null,
  *   onPhotoView: (callback: (name: string | null) => void) => () => void,
+ *   renderPhoto: (photo: import('./photoCameras.js').Photo) => Promise<Uint8Array>,
  *   dispose: () => void,
  * }}
  */
@@ -127,12 +129,13 @@ export function createSplatViewer(canvas) {
   observer.observe(canvas);
   resize();
 
-  renderer.setAnimationLoop(() => {
+  function frame() {
     // In photo view the camera keeps the photo's exact orientation (incl. roll), which
     // OrbitControls' lookAt would level out.
     if (!photoInView) controls.update();
     renderer.render(scene, camera);
-  });
+  }
+  renderer.setAnimationLoop(frame);
 
   function resetView() {
     if (!core) return;
@@ -258,17 +261,23 @@ export function createSplatViewer(canvas) {
   const photoListeners = new Set();
   const emitPhoto = () => photoListeners.forEach((listener) => listener(photoInView?.name ?? null));
 
-  /** Use a photo's camera: its pose (after the up-axis fix) and its intrinsics. */
-  function viewPhoto(photo) {
+  /** Put a camera at a photo's pose, in the world frame (after the up-axis fix). */
+  function placeAtPhoto(target, photo) {
     model.updateMatrixWorld();
-    const pose = new THREE.Matrix4()
+    new THREE.Matrix4()
       .compose(
         new THREE.Vector3(...photo.position),
         new THREE.Quaternion(...photo.quaternion),
         new THREE.Vector3(1, 1, 1),
       )
-      .premultiply(model.matrixWorld);
-    pose.decompose(camera.position, camera.quaternion, new THREE.Vector3());
+      .premultiply(model.matrixWorld)
+      .decompose(target.position, target.quaternion, new THREE.Vector3());
+    target.updateMatrixWorld();
+  }
+
+  /** Use a photo's camera: its pose (after the up-axis fix) and its intrinsics. */
+  function viewPhoto(photo) {
+    placeAtPhoto(camera, photo);
     // Orbit target on the view axis at the scene's depth, so orbiting turns around the scene.
     const forward = camera.getWorldDirection(new THREE.Vector3());
     let depth = sceneSize() / 2;
@@ -310,6 +319,58 @@ export function createSplatViewer(canvas) {
   function onPhotoView(callback) {
     photoListeners.add(callback);
     return () => photoListeners.delete(callback);
+  }
+
+  // Offscreen renders at a photo's exact size, through a second SparkRenderer with a render
+  // target (Spark's "additional viewpoints"). It sorts the splats for its own camera.
+  let photoSpark = null;
+  const photoCamera = new THREE.PerspectiveCamera();
+
+  /**
+   * Render the splat from a photo's camera at the photo's size, on transparent black (the
+   * 3DGS default background; alpha = splat coverage). Rows top-down, like the photo.
+   */
+  async function renderPhotoNow(photo) {
+    if (!mesh) throw new Error('Open a splat first.');
+    const { width, height } = photo.intrinsics;
+    if (photoSpark?.target.width !== width || photoSpark?.target.height !== height) {
+      photoSpark?.dispose();
+      photoSpark = new SparkRenderer({ renderer, target: { width, height } });
+    }
+    placeAtPhoto(photoCamera, photo);
+    photoCamera.projectionMatrix.set(...photoProjection(photo.intrinsics, camera.near, camera.far));
+    photoCamera.projectionMatrixInverse.copy(photoCamera.projectionMatrix).invert();
+    // Pause the view while the scene is set up for the offscreen render.
+    renderer.setAnimationLoop(null);
+    const saved = {
+      background: scene.background,
+      clearColor: renderer.getClearColor(new THREE.Color()),
+      clearAlpha: renderer.getClearAlpha(),
+    };
+    scene.background = null;
+    renderer.setClearColor(0x000000, 0);
+    markers.visible = false;
+    photoCameras.setVisible(false);
+    try {
+      // update() waits until the splats are sorted for this camera.
+      await photoSpark.update({ scene, camera: photoCamera });
+      const pixels = await photoSpark.renderReadTarget({ scene, camera: photoCamera });
+      return flipRows(pixels, width, height);
+    } finally {
+      scene.background = saved.background;
+      renderer.setClearColor(saved.clearColor, saved.clearAlpha);
+      markers.visible = true;
+      photoCameras.setVisible(photosVisible && !photoInView);
+      if (!disposed) renderer.setAnimationLoop(frame);
+    }
+  }
+
+  // One offscreen render at a time: they share the photo SparkRenderer and the scene state.
+  let renderQueue = Promise.resolve();
+  function renderPhoto(photo) {
+    const job = renderQueue.then(() => renderPhotoNow(photo));
+    renderQueue = job.catch(() => {});
+    return job;
   }
 
   const raycaster = new THREE.Raycaster();
@@ -364,7 +425,9 @@ export function createSplatViewer(canvas) {
     }
   }
 
+  let disposed = false;
   function dispose() {
+    disposed = true;
     renderer.setAnimationLoop(null);
     observer.disconnect();
     controls.dispose();
@@ -374,6 +437,7 @@ export function createSplatViewer(canvas) {
     markerMaterial.dispose();
     lineMaterial.dispose();
     mesh?.dispose();
+    photoSpark?.dispose();
     spark.dispose();
     background.dispose();
     renderer.dispose();
@@ -395,6 +459,7 @@ export function createSplatViewer(canvas) {
     exitPhotoView,
     photoName: () => photoInView?.name ?? null,
     onPhotoView,
+    renderPhoto,
     dispose,
   };
 }

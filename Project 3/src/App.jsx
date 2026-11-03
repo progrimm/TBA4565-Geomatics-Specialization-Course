@@ -137,6 +137,7 @@ export default function App() {
               onSplit={split}
               onClose={close}
               onViewer={onViewer}
+              photos={photos.photos}
               photo={photos.selected}
               compare={photos.compare}
               onCompare={photos.setCompare}

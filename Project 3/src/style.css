@@ -370,6 +370,33 @@ body {
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
 }
 
+.metrics {
+  width: calc(100% - 2 * var(--space-3));
+  margin: var(--space-2) var(--space-3) 0;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.metrics th,
+.metrics td {
+  padding: 2px var(--space-1);
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+}
+
+.metrics th[scope='row'],
+.metrics thead th:first-child {
+  text-align: left;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.tool__details .metrics {
+  width: 100%;
+  margin: var(--space-2) 0 0;
+}
+
 /* Over a pane in photo view. Only the swipe handle takes the pointer; the rest goes to the view. */
 .photo-overlay {
   position: absolute;

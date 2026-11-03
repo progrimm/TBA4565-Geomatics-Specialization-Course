@@ -124,8 +124,16 @@ export const COMPARE_MODES = [
   { id: 'photo', label: 'Photo' },
   { id: 'swipe', label: 'Swipe' },
   { id: 'blend', label: 'Blend' },
+  { id: 'difference', label: 'Difference' },
 ];
 export const DEFAULT_COMPARE = { mode: 'swipe', amount: 0.5 };
+
+/**
+ * Evaluation against the photos. Renders are made at the photo's size on black, the 3DGS
+ * default background. "Splat area" metrics count only pixels with render alpha at least
+ * coverageThreshold. The difference image shows the mean RGB error times differenceGain.
+ */
+export const EVALUATION = { coverageThreshold: 0.5, differenceGain: 4 };
 
 /** While measuring, a press that moves more than this (CSS px) is a drag, not a pick. */
 export const CLICK_TOLERANCE_PX = 5;

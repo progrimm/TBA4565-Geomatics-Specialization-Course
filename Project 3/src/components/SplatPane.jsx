@@ -3,8 +3,10 @@ import { createPortal } from 'react-dom';
 import { ACCEPT, MAX_PANES } from '../config.js';
 import { useFileOpener } from '../hooks/useFileOpener.js';
 import { useMeasurement } from '../hooks/useMeasurement.js';
+import { useEvaluation } from '../hooks/useEvaluation.js';
 import { useSplatViewer } from '../hooks/useSplatViewer.js';
 import FileOpener, { DropOverlay, EmptyState } from './FileOpener.jsx';
+import EvaluationTool from './EvaluationTool.jsx';
 import MeasureTool from './MeasureTool.jsx';
 import OrientationTool from './OrientationTool.jsx';
 import PhotoOverlay from './PhotoOverlay.jsx';
@@ -34,10 +36,11 @@ function Icon({ name }) {
  *   onActivate: (id: string) => void, onSplit: (id: string, direction: 'row' | 'column') => void,
  *   onClose: (id: string) => void, describedBy: string,
  *   onViewer: (id: string, viewer: object | null) => void,
- *   photo: object | null, compare: {mode: string, amount: number},
+ *   photos: object[], photo: object | null, compare: {mode: string, amount: number},
  *   onCompare: (compare: {mode: string, amount: number}) => void}} props
  *   onViewer: reports this pane's viewer to the app (for linked cameras, backgrounds, photos).
- *   photo: the chosen COLMAP photo (with an object URL), shown while the pane looks through it.
+ *   photos: the COLMAP photos with their roles; photo: the chosen one (with an object URL),
+ *   shown while the pane looks through it.
  */
 export default function SplatPane({
   id,
@@ -52,6 +55,7 @@ export default function SplatPane({
   onClose,
   describedBy,
   onViewer,
+  photos,
   photo,
   compare,
   onCompare,
@@ -68,6 +72,17 @@ export default function SplatPane({
   // Which photo the view looks through now (photo view), reported by the viewer.
   const [photoName, setPhotoName] = useState(null);
   useEffect(() => viewer?.onPhotoView(setPhotoName), [viewer]);
+  const evaluation = useEvaluation(viewer, photos, facts);
+  const { difference, showDifference } = evaluation;
+
+  // The difference image of the photo looked through, computed when that mode is chosen.
+  const differenceFor =
+    compare.mode === 'difference' && facts && photo && photoName === photo.name ? photo.name : null;
+  useEffect(() => {
+    if (!differenceFor || difference?.name === differenceFor) return;
+    const target = photos.find((candidate) => candidate.name === differenceFor);
+    if (target) showDifference(target);
+  }, [differenceFor, difference, photos, showDifference]);
 
   const splitTitle = canSplit ? undefined : `At most ${MAX_PANES} panes`;
 
@@ -87,6 +102,9 @@ export default function SplatPane({
             onReset={() => viewer?.resetView()}
           />
           <MeasureTool measurement={measurement} />
+          {photos.length > 0 && (
+            <EvaluationTool evaluation={evaluation} photos={photos} splatName={facts.name} />
+          )}
         </>
       )}
     </>
@@ -162,7 +180,14 @@ export default function SplatPane({
           {!facts && !loading && !photoName && <EmptyState onChoose={choose} />}
           {photo && photoName === photo.name && (
             <PhotoOverlay
-              url={photo.url}
+              url={
+                compare.mode === 'difference'
+                  ? difference?.name === photo.name
+                    ? difference.url
+                    : null
+                  : photo.url
+              }
+              note={compare.mode === 'difference' ? 'difference: render vs photo' : null}
               width={photo.intrinsics.width}
               height={photo.intrinsics.height}
               name={photo.name}
