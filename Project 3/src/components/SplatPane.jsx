@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ACCEPT, MAX_PANES } from '../config.js';
 import { useFileOpener } from '../hooks/useFileOpener.js';
@@ -7,6 +7,7 @@ import { useSplatViewer } from '../hooks/useSplatViewer.js';
 import FileOpener, { DropOverlay, EmptyState } from './FileOpener.jsx';
 import MeasureTool from './MeasureTool.jsx';
 import OrientationTool from './OrientationTool.jsx';
+import PhotoOverlay from './PhotoOverlay.jsx';
 import SplatFacts from './SplatFacts.jsx';
 
 /** 16 px line icons for the pane bar, drawn in currentColor. */
@@ -32,8 +33,11 @@ function Icon({ name }) {
  *   canSplit: boolean, canClose: boolean, panelSlot: HTMLElement | null,
  *   onActivate: (id: string) => void, onSplit: (id: string, direction: 'row' | 'column') => void,
  *   onClose: (id: string) => void, describedBy: string,
- *   onViewer: (id: string, viewer: object | null) => void}} props
- *   onViewer: reports this pane's viewer to the app (for linked cameras and backgrounds).
+ *   onViewer: (id: string, viewer: object | null) => void,
+ *   photo: object | null, compare: {mode: string, amount: number},
+ *   onCompare: (compare: {mode: string, amount: number}) => void}} props
+ *   onViewer: reports this pane's viewer to the app (for linked cameras, backgrounds, photos).
+ *   photo: the chosen COLMAP photo (with an object URL), shown while the pane looks through it.
  */
 export default function SplatPane({
   id,
@@ -48,6 +52,9 @@ export default function SplatPane({
   onClose,
   describedBy,
   onViewer,
+  photo,
+  compare,
+  onCompare,
 }) {
   const paneRef = useRef(null);
   const { canvasRef, viewer, loading, facts, upAxis, setUpAxis, open } = useSplatViewer();
@@ -57,6 +64,10 @@ export default function SplatPane({
     onViewer(id, viewer);
     return () => onViewer(id, null);
   }, [id, viewer, onViewer]);
+
+  // Which photo the view looks through now (photo view), reported by the viewer.
+  const [photoName, setPhotoName] = useState(null);
+  useEffect(() => viewer?.onPhotoView(setPhotoName), [viewer]);
 
   const splitTitle = canSplit ? undefined : `At most ${MAX_PANES} panes`;
 
@@ -148,7 +159,18 @@ export default function SplatPane({
             }
             aria-describedby={describedBy}
           />
-          {!facts && !loading && <EmptyState onChoose={choose} />}
+          {!facts && !loading && !photoName && <EmptyState onChoose={choose} />}
+          {photo && photoName === photo.name && (
+            <PhotoOverlay
+              url={photo.url}
+              width={photo.intrinsics.width}
+              height={photo.intrinsics.height}
+              name={photo.name}
+              mode={compare.mode}
+              amount={compare.amount}
+              onAmount={(amount) => onCompare({ ...compare, amount })}
+            />
+          )}
         </div>
         <input ref={inputRef} type="file" accept={ACCEPT} hidden onChange={onInputChange} />
         {dragging && <DropOverlay />}

@@ -346,6 +346,81 @@ body {
   margin-top: 0;
 }
 
+/* ---------- Photos (COLMAP) ---------- */
+.number-input {
+  width: 4rem;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.photo-list {
+  display: block;
+  width: calc(100% - 2 * var(--space-3));
+  margin: var(--space-2) var(--space-3) 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.tool__note code {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}
+
+/* Over a pane in photo view. Only the swipe handle takes the pointer; the rest goes to the view. */
+.photo-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.photo-overlay__frame {
+  position: absolute;
+  outline: 1px dashed var(--pane-active);
+}
+
+.photo-overlay__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.photo-overlay__handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 16px;
+  transform: translateX(-50%);
+  cursor: ew-resize;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.photo-overlay__handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 7px;
+  width: 2px;
+  background: #fff;
+  box-shadow: 0 0 4px rgb(0 0 0 / 60%);
+}
+
+.photo-overlay__tag {
+  position: absolute;
+  bottom: var(--space-2);
+  left: var(--space-2);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: rgb(15 42 71 / 75%);
+  color: var(--stage-text);
+  font-size: 0.75rem;
+}
+
 /* ---------- Messages (toasts) ---------- */
 #messages {
   position: absolute;

@@ -105,6 +105,28 @@ export const MIN_PANE_FRACTION = 0.15;
 /** How far one arrow-key press moves a focused divider (share of its split). */
 export const DIVIDER_KEY_STEP = 0.05;
 
+/**
+ * COLMAP photos: frustum depth as a fraction of the scene size; colours of training, test and
+ * selected photos; the hold-out ("every Nth photo is a test photo"; 0 = none) to start with.
+ */
+export const PHOTOS = {
+  frustumFraction: 0.08,
+  trainColor: '#4fc3f7',
+  testColor: '#e573d4',
+  selectedColor: '#ffffff',
+  defaultHoldOut: 0,
+  maxHoldOut: 50,
+};
+
+/** How a photo is compared with the splat in photo view; amount = swipe position or opacity. */
+export const COMPARE_MODES = [
+  { id: 'splat', label: 'Splat' },
+  { id: 'photo', label: 'Photo' },
+  { id: 'swipe', label: 'Swipe' },
+  { id: 'blend', label: 'Blend' },
+];
+export const DEFAULT_COMPARE = { mode: 'swipe', amount: 0.5 };
+
 /** While measuring, a press that moves more than this (CSS px) is a drag, not a pick. */
 export const CLICK_TOLERANCE_PX = 5;
 

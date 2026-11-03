@@ -3,11 +3,13 @@ import { DEFAULT_BACKGROUND, MAX_PANES, MIN_PANE_FRACTION, MOBILE_QUERY } from '
 import { useFileDropGuard } from './hooks/useFileOpener.js';
 import { useLinkedCameras } from './hooks/useLinkedCameras.js';
 import { useMediaQuery } from './hooks/useMediaQuery.js';
+import { usePhotos } from './hooks/usePhotos.js';
 import { closePane, createLayout, paneIds, setRatio, splitPane } from './utils/layout.js';
 import ControlPanel from './components/ControlPanel.jsx';
 import PaneLayout from './components/PaneLayout.jsx';
 import SplatPane from './components/SplatPane.jsx';
 import ViewTool from './components/ViewTool.jsx';
+import PhotosTool from './components/PhotosTool.jsx';
 import Messages from './components/Messages.jsx';
 
 const paneId = (number) => `pane-${number}`;
@@ -30,6 +32,8 @@ export default function App() {
   const stacked = useMediaQuery(MOBILE_QUERY);
   useFileDropGuard();
   const syncFrom = useLinkedCameras(viewers, linked);
+  const photos = usePhotos();
+  const selectedName = photos.selected?.name ?? null;
 
   // Stable (no dependencies), so a pane's effect only re-runs when its own viewer changes.
   const onViewer = useCallback((id, viewer) => {
@@ -46,6 +50,26 @@ export default function App() {
   useEffect(() => {
     for (const viewer of Object.values(viewers)) viewer.setBackground(background);
   }, [viewers, background]);
+
+  // The capture's cameras in every pane (frustums), with the chosen photo highlighted.
+  useEffect(() => {
+    for (const viewer of Object.values(viewers)) viewer.setPhotos(photos.photos, selectedName);
+  }, [viewers, photos.photos, selectedName]);
+  useEffect(() => {
+    for (const viewer of Object.values(viewers)) viewer.setPhotosVisible(photos.visible);
+  }, [viewers, photos.visible]);
+
+  /** Look through a photo: the active pane, or all panes when the cameras are linked. */
+  const selectPhoto = (name) => {
+    const photo = photos.photos.find((candidate) => candidate.name === name);
+    if (!photo) return;
+    photos.select(name);
+    for (const [id, viewer] of Object.entries(viewers)) {
+      if (linked || id === activeId) viewer.viewPhoto(photo);
+      // A pane still looking through the previous photo would no longer match the overlay.
+      else if (viewer.photoName()) viewer.exitPhotoView();
+    }
+  };
 
   const ids = paneIds(layout);
   const canSplit = ids.length < MAX_PANES;
@@ -92,6 +116,7 @@ export default function App() {
           onLinked={link}
           canLink={ids.length > 1}
         />
+        <PhotosTool photos={photos} onSelect={selectPhoto} />
       </ControlPanel>
       <main className="stage">
         <PaneLayout
@@ -112,6 +137,9 @@ export default function App() {
               onSplit={split}
               onClose={close}
               onViewer={onViewer}
+              photo={photos.selected}
+              compare={photos.compare}
+              onCompare={photos.setCompare}
               describedBy={CONTROLS_ID}
             />
           )}

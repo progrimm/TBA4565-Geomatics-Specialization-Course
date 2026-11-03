@@ -101,3 +101,19 @@ export function photoRoles(names, holdOut) {
     sorted.map((name, index) => [name, holdOut > 0 && index % holdOut === 0 ? 'test' : 'train']),
   );
 }
+
+/**
+ * The corners of a photo's image plane at a given depth, in three.js camera coordinates
+ * (looking along −z, y up): for drawing camera frustums.
+ * @param {import('./colmap.js').Intrinsics} intrinsics
+ * @param {number} depth - distance in front of the camera.
+ * @returns {number[][]} top-left, top-right, bottom-right, bottom-left.
+ */
+export function frustumCorners({ fx, fy, cx, cy, width, height }, depth) {
+  return [
+    [0, 0],
+    [width, 0],
+    [width, height],
+    [0, height],
+  ].map(([u, v]) => [((u - cx) / fx) * depth, (-(v - cy) / fy) * depth, -depth]);
+}

@@ -11,8 +11,10 @@ import {
   DEFAULT_BACKGROUND,
   DEFAULT_UP_AXIS,
   MARKER,
+  PHOTOS,
 } from '../config.js';
 import { createBackground } from './backgrounds.js';
+import { createPhotoCameras } from './photoCameras.js';
 import {
   boundsSize,
   cameraForBounds,
@@ -21,6 +23,7 @@ import {
   fullBounds,
 } from '../utils/bounds.js';
 import { upAxisRotation } from '../utils/orientation.js';
+import { fitRect, photoProjection } from '../utils/photoCamera.js';
 
 /**
  * @typedef {{numSplats: number, fullSize: number[], coreSize: number[]}} SplatStats
@@ -63,6 +66,12 @@ function circleTexture() {
  *   setView: (view: CameraView) => void,
  *   onViewChange: (callback: () => void) => () => void,
  *   setBackground: (id: string) => void,
+ *   setPhotos: (photos: import('./photoCameras.js').Photo[], selected: string | null) => void,
+ *   setPhotosVisible: (visible: boolean) => void,
+ *   viewPhoto: (photo: import('./photoCameras.js').Photo) => void,
+ *   exitPhotoView: () => void,
+ *   photoName: () => string | null,
+ *   onPhotoView: (callback: (name: string | null) => void) => () => void,
  *   dispose: () => void,
  * }}
  */
@@ -100,25 +109,34 @@ export function createSplatViewer(canvas) {
   let core = null;
   const markers = new THREE.Group();
   model.add(markers);
+  const photoCameras = createPhotoCameras(model);
+  let photos = [];
+  let selectedPhoto = null;
+  // The photo whose camera the view uses now (photo view), or null.
+  let photoInView = null;
 
   const resize = () => {
     const { clientWidth, clientHeight } = canvas;
     if (!clientWidth || !clientHeight) return;
     renderer.setSize(clientWidth, clientHeight, false);
     camera.aspect = clientWidth / clientHeight;
-    camera.updateProjectionMatrix();
+    if (photoInView) applyPhotoProjection();
+    else camera.updateProjectionMatrix();
   };
   const observer = new ResizeObserver(resize);
   observer.observe(canvas);
   resize();
 
   renderer.setAnimationLoop(() => {
-    controls.update();
+    // In photo view the camera keeps the photo's exact orientation (incl. roll), which
+    // OrbitControls' lookAt would level out.
+    if (!photoInView) controls.update();
     renderer.render(scene, camera);
   });
 
   function resetView() {
     if (!core) return;
+    exitPhotoView();
     model.updateMatrixWorld();
     // Frame the core bounds as they are oriented now (after the up-axis rotation).
     const box = new THREE.Box3(
@@ -162,6 +180,7 @@ export function createSplatViewer(canvas) {
     const full = fullBounds(centres);
     core = coreBounds(centres, CORE_FRACTION, CORE_MAX_SAMPLES);
     setMarkers([]);
+    drawPhotos();
     resetView();
     return {
       numSplats: centres.length / 3,
@@ -183,6 +202,7 @@ export function createSplatViewer(canvas) {
   }
 
   function setView({ position, target }) {
+    exitPhotoView();
     // Not reported to onViewChange, so two linked panes do not echo each other.
     applyingView = true;
     camera.position.fromArray(position);
@@ -197,6 +217,99 @@ export function createSplatViewer(canvas) {
     };
     controls.addEventListener('change', listener);
     return () => controls.removeEventListener('change', listener);
+  }
+
+  // ---- COLMAP photos: frustums and photo view.
+  function sceneSize() {
+    if (core) return Math.hypot(...boundsSize(core));
+    // No splat yet: the spread of the camera centres.
+    const centre = [0, 1, 2].map((i) => photos.reduce((sum, p) => sum + p.position[i], 0));
+    const mean = centre.map((value) => value / photos.length);
+    return 2 * Math.max(...photos.map((p) => Math.hypot(...p.position.map((v, i) => v - mean[i]))));
+  }
+
+  function drawPhotos() {
+    photoCameras.set(
+      photos,
+      photos.length ? sceneSize() * PHOTOS.frustumFraction : 0,
+      selectedPhoto,
+    );
+  }
+
+  function setPhotos(next, selected) {
+    photos = next;
+    selectedPhoto = selected;
+    if (photoInView && !photos.some((photo) => photo.name === photoInView.name)) exitPhotoView();
+    drawPhotos();
+  }
+
+  function applyPhotoProjection() {
+    const { intrinsics } = photoInView;
+    const rect = fitRect(
+      intrinsics.width,
+      intrinsics.height,
+      canvas.clientWidth,
+      canvas.clientHeight,
+    );
+    camera.projectionMatrix.set(...photoProjection(intrinsics, camera.near, camera.far, rect));
+    camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
+  }
+
+  const photoListeners = new Set();
+  const emitPhoto = () => photoListeners.forEach((listener) => listener(photoInView?.name ?? null));
+
+  /** Use a photo's camera: its pose (after the up-axis fix) and its intrinsics. */
+  function viewPhoto(photo) {
+    model.updateMatrixWorld();
+    const pose = new THREE.Matrix4()
+      .compose(
+        new THREE.Vector3(...photo.position),
+        new THREE.Quaternion(...photo.quaternion),
+        new THREE.Vector3(1, 1, 1),
+      )
+      .premultiply(model.matrixWorld);
+    pose.decompose(camera.position, camera.quaternion, new THREE.Vector3());
+    // Orbit target on the view axis at the scene's depth, so orbiting turns around the scene.
+    const forward = camera.getWorldDirection(new THREE.Vector3());
+    let depth = sceneSize() / 2;
+    if (core) {
+      const centre = new THREE.Vector3(...core.min)
+        .add(new THREE.Vector3(...core.max))
+        .multiplyScalar(0.5)
+        .applyMatrix4(model.matrixWorld);
+      depth = Math.max(centre.sub(camera.position).dot(forward), depth * 0.1);
+    }
+    controls.target.copy(camera.position).addScaledVector(forward, depth);
+    photoInView = photo;
+    // The frustums would frame the photo's own border; hidden while looking through one.
+    photoCameras.setVisible(false);
+    applyPhotoProjection();
+    emitPhoto();
+  }
+
+  let photosVisible = true;
+  function setPhotosVisible(visible) {
+    photosVisible = visible;
+    if (!photoInView) photoCameras.setVisible(visible);
+  }
+
+  function exitPhotoView() {
+    if (!photoInView) return;
+    photoInView = null;
+    camera.updateProjectionMatrix();
+    photoCameras.setVisible(photosVisible);
+    emitPhoto();
+  }
+
+  // Any orbit, pan or zoom leaves the photo view: the view becomes a novel view.
+  controls.addEventListener('start', exitPhotoView);
+  controls.addEventListener('change', () => {
+    if (!applyingView) exitPhotoView();
+  });
+
+  function onPhotoView(callback) {
+    photoListeners.add(callback);
+    return () => photoListeners.delete(callback);
   }
 
   const raycaster = new THREE.Raycaster();
@@ -256,6 +369,7 @@ export function createSplatViewer(canvas) {
     observer.disconnect();
     controls.dispose();
     setMarkers([]);
+    photoCameras.dispose();
     markerMaterial.map.dispose();
     markerMaterial.dispose();
     lineMaterial.dispose();
@@ -275,6 +389,12 @@ export function createSplatViewer(canvas) {
     setView,
     onViewChange,
     setBackground,
+    setPhotos,
+    setPhotosVisible,
+    viewPhoto,
+    exitPhotoView,
+    photoName: () => photoInView?.name ?? null,
+    onPhotoView,
     dispose,
   };
 }
