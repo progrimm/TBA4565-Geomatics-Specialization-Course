@@ -1,6 +1,7 @@
 import { EVALUATION } from '../config.js';
 import { formatNumber } from '../utils/format.js';
 import PhotoDetail from './PhotoDetail.jsx';
+import Tool from './Tool.jsx';
 
 const db = (value) => (Number.isFinite(value) ? value.toFixed(2) : '–');
 const ratio = (value) => (Number.isFinite(value) ? value.toFixed(3) : '–');
@@ -61,10 +62,7 @@ export default function EvaluationTool({ evaluation, photos, splatName, photo, o
   const running = progress !== null;
 
   return (
-    <section className="tool" aria-labelledby="evaluation-heading">
-      <h2 className="tool__summary" id="evaluation-heading">
-        Compare with the photos
-      </h2>
+    <Tool id="evaluation" title="Compare with the photos">
       <div className="tool__actions">
         <button className="chip" type="button" disabled={running} onClick={() => evaluate(false)}>
           Evaluate all photos
@@ -104,61 +102,65 @@ export default function EvaluationTool({ evaluation, photos, splatName, photo, o
       )}
       {rows.length > 0 && (
         <>
-          <table className="metrics">
-            <thead>
-              <tr>
-                <th scope="col">Photos</th>
-                <th scope="col">PSNR</th>
-                <th scope="col">SSIM</th>
-                <th scope="col" title="Only pixels covered by the splat">
-                  PSNR*
-                </th>
-                <th scope="col" title="Only pixels covered by the splat">
-                  SSIM*
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {summary(rows).map((row) => (
-                <tr key={row.role}>
-                  <th scope="row">
-                    {row.role} ({row.count})
-                  </th>
-                  <td>{db(row.psnr)}</td>
-                  <td>{ratio(row.ssim)}</td>
-                  <td>{db(row.psnrSplat)}</td>
-                  <td>{ratio(row.ssimSplat)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <details className="tool__details">
-            <summary>Per photo</summary>
+          <div className="table-scroll">
             <table className="metrics">
               <thead>
                 <tr>
-                  <th scope="col">Photo</th>
+                  <th scope="col">Photos</th>
                   <th scope="col">PSNR</th>
                   <th scope="col">SSIM</th>
-                  <th scope="col">PSNR*</th>
-                  <th scope="col">Cover</th>
+                  <th scope="col" title="Only pixels covered by the splat">
+                    PSNR*
+                  </th>
+                  <th scope="col" title="Only pixels covered by the splat">
+                    SSIM*
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map(({ name, role, metrics }) => (
-                  <tr key={name}>
+                {summary(rows).map((row) => (
+                  <tr key={row.role}>
                     <th scope="row">
-                      {name}
-                      {role === 'test' ? ' (test)' : ''}
+                      {row.role} ({row.count})
                     </th>
-                    <td>{db(metrics.psnr)}</td>
-                    <td>{ratio(metrics.ssim)}</td>
-                    <td>{db(metrics.psnrSplat)}</td>
-                    <td>{formatNumber(metrics.coverage * 100)} %</td>
+                    <td>{db(row.psnr)}</td>
+                    <td>{ratio(row.ssim)}</td>
+                    <td>{db(row.psnrSplat)}</td>
+                    <td>{ratio(row.ssimSplat)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+          <details className="tool__details">
+            <summary>Per photo</summary>
+            <div className="table-scroll">
+              <table className="metrics">
+                <thead>
+                  <tr>
+                    <th scope="col">Photo</th>
+                    <th scope="col">PSNR</th>
+                    <th scope="col">SSIM</th>
+                    <th scope="col">PSNR*</th>
+                    <th scope="col">Cover</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(({ name, role, metrics }) => (
+                    <tr key={name}>
+                      <th scope="row">
+                        {name}
+                        {role === 'test' ? ' (test)' : ''}
+                      </th>
+                      <td>{db(metrics.psnr)}</td>
+                      <td>{ratio(metrics.ssim)}</td>
+                      <td>{db(metrics.psnrSplat)}</td>
+                      <td>{formatNumber(metrics.coverage * 100)} %</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </details>
           <div className="tool__actions tool__actions--spaced">
             <button
@@ -181,6 +183,6 @@ export default function EvaluationTool({ evaluation, photos, splatName, photo, o
         cropped to an object. Training photos measure the fit; only test photos, held out in
         training, measure novel views.
       </p>
-    </section>
+    </Tool>
   );
 }

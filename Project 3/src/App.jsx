@@ -62,8 +62,16 @@ export default function App() {
   /** Look through a photo: the active pane, or all panes when the cameras are linked. */
   const selectPhoto = (name) => {
     const photo = photos.photos.find((candidate) => candidate.name === name);
-    if (!photo) return;
-    photos.select(name);
+    if (!photo) {
+      // "Free view": leave the photo view.
+      photos.select(null);
+      for (const [id, viewer] of Object.entries(viewers)) {
+        if (linked || id === activeId) viewer.exitPhotoView();
+      }
+      return;
+    }
+    // Choosing the shown photo again keeps its image URL and only moves the camera back.
+    if (name !== photos.selected?.name) photos.select(name);
     for (const [id, viewer] of Object.entries(viewers)) {
       if (linked || id === activeId) viewer.viewPhoto(photo);
       // A pane still looking through the previous photo would no longer match the overlay.

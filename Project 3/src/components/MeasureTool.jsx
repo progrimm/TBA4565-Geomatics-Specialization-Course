@@ -1,4 +1,5 @@
 import { formatLength } from '../utils/format.js';
+import Tool from './Tool.jsx';
 
 /**
  * Two-point distance on the splat.
@@ -12,10 +13,7 @@ export default function MeasureTool({ measurement }) {
   if (missed) status = 'No splat under the pointer. Try again.';
 
   return (
-    <section className="tool" aria-labelledby="measure-heading">
-      <h2 className="tool__summary" id="measure-heading">
-        Measure
-      </h2>
+    <Tool id="measure" title="Measure">
       <div className="tool__actions">
         <button
           className="chip"
@@ -38,6 +36,6 @@ export default function MeasureTool({ measurement }) {
         Picks the nearest splat under the pointer (mouse or touch only). A straight line in file
         units; Escape stops measuring.
       </p>
-    </section>
+    </Tool>
   );
 }

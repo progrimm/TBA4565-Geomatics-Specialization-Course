@@ -110,23 +110,26 @@ export default function ErrorHistogram({ levels, caption }) {
         ))}
       </svg>
       <p className="histogram__axis">Error per pixel, % of the 0–255 range</p>
-      <table className="sr-only">
-        <caption>{caption}</caption>
-        <thead>
-          <tr>
-            <th scope="col">Error</th>
-            <th scope="col">Share of pixels</th>
-          </tr>
-        </thead>
-        <tbody>
-          {shares.map((share, i) => (
-            <tr key={i}>
-              <th scope="row">{binLabel(i)}</th>
-              <td>{share.toFixed(2)} %</td>
+      {/* In a div: a table ignores a 1 px width and would widen the panel. */}
+      <div className="sr-only">
+        <table>
+          <caption>{caption}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Error</th>
+              <th scope="col">Share of pixels</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {shares.map((share, i) => (
+              <tr key={i}>
+                <th scope="row">{binLabel(i)}</th>
+                <td>{share.toFixed(2)} %</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   );
 }

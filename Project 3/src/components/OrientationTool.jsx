@@ -1,4 +1,5 @@
 import { UP_AXES } from '../config.js';
+import Tool from './Tool.jsx';
 
 const LABELS = { '+y': '+Y', '-y': '−Y', '+z': '+Z', '-z': '−Z' };
 
@@ -8,10 +9,7 @@ const LABELS = { '+y': '+Y', '-y': '−Y', '+z': '+Z', '-z': '−Z' };
  */
 export default function OrientationTool({ upAxis, onUpAxis, onReset }) {
   return (
-    <section className="tool" aria-labelledby="orientation-heading">
-      <h2 className="tool__summary" id="orientation-heading">
-        Orientation
-      </h2>
+    <Tool id="orientation" title="Orientation">
       <div className="tool__actions" role="group" aria-label="Up axis in the file">
         <span className="tool__label">Up axis</span>
         {UP_AXES.map((axis) => (
@@ -34,6 +32,6 @@ export default function OrientationTool({ upAxis, onUpAxis, onReset }) {
           Reset view
         </button>
       </div>
-    </section>
+    </Tool>
   );
 }

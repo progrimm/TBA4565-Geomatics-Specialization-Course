@@ -66,7 +66,8 @@ body {
   z-index: 1;
   top: var(--gutter);
   left: var(--gutter);
-  width: 300px;
+  /* Set by ControlPanel when the panel is resized. */
+  width: var(--panel-width, 300px);
   padding: var(--space-4);
   border-radius: var(--radius);
   background: var(--surface);
@@ -125,6 +126,42 @@ body {
   color: var(--text);
   font-size: 0.8rem;
   font-weight: 650;
+}
+
+/* Drag handle on the panel's right edge, in the gap between panel and panes. */
+.panel-resize {
+  position: absolute;
+  z-index: 2;
+  top: var(--gutter);
+  bottom: var(--gutter);
+  left: calc(var(--gutter) + var(--panel-width, 300px) - 2px);
+  width: 10px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.panel-resize::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 4px;
+  height: 48px;
+  border-radius: 2px;
+  background: var(--stage-muted);
+  opacity: 0.5;
+  transform: translateY(-50%);
+  transition: opacity 150ms;
+}
+
+.panel-resize:hover::after,
+.panel-resize:focus-visible::after,
+.panel-resize:active::after {
+  opacity: 1;
+}
+
+.panel-resize:focus-visible {
+  outline: none;
 }
 
 /* ---------- View buttons ---------- */
@@ -282,15 +319,51 @@ body {
 }
 
 .tool__summary {
-  padding: var(--space-3) var(--space-3) var(--space-2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3);
   color: var(--text);
-  font-size: 0.8rem;
-  font-weight: 650;
   cursor: pointer;
+  list-style: none;
+}
+
+.tool__summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Chevron: down when open, right when closed. */
+.tool__summary::after {
+  content: '';
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-right: 2px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 150ms;
+}
+
+.tool:not([open]) > .tool__summary::after {
+  transform: rotate(-45deg);
 }
 
 .tool__summary:hover {
   color: var(--accent);
+}
+
+.tool__title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+/* Space below an open tool's last line, before the next tool's border. */
+.tool__body {
+  padding-bottom: var(--space-3);
 }
 
 .tool__note {
@@ -370,9 +443,36 @@ body {
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
 }
 
-.metrics {
-  width: calc(100% - 2 * var(--space-3));
+.field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding: 0 var(--space-3);
+}
+
+.field__label {
+  flex: 1;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.field .number-input {
+  flex: none;
+}
+
+/* Tables scroll sideways in a narrow panel instead of squeezing their headers. */
+.table-scroll {
   margin: var(--space-2) var(--space-3) 0;
+  overflow-x: auto;
+}
+
+.tool__details .table-scroll {
+  margin: var(--space-2) 0 0;
+}
+
+.metrics {
+  width: 100%;
   border-collapse: collapse;
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
@@ -392,9 +492,8 @@ body {
   overflow-wrap: anywhere;
 }
 
-.tool__details .metrics {
-  width: 100%;
-  margin: var(--space-2) 0 0;
+.metrics thead th {
+  white-space: nowrap;
 }
 
 /* Over a pane in photo view. Only the swipe handle takes the pointer; the rest goes to the view. */
@@ -593,7 +692,7 @@ body {
     top: 0;
     right: 0;
     bottom: 0;
-    left: calc(300px + var(--gutter));
+    left: calc(var(--panel-width, 300px) + var(--gutter));
     width: auto;
     height: auto;
   }
@@ -896,6 +995,10 @@ body {
 /* ---------- Mobile: panel becomes a bottom sheet ---------- */
 /* Keep the breakpoint in sync with MOBILE_QUERY in config.js. */
 @media (max-width: 640px) {
+  .panel-resize {
+    display: none;
+  }
+
   .panel {
     top: auto;
     right: 0;

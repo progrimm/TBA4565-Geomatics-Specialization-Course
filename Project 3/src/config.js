@@ -141,6 +141,12 @@ export const CLICK_TOLERANCE_PX = 5;
 /** How long an error message stays up (ms); opening another file also clears it. */
 export const ERROR_MESSAGE_MS = 10_000;
 
+/**
+ * Width of the controls panel on wide screens (CSS px): default, limits, the room always left
+ * for the panes, and the step of one arrow-key press on the resize handle.
+ */
+export const PANEL = { width: 300, minWidth: 260, maxWidth: 640, paneRoom: 360, keyStep: 16 };
+
 /** Same breakpoint as the mobile media query in style.css. */
 export const MOBILE_QUERY = '(max-width: 640px)';
 

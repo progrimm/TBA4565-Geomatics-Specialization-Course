@@ -1,5 +1,6 @@
 import { CORE_FRACTION } from '../config.js';
 import { formatBytes, formatCount, formatNumber } from '../utils/format.js';
+import Tool from './Tool.jsx';
 
 const size = (extent) => extent.map(formatNumber).join(' × ');
 
@@ -10,10 +11,7 @@ const size = (extent) => extent.map(formatNumber).join(' × ');
 export default function SplatFacts({ facts }) {
   const { header } = facts;
   return (
-    <section className="tool" aria-labelledby="facts-heading">
-      <h2 className="tool__summary" id="facts-heading">
-        File
-      </h2>
+    <Tool id="facts" title="File">
       <dl className="facts">
         <dt>Name</dt>
         <dd>{facts.name}</dd>
@@ -60,6 +58,6 @@ export default function SplatFacts({ facts }) {
       <p className="tool__note">
         Units are the file&apos;s own: metres only if the capture was scaled.
       </p>
-    </section>
+    </Tool>
   );
 }

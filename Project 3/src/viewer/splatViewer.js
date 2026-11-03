@@ -232,11 +232,9 @@ export function createSplatViewer(canvas) {
   }
 
   function drawPhotos() {
-    photoCameras.set(
-      photos,
-      photos.length ? sceneSize() * PHOTOS.frustumFraction : 0,
-      selectedPhoto,
-    );
+    // Only around a splat: in an empty pane the camera sits inside the ring of frustums.
+    const shown = core ? photos : [];
+    photoCameras.set(shown, shown.length ? sceneSize() * PHOTOS.frustumFraction : 0, selectedPhoto);
   }
 
   function setPhotos(next, selected) {

@@ -1,4 +1,5 @@
 import { BACKGROUNDS } from '../config.js';
+import Tool from './Tool.jsx';
 
 /**
  * Settings for all panes: background and linked cameras.
@@ -7,10 +8,7 @@ import { BACKGROUNDS } from '../config.js';
  */
 export default function ViewTool({ background, onBackground, linked, onLinked, canLink }) {
   return (
-    <section className="tool" aria-labelledby="view-heading">
-      <h2 className="tool__summary" id="view-heading">
-        All panes
-      </h2>
+    <Tool id="view" title="All panes">
       <div className="tool__actions" role="group" aria-label="Background">
         <span className="tool__label">Background</span>
         {BACKGROUNDS.map(({ id, label }) => (
@@ -42,6 +40,6 @@ export default function ViewTool({ background, onBackground, linked, onLinked, c
           ? 'Linked panes follow the one you move. Useful when the splats share a frame, e.g. exports of the same capture with the same up axis.'
           : 'Split a pane to compare splats side by side (up to 4).'}
       </p>
-    </section>
+    </Tool>
   );
 }
