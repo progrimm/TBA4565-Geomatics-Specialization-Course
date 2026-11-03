@@ -1,11 +1,13 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { MAX_PANES, MIN_PANE_FRACTION, MOBILE_QUERY } from './config.js';
 import { useFileDropGuard } from './hooks/useFileOpener.js';
+import { useLinkedCameras } from './hooks/useLinkedCameras.js';
 import { useMediaQuery } from './hooks/useMediaQuery.js';
 import { closePane, createLayout, paneIds, setRatio, splitPane } from './utils/layout.js';
 import ControlPanel from './components/ControlPanel.jsx';
 import PaneLayout from './components/PaneLayout.jsx';
 import SplatPane from './components/SplatPane.jsx';
+import ViewTool from './components/ViewTool.jsx';
 import Messages from './components/Messages.jsx';
 
 const paneId = (number) => `pane-${number}`;
@@ -21,8 +23,23 @@ export default function App() {
   // Callback ref as state: the panes re-render (and portal their tools) once the slot exists.
   const [panelSlot, setPanelSlot] = useState(null);
   const nextSplit = useRef(1);
+  // The panes' viewers by pane id, for the settings that span panes.
+  const [viewers, setViewers] = useState({});
+  const [linked, setLinked] = useState(false);
   const stacked = useMediaQuery(MOBILE_QUERY);
   useFileDropGuard();
+  const syncFrom = useLinkedCameras(viewers, linked);
+
+  // Stable (no dependencies), so a pane's effect only re-runs when its own viewer changes.
+  const onViewer = useCallback((id, viewer) => {
+    setViewers((current) => {
+      if ((current[id] ?? null) === viewer) return current;
+      const next = { ...current };
+      if (viewer) next[id] = viewer;
+      else delete next[id];
+      return next;
+    });
+  }, []);
 
   const ids = paneIds(layout);
   const canSplit = ids.length < MAX_PANES;
@@ -48,6 +65,12 @@ export default function App() {
     }
   };
 
+  const link = (on) => {
+    // Start from the active pane's view, then follow whichever pane moves.
+    if (on) syncFrom(activeId);
+    setLinked(on);
+  };
+
   const moveDivider = (splitId, ratio) =>
     setLayout((current) => setRatio(current, splitId, ratio, MIN_PANE_FRACTION));
 
@@ -56,6 +79,7 @@ export default function App() {
       {/* The panel comes first, so keyboard users reach the file button before the views. */}
       <ControlPanel>
         <div ref={setPanelSlot} />
+        <ViewTool linked={linked} onLinked={link} canLink={ids.length > 1} />
       </ControlPanel>
       <main className="stage">
         <PaneLayout
@@ -75,6 +99,7 @@ export default function App() {
               onActivate={setActiveId}
               onSplit={split}
               onClose={close}
+              onViewer={onViewer}
               describedBy={CONTROLS_ID}
             />
           )}

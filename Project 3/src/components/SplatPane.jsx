@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ACCEPT, MAX_PANES } from '../config.js';
 import { useFileOpener } from '../hooks/useFileOpener.js';
@@ -31,7 +31,9 @@ function Icon({ name }) {
  * @param {{id: string, label: string, rect: import('../utils/layout.js').Rect, active: boolean,
  *   canSplit: boolean, canClose: boolean, panelSlot: HTMLElement | null,
  *   onActivate: (id: string) => void, onSplit: (id: string, direction: 'row' | 'column') => void,
- *   onClose: (id: string) => void, describedBy: string}} props
+ *   onClose: (id: string) => void, describedBy: string,
+ *   onViewer: (id: string, viewer: object | null) => void}} props
+ *   onViewer: reports this pane's viewer to the app (for linked cameras and backgrounds).
  */
 export default function SplatPane({
   id,
@@ -45,11 +47,17 @@ export default function SplatPane({
   onSplit,
   onClose,
   describedBy,
+  onViewer,
 }) {
   const paneRef = useRef(null);
   const { canvasRef, viewer, loading, facts, upAxis, setUpAxis, open } = useSplatViewer();
   const measurement = useMeasurement(viewer, canvasRef, facts);
   const { inputRef, onInputChange, choose, dragging } = useFileOpener(open, paneRef);
+  useEffect(() => {
+    onViewer(id, viewer);
+    return () => onViewer(id, null);
+  }, [id, viewer, onViewer]);
+
   const splitTitle = canSplit ? undefined : `At most ${MAX_PANES} panes`;
 
   let title = 'Empty';

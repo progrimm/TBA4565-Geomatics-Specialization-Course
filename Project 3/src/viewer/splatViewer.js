@@ -27,6 +27,11 @@ import { upAxisRotation } from '../utils/orientation.js';
  *   file's own x, y, z axes. core = without floaters (see CORE_FRACTION).
  */
 
+/**
+ * @typedef {{position: number[], target: number[]}} CameraView
+ *   Camera position and orbit target in the viewer frame (+y up, after the up-axis fix).
+ */
+
 /** A white disc on a transparent background, tinted by the sprite colour. */
 function circleTexture() {
   const size = 64;
@@ -53,6 +58,9 @@ function circleTexture() {
  *   setUpAxis: (axis: string) => void,
  *   pick: (clientX: number, clientY: number) => number[] | null,
  *   setMarkers: (points: number[][]) => void,
+ *   getView: () => CameraView,
+ *   setView: (view: CameraView) => void,
+ *   onViewChange: (callback: () => void) => () => void,
  *   dispose: () => void,
  * }}
  */
@@ -155,6 +163,30 @@ export function createSplatViewer(canvas) {
     resetView();
   }
 
+  // Linked cameras: another pane copies this camera's pose. OrbitControls fires 'change'
+  // when the user moves the view, and when resetView or setView call controls.update().
+  let applyingView = false;
+  function getView() {
+    return { position: camera.position.toArray(), target: controls.target.toArray() };
+  }
+
+  function setView({ position, target }) {
+    // Not reported to onViewChange, so two linked panes do not echo each other.
+    applyingView = true;
+    camera.position.fromArray(position);
+    controls.target.fromArray(target);
+    controls.update();
+    applyingView = false;
+  }
+
+  function onViewChange(callback) {
+    const listener = () => {
+      if (!applyingView) callback();
+    };
+    controls.addEventListener('change', listener);
+    return () => controls.removeEventListener('change', listener);
+  }
+
   const raycaster = new THREE.Raycaster();
   function pick(clientX, clientY) {
     if (!mesh) return null;
@@ -220,5 +252,15 @@ export function createSplatViewer(canvas) {
     renderer.dispose();
   }
 
-  return { load, resetView, setUpAxis, pick, setMarkers, dispose };
+  return {
+    load,
+    resetView,
+    setUpAxis,
+    pick,
+    setMarkers,
+    getView,
+    setView,
+    onViewChange,
+    dispose,
+  };
 }
