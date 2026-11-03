@@ -77,6 +77,11 @@ and inspect it entirely on the client?_
 - **Errors** are shown as messages, and the viewer keeps working. This covers unsupported
   extensions, PLY files without splat properties (a mesh or a plain point cloud) and files Spark
   cannot parse. If a new file fails, the splat already open stays.
+- **Panel.** On wide screens the controls panel can be resized by dragging its right edge (or
+  focusing the handle and using the arrow keys), from 260 to 640 px, always leaving room for the
+  panes; the panes start right of it, and the width is remembered in this browser. Every tool
+  (File, Orientation, Measure, Compare with the photos, All panes, Photos) folds open and closed;
+  that is remembered per tool, also when another pane becomes active.
 - A "← My GIS module" link goes back to the homepage. It is the same NTNU-blue link as in the
   other apps. The panel becomes a bottom sheet on mobile.
 
@@ -320,6 +325,9 @@ Real-Time Radiance Field Rendering", _ACM Transactions on Graphics_ 42(4), July 
   page does not scroll. Opening a file, splitting and closing panes, moving a divider (arrow
   keys), choosing the background and the up axis, linking cameras, resetting the view and
   clearing a measurement all work from the keyboard.
+- **Panel and tools.** The panel's resize handle is a focusable `role="separator"` (arrow keys,
+  16 px steps), like the pane dividers. The tools are native `<details>`/`<summary>` elements,
+  so they open with Enter or Space.
 - **Photos.** The photo list is a native `<select>`, with previous/next buttons; the swipe line
   can also be moved with the "Swipe position" slider, and the metrics are tables with headers.
 - **Not keyboard-accessible:** picking measurement points needs a pointer (mouse or touch), and
@@ -434,6 +442,23 @@ libraries.
   an exposure or appearance model in training, or a colour-handling difference between
   LichtFeld Studio and Spark. Comparing with the PSNR that LichtFeld Studio reports for the
   training images would tell; that was not done.
+- Panel, tools and photo list (2026-11-03): Playwright at 1600 px (also a 3200 px tall window,
+  to see the whole panel) and 390 px, screenshots looked at, no console errors.
+  - Dragging the handle gave panel widths of 264, 304 and 524 px, with the panes starting
+    8 px right of the panel's edge each time (panel at x = 16 px); ArrowLeft on the handle took 524 to 508. At 390 px the
+    handle is hidden (bottom sheet).
+  - The panel's scroll width equals its width at all three widths (nothing sticks out
+    sideways). The first check found the hidden histogram table widening the panel by 57 px at
+    264 px (a table ignores a 1 px width); it now sits in a hidden `<div>`. In the screenshots
+    no text overlaps; at 264 px the chips and the hold-out label wrap onto more lines, and the
+    tables keep their headers on one line (they can scroll sideways).
+  - All six tools close and open; with four panes, the three empty panes no longer show the
+    ring of camera frustums around them (it is drawn only around a splat).
+  - The photo-list bug: React marks the first option as selected when the value matches no
+    option, so a first click on IMG_6424 changed nothing. The list now starts with "Free view
+    (no photo)". A real mouse click on IMG_6424 shows the photo at once; after orbiting away, a
+    click on the same (still highlighted) photo returns to it; "Free view" leaves the photo
+    view; → from Free view goes to the first photo.
 - One photo in detail (2026-11-03, after the batch run above): `npm test` 12 files, 68 tests
   (new: error histogram, its summary statistics, signed offset). Playwright at 1600 × 900 and
   390 × 844 with the SH 3 PLY, screenshots looked at, no console errors:
