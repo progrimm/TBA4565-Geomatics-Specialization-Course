@@ -47,6 +47,18 @@ export const MARKER = { screenSize: 0.025, color: '#f5a623' };
 /** Renderer clear colour behind the splat: NTNU navy, as --stage in style.css. */
 export const BACKGROUND = '#0f2a47';
 
+/**
+ * At most this many panes (each its own WebGL view and splat). Browsers allow about 16
+ * WebGL contexts per page; memory for the open splats is the real limit.
+ */
+export const MAX_PANES = 4;
+
+/** Smallest share of a split either pane may get when a divider is dragged. */
+export const MIN_PANE_FRACTION = 0.15;
+
+/** How far one arrow-key press moves a focused divider (share of its split). */
+export const DIVIDER_KEY_STEP = 0.05;
+
 /** While measuring, a press that moves more than this (CSS px) is a drag, not a pick. */
 export const CLICK_TOLERANCE_PX = 5;
 
