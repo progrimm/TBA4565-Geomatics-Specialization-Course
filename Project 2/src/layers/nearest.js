@@ -46,7 +46,7 @@ export function onGroundClick(viewer, onClick) {
  * @returns {() => void} call to remove the drawing.
  */
 export function drawNearestLine(viewer, point, { shelter, distance, walk }) {
-  const { color, lineWidth } = NEAREST.style;
+  const { color, lineWidth, pointColor } = NEAREST.style;
   const cesiumColor = Color.fromCssColorString(color);
   const lonLats = walk?.coordinates ?? [
     [point.longitude, point.latitude],
@@ -62,7 +62,7 @@ export function drawNearestLine(viewer, point, { shelter, distance, walk }) {
       ['Address', shelter.adresse],
     ]),
     position: Cartesian3.fromDegrees(point.longitude, point.latitude),
-    point: pointGraphics(color),
+    point: pointGraphics(pointColor),
     polyline: {
       positions: Cartesian3.fromDegreesArray(lonLats.flat()),
       // Draped on terrain and 3D Tiles; the default ArcType.GEODESIC joins vertices by geodesics.

@@ -71,7 +71,7 @@ export default function NearestShelter({ status, networkStatus, shelters, neares
                 <dd>{numberFormat.format(nearest.shelter.plasser)} people</dd>
               </dl>
             ) : (
-              <p className="analysis__hint">
+              <p className={`analysis__hint${outOfRange ? ' analysis__hint--danger' : ''}`}>
                 {outOfRange
                   ? 'Out of range: no walking route from there.'
                   : 'Click the ground to find the nearest shelter.'}

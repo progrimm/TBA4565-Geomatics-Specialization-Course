@@ -2,7 +2,7 @@ import { useId, useState } from 'react';
 import { HOME_URL, MOBILE_QUERY } from '../config.js';
 
 /**
- * Collapsible glass panel. Starts collapsed on mobile so the map is visible.
+ * Collapsible control panel. Starts collapsed on mobile so the map is visible.
  * @param {{children: import('react').ReactNode}} props
  */
 export default function ControlPanel({ children }) {
@@ -15,9 +15,12 @@ export default function ControlPanel({ children }) {
         ← My GIS module
       </a>
       <header className="panel__header">
-        <h1 className="panel__title">
-          Trondheim <span className="panel__accent">3D</span>
-        </h1>
+        <div>
+          <h1 className="panel__title">
+            Trondheim <span className="panel__accent">3D</span>
+          </h1>
+          <p className="panel__kicker">Emergency shelter finder</p>
+        </div>
         <button
           className="panel__toggle"
           type="button"

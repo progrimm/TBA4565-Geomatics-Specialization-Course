@@ -102,8 +102,9 @@ export const NEAREST = {
    */
   maxConnector: 100,
   style: {
-    color: '#22d3ee',
+    color: '#3ddc84', // route: emergency-exit green
     lineWidth: 4, // pixels
+    pointColor: '#ffffff', // the clicked point
     pointSize: 10, // pixels
     outlineColor: '#000000',
     outlineWidth: 2,

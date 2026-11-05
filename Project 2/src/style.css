@@ -1,26 +1,29 @@
 /* ---------- Design tokens ---------- */
+/* Crisis-tool look: near-black field-kit surfaces, bone-white text, and the shelter
+   amber from the map as the one accent colour. Kept quiet on purpose: the only
+   "warning" decoration is a thin hazard stripe on the panel and the popup. */
 :root {
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  /* NTNU look, shared with the "My GIS module" homepage: navy ink on white, NTNU blue accent. */
-  --text: #0f2a47;
-  --text-muted: #44607f;
-  --accent: #00509e;
-  --accent-dark: #003c77;
-  --accent-contrast: #fff;
-  --wash: #eaf1f9;
-  --error: #c62828;
+  --font-mono: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Consolas, monospace;
+  --text: #e8e6df;
+  /* ≥ 6:1 against the panel even over bright imagery behind the 92 % surface (WCAG AA). */
+  --text-muted: #a3a29a;
+  --accent: #f5a623; /* = shelter symbol colour (SHELTERS.style.color) */
+  --accent-dark: #d48b0f;
+  --accent-contrast: #14130f;
+  --danger: #ff5a4f; /* = out-of-range point (NEAREST.style.outOfRangeColor) */
+  --route: #3ddc84; /* = route and passage buildings (NEAREST.style) */
 
-  /* 94 %: muted text keeps over 4.5:1 contrast (WCAG AA) even over black imagery behind the glass. */
-  --surface: rgb(255 255 255 / 94%);
-  --surface-hover: var(--wash);
-  --border: #c9d9ec;
-  --shadow: 0 8px 32px rgb(15 42 71 / 22%);
-  --glass: blur(14px) saturate(140%);
-  /* Cesium's InfoBox renders its description in an iframe with light-on-dark styles, so it stays dark (navy). */
-  --infobox: rgb(15 42 71 / 95%);
+  --surface: rgb(16 17 15 / 92%);
+  --surface-hover: rgb(255 255 255 / 6%);
+  --border: rgb(255 255 255 / 10%);
+  --shadow: 0 10px 40px rgb(0 0 0 / 55%);
+  --glass: blur(12px) saturate(120%);
+  --infobox: rgb(16 17 15 / 95%);
+  --hazard: repeating-linear-gradient(-45deg, var(--accent) 0 8px, var(--accent-contrast) 8px 16px);
 
-  --radius: 14px;
-  --radius-sm: 8px;
+  --radius: 6px;
+  --radius-sm: 4px;
   --gutter: 16px;
   --space-1: 4px;
   --space-2: 8px;
@@ -52,48 +55,77 @@ body {
   outline-offset: 2px;
 }
 
+/* Small uppercase monospace labels: section headings, kickers, list terms. */
+.panel__heading,
+.panel__kicker,
+.popup__kicker,
+.analysis__result dt {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 /* ---------- Panel ---------- */
 .panel {
   position: absolute;
   top: var(--gutter);
   left: var(--gutter);
-  width: 260px;
-  padding: var(--space-4);
+  width: 268px;
+  padding: calc(var(--space-4) + 4px) var(--space-4) var(--space-4);
   border-radius: var(--radius);
   background: var(--surface);
   backdrop-filter: var(--glass);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
   box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Thin hazard stripe along the top edge. */
+.panel::before,
+.popup::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 4px;
+  background: var(--hazard);
 }
 
 .panel__home {
   display: inline-block;
   margin-bottom: var(--space-3);
-  padding: var(--space-1) var(--space-3);
-  border-radius: 999px;
-  background: var(--accent);
-  color: var(--accent-contrast);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
   font-size: 0.8rem;
-  font-weight: 600;
   line-height: 1.4;
   text-decoration: none;
+  transition:
+    color 150ms,
+    border-color 150ms;
 }
 
 .panel__home:hover {
-  background: var(--accent-dark);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .panel__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-2);
 }
 
 .panel__title {
   margin: 0;
-  font-size: 1.15rem;
-  font-weight: 650;
+  font-size: 1.2rem;
+  font-weight: 700;
   letter-spacing: -0.01em;
 }
 
@@ -101,8 +133,15 @@ body {
   color: var(--accent);
 }
 
+.panel__kicker {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+}
+
 .panel__toggle {
   display: grid;
+  flex: none;
   place-items: center;
   width: 32px;
   height: 32px;
@@ -126,34 +165,47 @@ body {
   transform: rotate(180deg);
 }
 
+/* Section heading with a hairline running to the right edge. */
 .panel__heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin: var(--space-4) 0 var(--space-2);
-  color: var(--text);
-  font-size: 0.8rem;
-  font-weight: 650;
+  color: var(--text-muted);
+}
+
+.panel__heading::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
 }
 
 /* ---------- View buttons ---------- */
 .views {
   display: grid;
-  gap: var(--space-1);
+  gap: 2px;
 }
 
 .view-button {
   width: 100%;
   padding: var(--space-2) var(--space-3);
   border: 0;
-  border-radius: var(--radius-sm);
+  border-left: 2px solid transparent;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   background: transparent;
   color: var(--text);
   font: inherit;
   font-size: 0.9rem;
   text-align: left;
   cursor: pointer;
-  transition: background 150ms;
+  transition:
+    background 150ms,
+    border-color 150ms;
 }
 
 .view-button:hover {
+  border-left-color: var(--accent);
   background: var(--surface-hover);
 }
 
@@ -162,16 +214,10 @@ body {
   opacity: 0.5;
 }
 
-.view-button__meta {
-  display: block;
-  color: var(--text-muted);
-  font-size: 0.75rem;
-}
-
 /* ---------- Layer toggles (checkbox styled as switch) ---------- */
 .layers {
   display: grid;
-  gap: var(--space-1);
+  gap: 2px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -199,12 +245,13 @@ body {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  box-shadow: 0 0 0 2px var(--text);
+  box-shadow: 0 0 0 2px #000;
 }
 
 .layer__status {
   color: var(--text-muted);
-  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
 }
 
 .switch {
@@ -214,8 +261,8 @@ body {
   height: 20px;
   margin: 0;
   border-radius: 999px;
-  /* Off track in muted ink: 5.7:1 against the panel (WCAG 1.4.11 asks 3:1 for controls). */
-  background: var(--text-muted);
+  /* Off track: ≥ 3:1 against the panel (WCAG 1.4.11 for controls). */
+  background: #8a8983;
   cursor: pointer;
   transition: background 150ms;
 }
@@ -228,7 +275,7 @@ body {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--accent-contrast);
   transition: transform 150ms;
 }
 
@@ -250,6 +297,7 @@ body {
 .analysis {
   padding: 0 var(--space-3);
   font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .analysis__totals {
@@ -274,6 +322,10 @@ body {
   font-size: 0.7rem;
 }
 
+.analysis .analysis__hint.analysis__hint--danger {
+  color: var(--danger);
+}
+
 .analysis__result {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -282,11 +334,18 @@ body {
 }
 
 .analysis__result dt {
+  padding-top: 0.15em;
   color: var(--text-muted);
+  font-size: 0.65rem;
 }
 
 .analysis__result dd {
   margin: 0;
+}
+
+.analysis__note {
+  color: var(--route);
+  font-size: 0.75rem;
 }
 
 /* ---------- Out-of-range popup ---------- */
@@ -301,35 +360,35 @@ body {
 }
 
 .popup {
+  position: relative;
   width: min(100%, 22rem);
-  padding: var(--space-4);
+  padding: calc(var(--space-4) + 4px) var(--space-4) var(--space-4);
   border-radius: var(--radius);
   background: var(--surface);
   backdrop-filter: var(--glass);
   border: 1px solid var(--border);
-  border-top: 3px solid var(--error);
   box-shadow: var(--shadow);
   box-sizing: border-box;
+  overflow: hidden;
   pointer-events: auto;
 }
 
 .popup__kicker {
   margin: 0 0 var(--space-1);
-  color: var(--error);
-  font-size: 0.75rem;
-  font-weight: 650;
-  text-transform: uppercase;
+  color: var(--danger);
 }
 
 .popup__title {
   margin: 0 0 var(--space-2);
-  font-size: 1.1rem;
+  font-size: 1.15rem;
+  line-height: 1.3;
 }
 
 .popup__text {
   margin: 0 0 var(--space-4);
   color: var(--text-muted);
   font-size: 0.85rem;
+  line-height: 1.45;
 }
 
 .popup__button {
@@ -339,8 +398,12 @@ body {
   background: var(--accent);
   color: var(--accent-contrast);
   font: inherit;
-  font-weight: 600;
+  font-weight: 650;
   cursor: pointer;
+}
+
+.popup__button:hover {
+  background: var(--accent-dark);
 }
 
 /* ---------- Messages (toasts) ---------- */
@@ -366,7 +429,7 @@ body {
 }
 
 .message--error {
-  border-left: 3px solid var(--error);
+  border-left: 3px solid var(--danger);
   text-align: left;
 }
 
@@ -378,7 +441,7 @@ body {
   border-radius: var(--radius);
   background: var(--infobox);
   backdrop-filter: var(--glass);
-  border: 1px solid rgb(255 255 255 / 15%);
+  border: 1px solid var(--border);
   box-shadow: var(--shadow);
   overflow: hidden;
 }
@@ -386,7 +449,7 @@ body {
 .cesium-infoBox-title {
   padding: var(--space-3) 40px var(--space-3) var(--space-4);
   background: transparent;
-  color: #fff;
+  color: var(--text);
   font-family: var(--font);
   font-size: 0.95rem;
   font-weight: 600;
@@ -417,10 +480,10 @@ body {
     border-bottom: 0;
   }
 
-  /* Keep attribution visible above the collapsed sheet (~103 px tall with the home link).
+  /* Keep attribution visible above the collapsed sheet.
      !important because Viewer.resize() writes an inline `bottom` (Cesium 1.146.0). */
   .cesium-viewer-bottom {
-    bottom: 108px !important;
+    bottom: 128px !important;
   }
 
   .cesium-infoBox {
