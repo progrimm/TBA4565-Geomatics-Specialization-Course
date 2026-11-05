@@ -1,18 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import { Quaternion, Vector3 } from 'three';
-import { GEOREF } from '../src/config.js';
+import { LOCAL_FRAME } from '../src/config.js';
 import {
-  applyGeoreference,
+  applyLocalFrame,
   fitSimilarity,
   frameInFile,
   levelQuaternion,
-  parseGeoreference,
+  parseLocalFrame,
   rotate,
   rotationAngleAxis,
   scaleFromDistance,
-  serializeGeoreference,
+  serializeLocalFrame,
   symmetricEigen,
-} from '../src/utils/georef.js';
+} from '../src/utils/localFrame.js';
 
 const expectPoint = (actual, expected, digits = 9) =>
   expected.forEach((value, i) => expect(actual[i]).toBeCloseTo(value, digits));
@@ -28,7 +28,7 @@ const SOURCE = [
   [0.3, 0.5, -1.1],
   [0.9, 1.1, 0.6],
 ];
-const TARGET = SOURCE.map((p) => applyGeoreference(KNOWN, p));
+const TARGET = SOURCE.map((p) => applyLocalFrame(KNOWN, p));
 
 describe('symmetric eigen-solver', () => {
   it('satisfies A v = λ v', () => {
@@ -95,7 +95,7 @@ describe('similarity transform (Helmert)', () => {
   it('puts the user origin and axes back at the right place in the file', () => {
     const fit = fitSimilarity(SOURCE, TARGET, 'm');
     const { origin, axes } = frameInFile(fit);
-    expectPoint(applyGeoreference(fit, origin), [0, 0, 0], 6);
+    expectPoint(applyLocalFrame(fit, origin), [0, 0, 0], 6);
     axes.forEach((axis, i) => {
       const unit = [0, 0, 0];
       unit[i] = 1;
@@ -105,7 +105,7 @@ describe('similarity transform (Helmert)', () => {
 
   it('rejects too few, incomplete and collinear points', () => {
     expect(() => fitSimilarity(SOURCE.slice(0, 2), TARGET.slice(0, 2), 'm')).toThrow(
-      `At least ${GEOREF.minPoints}`,
+      `At least ${LOCAL_FRAME.minPoints}`,
     );
     expect(() =>
       fitSimilarity([...SOURCE.slice(0, 2), [0, NaN, 0]], TARGET.slice(0, 3), 'm'),
@@ -122,10 +122,10 @@ describe('similarity transform (Helmert)', () => {
 
 describe('scale from a known distance', () => {
   it('is the known length over the measured one, keeping the file frame', () => {
-    const georef = scaleFromDistance([0, 0, 0], [0, 3, 4], 12, 'cm');
-    expect(georef.scale).toBeCloseTo(12 / 5, 12);
-    expectPoint(applyGeoreference(georef, [1, 2, 3]), [2.4, 4.8, 7.2], 12);
-    expect(georef.rmse).toBeNull();
+    const frame = scaleFromDistance([0, 0, 0], [0, 3, 4], 12, 'cm');
+    expect(frame.scale).toBeCloseTo(12 / 5, 12);
+    expectPoint(applyLocalFrame(frame, [1, 2, 3]), [2.4, 4.8, 7.2], 12);
+    expect(frame.rmse).toBeNull();
   });
 
   it('rejects coincident points and bad lengths', () => {
@@ -150,7 +150,7 @@ describe('levelling and display', () => {
   });
 });
 
-describe('saved georeference (JSON)', () => {
+describe('saved coordinate system (JSON)', () => {
   const input = {
     file: { name: 'nugatti.ply', numSplats: 154055 },
     method: 'coordinates',
@@ -163,15 +163,15 @@ describe('saved georeference (JSON)', () => {
   };
 
   it('round-trips', () => {
-    expect(parseGeoreference(serializeGeoreference(input))).toEqual(input);
+    expect(parseLocalFrame(serializeLocalFrame(input))).toEqual(input);
   });
 
   it('rejects other files with a reason', () => {
-    expect(() => parseGeoreference('not json')).toThrow('not JSON');
-    expect(() => parseGeoreference('{"a": 1}')).toThrow('not a saved georeference');
-    const data = JSON.parse(serializeGeoreference(input));
-    expect(() => parseGeoreference(JSON.stringify({ ...data, version: 99 }))).toThrow('version 99');
-    expect(() => parseGeoreference(JSON.stringify({ ...data, unit: 'ft' }))).toThrow('unit');
-    expect(() => parseGeoreference(JSON.stringify({ ...data, method: 'x' }))).toThrow('method');
+    expect(() => parseLocalFrame('not json')).toThrow('not JSON');
+    expect(() => parseLocalFrame('{"a": 1}')).toThrow('not a saved coordinate system');
+    const data = JSON.parse(serializeLocalFrame(input));
+    expect(() => parseLocalFrame(JSON.stringify({ ...data, version: 99 }))).toThrow('version 99');
+    expect(() => parseLocalFrame(JSON.stringify({ ...data, unit: 'ft' }))).toThrow('unit');
+    expect(() => parseLocalFrame(JSON.stringify({ ...data, method: 'x' }))).toThrow('method');
   });
 });

@@ -144,7 +144,7 @@ export const MOBILE_QUERY = '(max-width: 640px)';
 export const HOME_URL = '../';
 
 /**
- * Georeference tool:
+ * Scale & coordinate system tool:
  * - units: what the user's lengths and coordinates are in.
  * - minPoints: control points needed for the similarity transform (7 parameters, 3 per point).
  * - collinearTolerance: points whose second-largest spread (variance) is below this share of
@@ -153,13 +153,13 @@ export const HOME_URL = '../';
  *   axesFraction: length of the drawn axes as a share of the scene size.
  * - fileFormat/fileVersion: the saved JSON.
  */
-export const GEOREF = {
+export const LOCAL_FRAME = {
   units: ['m', 'cm'],
   minPoints: 3,
   collinearTolerance: 1e-6,
   markerColor: '#ffd54f',
   axesColors: ['#e53935', '#43a047', '#1e88e5'],
   axesFraction: 0.3,
-  fileFormat: '3dgs-viewer-georeference',
+  fileFormat: '3dgs-viewer-coordinate-system',
   fileVersion: 1,
 };

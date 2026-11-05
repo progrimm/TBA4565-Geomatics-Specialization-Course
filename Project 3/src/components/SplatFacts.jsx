@@ -2,16 +2,16 @@ import { CORE_FRACTION } from '../config.js';
 import { formatBytes, formatCount, formatNumber } from '../utils/format.js';
 import Tool from './Tool.jsx';
 
-/** An extent along the file axes, scaled into the user's unit when georeferenced. */
-const size = (extent, georef) =>
-  `${extent.map((value) => formatNumber(value * (georef?.scale ?? 1))).join(' × ')} ${georef ? `${georef.unit} (file axes)` : 'units'}`;
+/** An extent along the file axes, scaled into the user's unit when a scale is assigned. */
+const size = (extent, frame) =>
+  `${extent.map((value) => formatNumber(value * (frame?.scale ?? 1))).join(' × ')} ${frame ? `${frame.unit} (file axes)` : 'units'}`;
 
 /**
  * What the opened file contains.
  * @param {{facts: import('../hooks/useSplatViewer.js').SplatFacts,
- *   georef: import('../utils/georef.js').Georeference | null}} props
+ *   frame: import('../utils/localFrame.js').LocalFrame | null}} props
  */
-export default function SplatFacts({ facts, georef }) {
+export default function SplatFacts({ facts, frame }) {
   const { header } = facts;
   return (
     <Tool id="facts" title="File">
@@ -28,11 +28,11 @@ export default function SplatFacts({ facts, georef }) {
         <dd
           title={`Bounding box of the central ${CORE_FRACTION * 100} % of splat centres per axis (x × y × z, file axes)`}
         >
-          {size(facts.coreSize, georef)}
+          {size(facts.coreSize, frame)}
         </dd>
         <dt>Full extent</dt>
         <dd title="Bounding box of all splat centres, including floaters">
-          {size(facts.fullSize, georef)}
+          {size(facts.fullSize, frame)}
         </dd>
         <dt>Opened in</dt>
         <dd>{facts.loadSeconds.toFixed(2)} s</dd>
@@ -59,8 +59,8 @@ export default function SplatFacts({ facts, georef }) {
         </details>
       )}
       <p className="tool__note">
-        {georef
-          ? `Scaled by the georeference: 1 file unit = ${formatNumber(georef.scale)} ${georef.unit}.`
+        {frame
+          ? `Assigned scale: 1 file unit = ${formatNumber(frame.scale)} ${frame.unit}.`
           : 'Units are the file’s own: metres only if the capture was scaled.'}
       </p>
     </Tool>

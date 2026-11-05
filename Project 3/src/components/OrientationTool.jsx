@@ -7,7 +7,7 @@ const LABELS = { '+y': '+Y', '-y': '−Y', '+z': '+Z', '-z': '−Z' };
  * Which file axis points up, and a view reset.
  * @param {{upAxis: string, onUpAxis: (axis: string) => void, onReset: () => void,
  *   levelled: boolean}} props
- *   levelled: a georeference sets which way is up (the user's +Z), so the up axis is not used.
+ *   levelled: an assigned coordinate system sets which way is up (the user's +Z), so the up axis is not used.
  */
 export default function OrientationTool({ upAxis, onUpAxis, onReset, levelled }) {
   return (
@@ -29,7 +29,7 @@ export default function OrientationTool({ upAxis, onUpAxis, onReset, levelled })
       </div>
       <p className="tool__note">
         {levelled
-          ? 'Up comes from the georeference (your +Z). Clear it to choose the up axis again.'
+          ? 'Up comes from your coordinate system (its +Z). Clear it to choose the up axis again.'
           : '3DGS training output usually has −Y up; GIS and CAD data usually +Z.'}
       </p>
       <div className="tool__actions">

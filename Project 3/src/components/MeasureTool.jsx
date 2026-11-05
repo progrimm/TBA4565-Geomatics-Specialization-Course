@@ -1,18 +1,18 @@
 import { Fragment } from 'react';
-import { applyGeoreference } from '../utils/georef.js';
+import { applyLocalFrame } from '../utils/localFrame.js';
 import { formatPoint, formatScaledLength } from '../utils/format.js';
 import Tool from './Tool.jsx';
 
 /**
- * Two-point distance on the splat; in the user's unit and frame when a georeference is applied.
+ * Two-point distance on the splat; in the user's unit and frame when a scale or coordinate system is assigned.
  * @param {{measurement: ReturnType<typeof import('../hooks/useMeasurement.js').useMeasurement>,
- *   georef: import('../utils/georef.js').Georeference | null}} props
+ *   frame: import('../utils/localFrame.js').LocalFrame | null}} props
  */
-export default function MeasureTool({ measurement, georef }) {
+export default function MeasureTool({ measurement, frame }) {
   const { active, setActive, points, distance, missed, clear } = measurement;
   let status = 'Click a point on the splat.';
   if (points.length === 1) status = 'Click a second point.';
-  if (distance !== null) status = `Distance: ${formatScaledLength(distance, georef)}`;
+  if (distance !== null) status = `Distance: ${formatScaledLength(distance, frame)}`;
   if (missed) status = 'No splat under the pointer. Try again.';
 
   return (
@@ -35,19 +35,19 @@ export default function MeasureTool({ measurement, georef }) {
           {status}
         </p>
       )}
-      {georef && points.length > 0 && (
+      {frame && points.length > 0 && (
         <dl className="facts">
           {points.map((point, index) => (
             <Fragment key={index}>
               <dt>Point {index + 1}</dt>
-              <dd>{formatPoint(applyGeoreference(georef, point), georef.unit)}</dd>
+              <dd>{formatPoint(applyLocalFrame(frame, point), frame.unit)}</dd>
             </Fragment>
           ))}
         </dl>
       )}
       <p className="tool__note">
         Picks the nearest splat under the pointer (mouse or touch only). A straight line in{' '}
-        {georef ? `${georef.unit}, from the georeference` : 'file units'}; Escape stops measuring.
+        {frame ? `${frame.unit} (assigned scale)` : 'file units'}; Escape stops measuring.
       </p>
     </Tool>
   );

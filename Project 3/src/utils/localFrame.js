@@ -1,10 +1,11 @@
-// Georeferencing a splat: a scale from one known distance, or a similarity (Helmert, 7
-// parameter) transform from control points, fitted by least squares. Pure functions, float64.
-import { GEOREF } from '../config.js';
+// Assigning a scale or a local coordinate system to a splat: a scale from one known distance,
+// or a similarity (Helmert, 7 parameter) transform from control points, fitted by least
+// squares. Not a georeference (no CRS). Pure functions, float64.
+import { LOCAL_FRAME } from '../config.js';
 import { distance } from './measure.js';
 
 /**
- * @typedef {object} Georeference
+ * @typedef {object} LocalFrame
  * @property {'distance' | 'coordinates'} method
  * @property {string} unit - unit of the user's lengths and coordinates (m or cm).
  * @property {number} scale - user units per file unit.
@@ -91,7 +92,7 @@ function collinear(points) {
     [0, 1, 2].map((j) => points.reduce((sum, p) => sum + (p[i] - mean[i]) * (p[j] - mean[j]), 0)),
   );
   const values = symmetricEigen(cov).values.sort((a, b) => b - a);
-  return !(values[0] > 0) || values[1] <= values[0] * GEOREF.collinearTolerance;
+  return !(values[0] > 0) || values[1] <= values[0] * LOCAL_FRAME.collinearTolerance;
 }
 
 /**
@@ -100,7 +101,7 @@ function collinear(points) {
  * @param {number[]} b - file coordinates.
  * @param {number} known - the real distance, in the user's unit.
  * @param {string} unit
- * @returns {Georeference}
+ * @returns {LocalFrame}
  * @throws {Error} when the points coincide or the length is not a positive number.
  */
 export function scaleFromDistance(a, b, known, unit) {
@@ -121,12 +122,12 @@ export function scaleFromDistance(a, b, known, unit) {
 
 /**
  * A point from file coordinates into the user's frame: s·R·p + t.
- * @param {Pick<Georeference, 'scale' | 'quaternion' | 'translation'>} georef
+ * @param {Pick<LocalFrame, 'scale' | 'quaternion' | 'translation'>} frame
  * @param {number[]} point
  * @returns {number[]}
  */
-export function applyGeoreference(georef, point) {
-  return add(mul(rotate(georef.quaternion, point), georef.scale), georef.translation);
+export function applyLocalFrame(frame, point) {
+  return add(mul(rotate(frame.quaternion, point), frame.scale), frame.translation);
 }
 
 /**
@@ -138,13 +139,13 @@ export function applyGeoreference(georef, point) {
  * @param {number[][]} source - picked points, file coordinates.
  * @param {number[][]} target - the same points in the user's frame.
  * @param {string} unit
- * @returns {Georeference}
- * @throws {Error} for fewer than GEOREF.minPoints, non-finite or collinear points.
+ * @returns {LocalFrame}
+ * @throws {Error} for fewer than LOCAL_FRAME.minPoints, non-finite or collinear points.
  */
 export function fitSimilarity(source, target, unit) {
   if (source.length !== target.length) throw new Error('Every point needs a pick and coordinates.');
-  if (source.length < GEOREF.minPoints) {
-    throw new Error(`At least ${GEOREF.minPoints} control points are needed.`);
+  if (source.length < LOCAL_FRAME.minPoints) {
+    throw new Error(`At least ${LOCAL_FRAME.minPoints} control points are needed.`);
   }
   if (!source.every(finitePoint) || !target.every(finitePoint)) {
     throw new Error('Every control point needs a pick and three numbers.');
@@ -178,20 +179,20 @@ export function fitSimilarity(source, target, unit) {
   if (!(scale > 0)) throw new Error('The points do not match; check their order and coordinates.');
   const translation = sub(targetMean, mul(rotate(quaternion, sourceMean), scale));
   const fit = { scale, quaternion, translation };
-  const residuals = target.map((p, i) => sub(p, applyGeoreference(fit, source[i])));
+  const residuals = target.map((p, i) => sub(p, applyLocalFrame(fit, source[i])));
   const rmse = Math.sqrt(residuals.reduce((sum, r) => sum + dot(r, r), 0) / residuals.length);
   return { method: 'coordinates', unit, ...fit, residuals, rmse };
 }
 
 /**
  * The user's origin and axis directions, in file coordinates (for drawing them in the splat).
- * @param {Georeference} georef
+ * @param {LocalFrame} frame
  * @returns {{origin: number[], axes: number[][]}} axes: unit vectors of the user's X, Y, Z.
  */
-export function frameInFile(georef) {
-  const inverse = conjugate(georef.quaternion);
+export function frameInFile(frame) {
+  const inverse = conjugate(frame.quaternion);
   return {
-    origin: mul(rotate(inverse, mul(georef.translation, -1)), 1 / georef.scale),
+    origin: mul(rotate(inverse, mul(frame.translation, -1)), 1 / frame.scale),
     axes: [
       [1, 0, 0],
       [0, 1, 0],
@@ -229,7 +230,7 @@ export function rotationAngleAxis([x, y, z, w]) {
 }
 
 /**
- * @typedef {object} GeoreferenceInput
+ * @typedef {object} LocalFrameInput
  * @property {{name: string, numSplats: number} | null} file - the splat it was made for.
  * @property {'distance' | 'coordinates'} method
  * @property {string} unit
@@ -239,14 +240,14 @@ export function rotationAngleAxis([x, y, z, w]) {
  */
 
 /**
- * The georeference inputs as JSON. The result is not stored: it is recomputed when loading.
- * @param {GeoreferenceInput} input
+ * The tool inputs as JSON. The result is not stored: it is recomputed when loading.
+ * @param {LocalFrameInput} input
  * @returns {string}
  */
-export function serializeGeoreference({ file, method, unit, knownLength, points }) {
+export function serializeLocalFrame({ file, method, unit, knownLength, points }) {
   const data = {
-    format: GEOREF.fileFormat,
-    version: GEOREF.fileVersion,
+    format: LOCAL_FRAME.fileFormat,
+    version: LOCAL_FRAME.fileVersion,
     file,
     method,
     unit,
@@ -257,26 +258,28 @@ export function serializeGeoreference({ file, method, unit, knownLength, points 
 }
 
 /**
- * Read a saved georeference.
+ * Read a saved scale or coordinate system.
  * @param {string} text
- * @returns {GeoreferenceInput}
- * @throws {Error} with a user-facing reason when the text is not a valid georeference.
+ * @returns {LocalFrameInput}
+ * @throws {Error} with a user-facing reason when the text is not a valid saved coordinate system.
  */
-export function parseGeoreference(text) {
+export function parseLocalFrame(text) {
   let data;
   try {
     data = JSON.parse(text);
   } catch {
     throw new Error('it is not JSON.');
   }
-  if (data?.format !== GEOREF.fileFormat) throw new Error('it is not a saved georeference.');
-  if (data.version !== GEOREF.fileVersion) {
+  if (data?.format !== LOCAL_FRAME.fileFormat)
+    throw new Error('it is not a saved coordinate system.');
+  if (data.version !== LOCAL_FRAME.fileVersion) {
     throw new Error(
-      `it has version ${data.version}; this app reads version ${GEOREF.fileVersion}.`,
+      `it has version ${data.version}; this app reads version ${LOCAL_FRAME.fileVersion}.`,
     );
   }
   if (!['distance', 'coordinates'].includes(data.method)) throw new Error('its method is unknown.');
-  if (!GEOREF.units.includes(data.unit)) throw new Error(`its unit "${data.unit}" is unknown.`);
+  if (!LOCAL_FRAME.units.includes(data.unit))
+    throw new Error(`its unit "${data.unit}" is unknown.`);
   if (!Array.isArray(data.points)) throw new Error('it has no points.');
   const number = (value) => (Number.isFinite(value) ? value : null);
   const points = data.points.map((point) => ({

@@ -1,8 +1,8 @@
 import { useId, useRef } from 'react';
-import { GEOREF } from '../config.js';
+import { LOCAL_FRAME } from '../config.js';
 import { distance } from '../utils/measure.js';
 import { formatLength, formatNumber, formatPoint } from '../utils/format.js';
-import { frameInFile, rotationAngleAxis } from '../utils/georef.js';
+import { frameInFile, rotationAngleAxis } from '../utils/localFrame.js';
 import { download } from './download.js';
 import Tool from './Tool.jsx';
 
@@ -12,27 +12,27 @@ const METHODS = [
 ];
 const AXES = ['X', 'Y', 'Z'];
 
-/** The applied georeference in numbers: parameters and, for control points, residuals. */
-function Result({ georef, showAxes, onShowAxes }) {
-  const { unit } = georef;
-  if (georef.method === 'distance') {
+/** The assigned scale or coordinate system in numbers: parameters and, for control points, residuals. */
+function Result({ frame, showAxes, onShowAxes }) {
+  const { unit } = frame;
+  if (frame.method === 'distance') {
     return (
       <dl className="facts facts--spaced">
         <dt>Scale</dt>
         <dd>
-          1 file unit = {formatNumber(georef.scale)} {unit}
+          1 file unit = {formatNumber(frame.scale)} {unit}
         </dd>
       </dl>
     );
   }
-  const { degrees, axis } = rotationAngleAxis(georef.quaternion);
-  const { origin } = frameInFile(georef);
+  const { degrees, axis } = rotationAngleAxis(frame.quaternion);
+  const { origin } = frameInFile(frame);
   return (
     <>
       <dl className="facts facts--spaced">
         <dt>Scale</dt>
         <dd>
-          1 file unit = {formatNumber(georef.scale)} {unit}
+          1 file unit = {formatNumber(frame.scale)} {unit}
         </dd>
         <dt>Rotation</dt>
         <dd>
@@ -44,7 +44,7 @@ function Result({ georef, showAxes, onShowAxes }) {
         </dd>
         <dt>RMSE</dt>
         <dd>
-          {formatNumber(georef.rmse)} {unit}
+          {formatNumber(frame.rmse)} {unit}
         </dd>
       </dl>
       <div className="table-scroll">
@@ -60,7 +60,7 @@ function Result({ georef, showAxes, onShowAxes }) {
             </tr>
           </thead>
           <tbody>
-            {georef.residuals.map((r, index) => (
+            {frame.residuals.map((r, index) => (
               <tr key={index}>
                 <th scope="row">{index + 1}</th>
                 {r.map((value, i) => (
@@ -92,12 +92,12 @@ function Result({ georef, showAxes, onShowAxes }) {
 }
 
 /**
- * Georeference the splat: a scale from one known distance (the file's own frame), or a
+ * Assign a scale or a coordinate system to the splat: a scale from one known distance (the file's own frame), or a
  * similarity transform from ≥ 3 control points in the user's own frame (Z up).
- * @param {{georeference: ReturnType<typeof import('../hooks/useGeoreference.js').useGeoreference>,
+ * @param {{localFrame: ReturnType<typeof import('../hooks/useLocalFrame.js').useLocalFrame>,
  *   splatName: string}} props
  */
-export default function GeoreferenceTool({ georeference: g, splatName }) {
+export default function LocalFrameTool({ localFrame: g, splatName }) {
   const loadRef = useRef(null);
   const lengthId = useId();
   const [a, b] = g.distancePoints;
@@ -107,7 +107,7 @@ export default function GeoreferenceTool({ georeference: g, splatName }) {
   const canApply =
     g.method === 'distance'
       ? Boolean(a && b && g.knownLength.trim())
-      : complete >= GEOREF.minPoints;
+      : complete >= LOCAL_FRAME.minPoints;
 
   let pickStatus = null;
   if (g.active && g.method === 'distance')
@@ -118,8 +118,8 @@ export default function GeoreferenceTool({ georeference: g, splatName }) {
   if (g.missed) pickStatus = 'No splat under the pointer. Try again.';
 
   return (
-    <Tool id="georeference" title="Georeference">
-      <div className="tool__actions" role="group" aria-label="Georeference method">
+    <Tool id="local-frame" title="Scale & coordinate system">
+      <div className="tool__actions" role="group" aria-label="Method">
         {METHODS.map(({ id, label }) => (
           <button
             key={id}
@@ -134,7 +134,7 @@ export default function GeoreferenceTool({ georeference: g, splatName }) {
       </div>
       <div className="tool__actions tool__actions--spaced" role="group" aria-label="Unit">
         <span className="tool__label">Unit</span>
-        {GEOREF.units.map((unit) => (
+        {LOCAL_FRAME.units.map((unit) => (
           <button
             key={unit}
             className="chip"
@@ -177,14 +177,14 @@ export default function GeoreferenceTool({ georeference: g, splatName }) {
         <>
           <p className="tool__note">
             Your own frame: right-handed, Z up, in {g.unit}. Pick each point on the splat and type
-            its X, Y, Z. At least {GEOREF.minPoints} points, not on one line.
+            its X, Y, Z. At least {LOCAL_FRAME.minPoints} points, not on one line.
           </p>
           <div className="table-scroll">
-            <table className="metrics georef-points">
+            <table className="metrics frame-points">
               <caption className="sr-only">Control points, coordinates in {g.unit}</caption>
               <thead>
                 <tr>
-                  <th scope="col" className="georef-points__point">
+                  <th scope="col" className="frame-points__point">
                     Point
                   </th>
                   {AXES.map((axis) => (
@@ -192,7 +192,7 @@ export default function GeoreferenceTool({ georeference: g, splatName }) {
                       {axis}
                     </th>
                   ))}
-                  <th scope="col" className="georef-points__remove">
+                  <th scope="col" className="frame-points__remove">
                     <span className="sr-only">Remove</span>
                   </th>
                 </tr>
@@ -202,7 +202,7 @@ export default function GeoreferenceTool({ georeference: g, splatName }) {
                   <tr key={index}>
                     <th scope="row">
                       <button
-                        className="chip georef-points__pick"
+                        className="chip frame-points__pick"
                         type="button"
                         aria-pressed={g.active && g.pickRow === index}
                         aria-label={`${row.file ? 'Pick again' : 'Pick'} point ${index + 1}`}
@@ -256,7 +256,7 @@ export default function GeoreferenceTool({ georeference: g, splatName }) {
         <button className="chip" type="button" disabled={!canApply} onClick={g.apply}>
           Apply
         </button>
-        <button className="chip" type="button" disabled={!g.georef} onClick={g.clear}>
+        <button className="chip" type="button" disabled={!g.applied} onClick={g.clear}>
           Clear
         </button>
         <button
@@ -265,7 +265,7 @@ export default function GeoreferenceTool({ georeference: g, splatName }) {
           onClick={() =>
             download(
               g.save(),
-              `${splatName.replace(/\.[^.]+$/, '')}_georeference.json`,
+              `${splatName.replace(/\.[^.]+$/, '')}_coordinate-system.json`,
               'application/json',
             )
           }
@@ -295,7 +295,7 @@ export default function GeoreferenceTool({ georeference: g, splatName }) {
         </p>
       )}
       {g.stale && <p className="tool__note">The inputs changed: Apply again to update.</p>}
-      {g.georef && <Result georef={g.georef} showAxes={g.showAxes} onShowAxes={g.setShowAxes} />}
+      {g.applied && <Result frame={g.applied} showAxes={g.showAxes} onShowAxes={g.setShowAxes} />}
     </Tool>
   );
 }

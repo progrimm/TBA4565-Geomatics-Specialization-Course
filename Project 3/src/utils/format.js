@@ -9,14 +9,14 @@ export function formatLength(value) {
 }
 
 /**
- * A length in the file's units, or in the user's unit when a georeference is applied (the
+ * A length in the file's units, or in the user's unit when a scale is assigned (the
  * scale is the same everywhere, so a length only needs scaling).
  * @param {number} value - in file units.
- * @param {{scale: number, unit: string} | null} georef
+ * @param {{scale: number, unit: string} | null} frame
  * @returns {string}
  */
-export function formatScaledLength(value, georef) {
-  return georef ? `${formatNumber(value * georef.scale)} ${georef.unit}` : formatLength(value);
+export function formatScaledLength(value, frame) {
+  return frame ? `${formatNumber(value * frame.scale)} ${frame.unit}` : formatLength(value);
 }
 
 /**

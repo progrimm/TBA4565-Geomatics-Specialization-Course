@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ERROR_MESSAGE_MS, GEOREF } from '../config.js';
+import { ERROR_MESSAGE_MS, LOCAL_FRAME } from '../config.js';
 import { showMessage } from '../state/messages.js';
 import {
   fitSimilarity,
   frameInFile,
   levelQuaternion,
-  parseGeoreference,
+  parseLocalFrame,
   scaleFromDistance,
-  serializeGeoreference,
-} from '../utils/georef.js';
+  serializeLocalFrame,
+} from '../utils/localFrame.js';
 import { usePointPicking } from './usePointPicking.js';
 
 const emptyRow = () => ({ file: null, target: ['', '', ''] });
@@ -19,7 +19,7 @@ const parseNumber = (text) =>
 const show = (value) => (value === null || value === undefined ? '' : String(value));
 
 /**
- * Compute a georeference from the tool's inputs.
+ * Compute the scale or coordinate system from the tool's inputs.
  * @throws {Error} with a user-facing reason.
  */
 function compute({ method, unit, distancePoints, knownLength, rows }) {
@@ -36,18 +36,18 @@ function compute({ method, unit, distancePoints, knownLength, rows }) {
 }
 
 /**
- * Georeference tool state for one pane: a scale from a known distance, or a similarity
+ * Scale & coordinate system tool state for one pane: a scale from a known distance, or a similarity
  * transform from control points with coordinates in the user's own frame.
  * @param {ReturnType<import('../viewer/splatViewer.js').createSplatViewer> | null} viewer
  * @param {import('react').RefObject<HTMLCanvasElement>} canvasRef
  * @param {import('./useSplatViewer.js').SplatFacts | null} facts - changes with a new splat
- *   (clears the georeference).
+ *   (clears the assigned scale or coordinate system).
  * @param {boolean} active - picking points now (exclusive with the other picking tools).
  * @param {(active: boolean) => void} setActive
  */
-export function useGeoreference(viewer, canvasRef, facts, active, setActive) {
+export function useLocalFrame(viewer, canvasRef, facts, active, setActive) {
   const [method, setMethod] = useState('distance');
-  const [unit, setUnit] = useState(GEOREF.units[0]);
+  const [unit, setUnit] = useState(LOCAL_FRAME.units[0]);
   const [distancePoints, setDistancePoints] = useState([null, null]);
   const [knownLength, setKnownLength] = useState('');
   const [rows, setRows] = useState(() => [emptyRow(), emptyRow(), emptyRow()]);
@@ -176,7 +176,7 @@ export function useGeoreference(viewer, canvasRef, facts, active, setActive) {
 
   /** The inputs as a JSON text, for download. */
   const save = () =>
-    serializeGeoreference({
+    serializeLocalFrame({
       file: facts ? { name: facts.name, numSplats: facts.numSplats } : null,
       method,
       unit,
@@ -192,11 +192,11 @@ export function useGeoreference(viewer, canvasRef, facts, active, setActive) {
             })),
     });
 
-  /** Read a saved georeference and apply it again (the result is recomputed). */
+  /** Read a saved coordinate system and apply it again (the result is recomputed). */
   const load = async (file) => {
     let saved;
     try {
-      saved = parseGeoreference(await file.text());
+      saved = parseLocalFrame(await file.text());
     } catch (problem) {
       const hide = showMessage(`Could not load ${file.name}: ${problem.message}`, 'error');
       setTimeout(hide, ERROR_MESSAGE_MS);
@@ -265,8 +265,8 @@ export function useGeoreference(viewer, canvasRef, facts, active, setActive) {
     load,
     showAxes,
     setShowAxes,
-    /** The applied georeference, or null. */
-    georef: applied?.result ?? null,
+    /** The applied scale or coordinate system, or null. */
+    applied: applied?.result ?? null,
     /** The inputs changed after Apply. */
     stale: applied !== null && applied.key !== inputsKey,
     levelled,

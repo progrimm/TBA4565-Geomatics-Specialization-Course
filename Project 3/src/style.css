@@ -450,24 +450,24 @@ body {
   color: var(--error);
 }
 
-/* Georeference control points: fixed columns, so the table fits the narrowest panel. */
-.georef-points {
+/* Coordinate-system control points: fixed columns, so the table fits the narrowest panel. */
+.frame-points {
   table-layout: fixed;
 }
 
-.georef-points .georef-points__point {
+.frame-points .frame-points__point {
   width: 3.4rem;
 }
 
-.georef-points .georef-points__remove {
+.frame-points .frame-points__remove {
   width: 1.9rem;
 }
 
-.georef-points td {
+.frame-points td {
   padding: 2px 1px;
 }
 
-.georef-points .number-input {
+.frame-points .number-input {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
@@ -475,7 +475,7 @@ body {
   text-align: right;
 }
 
-.georef-points .chip {
+.frame-points .chip {
   padding: 3px 6px;
   white-space: nowrap;
 }

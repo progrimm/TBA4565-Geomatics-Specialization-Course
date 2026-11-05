@@ -2,14 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ACCEPT, MAX_PANES } from '../config.js';
 import { useFileOpener } from '../hooks/useFileOpener.js';
-import { useGeoreference } from '../hooks/useGeoreference.js';
+import { useLocalFrame } from '../hooks/useLocalFrame.js';
 import { useMeasurement } from '../hooks/useMeasurement.js';
 import { useEvaluation } from '../hooks/useEvaluation.js';
 import { useSplatViewer } from '../hooks/useSplatViewer.js';
 import FileOpener, { DropOverlay, EmptyState } from './FileOpener.jsx';
 import EllipsoidTool from './EllipsoidTool.jsx';
 import EvaluationTool from './EvaluationTool.jsx';
-import GeoreferenceTool from './GeoreferenceTool.jsx';
+import LocalFrameTool from './LocalFrameTool.jsx';
 import MeasureTool from './MeasureTool.jsx';
 import OrientationTool from './OrientationTool.jsx';
 import PhotoOverlay from './PhotoOverlay.jsx';
@@ -83,15 +83,9 @@ export default function SplatPane({
     [],
   );
   const setMeasuring = useMemo(() => pickerSetter('measure'), [pickerSetter]);
-  const setGeoPicking = useMemo(() => pickerSetter('georef'), [pickerSetter]);
+  const setFramePicking = useMemo(() => pickerSetter('frame'), [pickerSetter]);
   const measurement = useMeasurement(viewer, canvasRef, facts, picker === 'measure', setMeasuring);
-  const georeference = useGeoreference(
-    viewer,
-    canvasRef,
-    facts,
-    picker === 'georef',
-    setGeoPicking,
-  );
+  const localFrame = useLocalFrame(viewer, canvasRef, facts, picker === 'frame', setFramePicking);
   const { inputRef, onInputChange, choose, dragging } = useFileOpener(open, paneRef);
   useEffect(() => {
     onViewer(id, viewer);
@@ -125,16 +119,16 @@ export default function SplatPane({
       <FileOpener paneLabel={label} onChoose={choose} loading={loading} />
       {facts && (
         <>
-          <SplatFacts facts={facts} georef={georeference.georef} />
+          <SplatFacts facts={facts} frame={localFrame.applied} />
           <OrientationTool
             upAxis={upAxis}
             onUpAxis={setUpAxis}
             onReset={() => viewer?.resetView()}
-            levelled={georeference.levelled}
+            levelled={localFrame.levelled}
           />
           <EllipsoidTool amount={ellipsoidView} onAmount={setEllipsoidView} />
-          <MeasureTool measurement={measurement} georef={georeference.georef} />
-          <GeoreferenceTool georeference={georeference} splatName={facts.name} />
+          <MeasureTool measurement={measurement} frame={localFrame.applied} />
+          <LocalFrameTool localFrame={localFrame} splatName={facts.name} />
           {photos.length > 0 && (
             <EvaluationTool
               evaluation={evaluation}

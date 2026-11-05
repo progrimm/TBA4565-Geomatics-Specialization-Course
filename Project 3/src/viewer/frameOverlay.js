@@ -1,7 +1,7 @@
-// Georeference overlay: numbered control-point markers and the user's frame (origin and
+// Coordinate-system overlay: numbered control-point markers and the user's frame (origin and
 // X/Y/Z axes), drawn in the model group so they share its rotation. No React here.
 import * as THREE from 'three';
-import { GEOREF, MARKER } from '../config.js';
+import { LOCAL_FRAME, MARKER } from '../config.js';
 
 /** A disc with a number, tinted by the sprite colour (white disc, black outline and digits). */
 function numberTexture(label) {
@@ -35,7 +35,7 @@ function numberTexture(label) {
  *   dispose: () => void,
  * }}
  */
-export function createGeorefOverlay(parent) {
+export function createFrameOverlay(parent) {
   const group = new THREE.Group();
   parent.add(group);
   const points = new THREE.Group();
@@ -50,7 +50,7 @@ export function createGeorefOverlay(parent) {
         label,
         new THREE.SpriteMaterial({
           map: numberTexture(label),
-          color: GEOREF.markerColor,
+          color: LOCAL_FRAME.markerColor,
           sizeAttenuation: false,
           depthTest: false,
           transparent: true,
@@ -59,7 +59,7 @@ export function createGeorefOverlay(parent) {
     }
     return materials.get(label);
   };
-  const axisMaterials = GEOREF.axesColors.map(
+  const axisMaterials = LOCAL_FRAME.axesColors.map(
     (color) => new THREE.LineBasicMaterial({ color, depthTest: false, transparent: true }),
   );
 
