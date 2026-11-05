@@ -32,8 +32,9 @@ page open and inspect it entirely on the client?"
 - Orientation fix (up axis +Y/-Y/+Z/-Z) and reset view.
 - Ellipsoid view per pane (slider: opacity towards 1, flat fill cut at 1σ, via a
   Spark object modifier + SparkRenderer falloff/maxStdDev); off for PSNR/SSIM renders.
-- Two-point distance in file units (or m/cm when georeferenced).
-- Georeference per pane: scale from a known distance (file frame kept), or a
+- Two-point distance in file units (or m/cm once a scale or local frame is applied).
+- Scale & coordinate system per pane (renamed from "Georeference": local
+  frame, no CRS): scale from a known distance (file frame kept), or a
   least-squares similarity transform (Horn quaternions) from ≥ 3 control points
   in the user's own frame (m or cm, Z up) with residuals/RMSE, levelled view,
   drawn origin/axes; JSON save/load. One picking tool at a time.
@@ -58,12 +59,12 @@ config.js – constants: formats, camera, up axes, ellipsoid view, markers, pane
 viewer/splatViewer.js – three.js + Spark scene, no React
 viewer/backgrounds.js – colour and sky backgrounds, no React
 viewer/photoCameras.js – COLMAP camera frustums, no React
-viewer/georefOverlay.js – control-point markers and the user's origin/axes, no React
+viewer/frameOverlay.js – control-point markers and the user's origin/axes, no React
 workers/ – Web Worker for PSNR/SSIM
 hooks/ – React hooks bridging React and the viewer (viewer, file opening, measurement, linked cameras)
 components/ – React UI: panel, pane layout, pane, file opener, facts, orientation, measurement, "All panes", messages
 state/ – small framework-independent stores (messages)
-utils/ – pure helpers (PLY header, formats, bounds, orientation, distance, formatting, layout tree, COLMAP, photo cameras, metrics, ellipsoid view, georeference)
+utils/ – pure helpers (PLY header, formats, bounds, orientation, distance, formatting, layout tree, COLMAP, photo cameras, metrics, ellipsoid view, local frame)
 tests/ – Vitest unit tests
 
 ## Code standards
@@ -131,3 +132,6 @@ tests/ – Vitest unit tests
   control build as evidence; see README Verification.
 - 2026-11-05: georeference tool (known distance / known coordinates). Verified
   against a synthetic transform; real-world accuracy not measured yet.
+- 2026-11-05: renamed to "Scale & coordinate system" (code: localFrame /
+  LOCAL_FRAME / frameOverlay), since it has no CRS. Save format is now
+  `3dgs-viewer-coordinate-system`; old georeference JSON is not read.

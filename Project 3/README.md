@@ -48,9 +48,11 @@ and inspect it entirely on the client?_
 - **Two-point measurement.** Click two points on the splat to get the straight distance between
   them. Picking uses Spark's `SplatMesh.raycast` through a three.js
   [`Raycaster`](https://threejs.org/docs/#api/en/core/Raycaster), which hits the nearest splat
-  ellipsoid. Distances are in the file's own units, or in m or cm once a georeference is
-  applied (then the picked points are also shown in that frame).
-- **Georeference** (per pane), two methods:
+  ellipsoid. Distances are in the file's own units, or in m or cm once a scale or coordinate
+  system is applied (then the picked points are also shown in that frame).
+- **Scale & coordinate system** (per pane), two methods. It was first called "Georeference" and
+  renamed on 2026-11-05: it assigns a local Cartesian frame, not a CRS, so it is not a
+  georeference in the strict sense (see [Background](#background-3d-gaussian-splatting)).
   - _Known distance._ Pick two points and type their real length in m or cm. This gives one scale
     factor (known ÷ picked). The file's origin and axes are kept, so coordinates become file
     coordinates × scale. The view does not change.
@@ -69,8 +71,11 @@ and inspect it entirely on the client?_
     float64 in JavaScript.
   - _Save / Load_ writes the picks and coordinates to a small JSON file and reads them back. The
     result is recomputed on load, and there is a warning if the JSON was made for another file.
-    Opening another file in the pane clears the georeference.
-  - Only one tool picks at a time: starting to pick in Georeference stops Measure, and the other
+    Opening another file in the pane clears the scale or coordinate system. The file format is
+    `3dgs-viewer-coordinate-system`; JSON saved before the rename (`3dgs-viewer-georeference`) is
+    not read.
+  - Only one tool picks at a time: starting to pick in Scale & coordinate system stops
+    Measure, and the other
     way round.
 - **Navigation.** Drag to orbit, right-drag to pan, scroll to zoom
   ([`OrbitControls`](https://threejs.org/docs/#examples/en/controls/OrbitControls)). With the
@@ -156,12 +161,12 @@ src/
   main.jsx               React root only
   App.jsx                composes the hooks and components
   config.js              constants: formats, camera, up axes, ellipsoid view, markers, panes,
-                         backgrounds, georeference, homepage link
+                         backgrounds, scale & coordinate system, homepage link
   viewer/splatViewer.js  three.js + Spark scene (no React): load, frame, orient, pick, markers,
                          camera view for linking, background
   viewer/backgrounds.js  colour and sky cube map backgrounds (no React)
   viewer/photoCameras.js frustums of the COLMAP photos (no React)
-  viewer/georefOverlay.js numbered control points and the user's origin/axes (no React)
+  viewer/frameOverlay.js  numbered control points and the user's origin/axes (no React)
   workers/               Web Worker for PSNR, SSIM and the difference image
   hooks/                 React hooks: the viewer and its load state, file opening and
                          drag and drop per pane, measurement, linked cameras, media query,
@@ -173,7 +178,7 @@ src/
   utils/                 pure helpers: PLY header, file formats, bounds and camera framing,
                          up-axis rotations, ellipsoid view settings, distance, formatting,
                          pane layout tree, COLMAP parsing, photo cameras, PSNR/SSIM,
-                         georeference (scale, similarity transform, JSON)
+                         local frame (scale, similarity transform, JSON)
 tests/                   Vitest unit tests for the pure helpers and the message store
 ```
 
@@ -340,7 +345,8 @@ must be tied to a CRS through GNSS camera positions or ground control points. Th
 [`KHR_gaussian_splatting`](https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_gaussian_splatting)
 inside 3D Tiles (ratified by Khronos, checked 2026-10-28) carries splats with a root transform
 onto the globe, which is how CesiumJS streams them. This viewer reads single local files, so it
-shows the file's own frame and units until you georeference it by hand (since 2026-11-05).
+shows the file's own frame and units until you give it a scale or a local coordinate system by
+hand (since 2026-11-05). That is not georeferencing: no CRS, datum or map projection is involved.
 "Known distance" fixes only the scale. "Known coordinates" fits a similarity (Helmert)
 transform from 3 or more control points: 7 parameters from 3 equations per point, so 3 points
 already give 2 redundant observations, and the residuals show how well the picks fit. It works
@@ -394,8 +400,8 @@ Real-Time Radiance Field Rendering", _ACM Transactions on Graphics_ 42(4), July 
 - **Desktop panel column.** On wide screens the panes start right of the panel, also when the
   panel is collapsed.
 - **Real-world frame only by hand.** See [Background](#background-3d-gaussian-splatting).
-  Without a georeference, distances are in file units and the up-axis choice covers only 90°
-  steps about x. The Georeference tool works in a local Cartesian frame (m or cm, Z up). It has
+  Without a scale or coordinate system, distances are in file units and the up-axis choice covers only 90°
+  steps about x. The Scale & coordinate system tool works in a local Cartesian frame (m or cm, Z up). It has
   no CRS and no map projection, so it cannot take latitude/longitude, and large projected
   coordinates (UTM) were not tested. Its accuracy is limited by the picks, which lie on splat
   ellipsoids (see the next item), and the residuals show this. The drawn axes are 1 px WebGL
@@ -442,7 +448,25 @@ libraries.
 
 ## Verification
 
-2026-11-05, georeference tool:
+2026-11-05, rename of the georeference tool to "Scale & coordinate system":
+
+- What changed: the tool's title, texts and code names (`georef.js` → `localFrame.js`,
+  `useGeoreference` → `useLocalFrame`, `GeoreferenceTool` → `LocalFrameTool`, `georefOverlay` →
+  `frameOverlay`, `GEOREF` → `LOCAL_FRAME`, `georef.test.js` → `localFrame.test.js`) and the
+  save format string. The computation is unchanged. Reason: the tool fits a local Cartesian frame
+  with no CRS, datum or projection, so "georeference" overstated what it does.
+- `npm run lint`: no problems. `npm run format:check`: all files pass. `npm test`: 13 files,
+  80 tests passed (the same 13 tests, now in `localFrame.test.js`). `npm run build` passes, with
+  the same chunk-size warning as before.
+- Playwright (Chromium, headless) on `vite preview` with `nugatti_plySH3.ply`, at 1600 × 900 and
+  390 × 844: the tool shows as "Scale & coordinate system" with both methods, the word
+  "georef" appears nowhere in the page text, no horizontal page overflow, no console errors.
+  Screenshots at both widths were looked at.
+- Not verified again: picking, fitting and Save/Load in the browser (the logic is unchanged and
+  covered by the unit tests). A JSON saved before the rename is rejected as "not a saved
+  coordinate system"; this was read from the code, not tried in the browser.
+
+2026-11-05, georeference tool (test file later renamed to `localFrame.test.js`):
 
 - `npm run lint`: no problems. `npm run format:check`: all files pass. `npm test`: 13 files,
   80 tests passed. New: `georef.test.js` with 13 tests:
@@ -703,6 +727,9 @@ All of that code, its README (with the alignment and benchmark results) and the 
 git history at commit `9442d81`.
 
 ## Status
+
+Rename (2026-11-05): the georeference tool is now "Scale & coordinate system", since it
+assigns a local frame, not a CRS. See [Verification](#verification).
 
 Georeference tool (2026-11-05): scale from a known distance, or a least-squares similarity
 transform from 3 or more control points in your own frame, with residuals, a levelled view, the
