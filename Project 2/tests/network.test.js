@@ -4,6 +4,7 @@ import { toWalkingNetwork } from '../src/utils/osmNetwork.js';
 import {
   buildGraph,
   findNearestByWalking,
+  findWalkInRange,
   nearestNode,
   shortestPathToAny,
   snapShelters,
@@ -137,5 +138,35 @@ describe('findNearestByWalking', () => {
     expect(findNearestByWalking(click, graph, snapShelters(graph, [islandShelter]))).toBe(
       undefined,
     );
+  });
+});
+
+describe('findWalkInRange', () => {
+  const shelterNodes = snapShelters(graph, [eastShelter, southShelter]);
+  const MAX_CONNECTOR = 100; // metres
+
+  it('returns the walk when the click is close to the network', () => {
+    const { nearest, outOfRange } = findWalkInRange(click, graph, shelterNodes, MAX_CONNECTOR);
+    expect(outOfRange).toBeUndefined();
+    expect(nearest).toEqual(findNearestByWalking(click, graph, shelterNodes));
+    // Click → node 1 (10.4000, 63.4300): 0.0001° of longitude ≈ 5 m.
+    expect(nearest.walk.toNetwork).toBeCloseTo(geodesicDistance(click, at(10.4, 63.43)), 6);
+  });
+
+  it('refuses a click further than the limit from the network', () => {
+    // 0.004° west of node 1 ≈ 199 m at 63.43°N, so a 100 m limit refuses it.
+    const far = at(10.396, 63.43);
+    const { nearest, outOfRange } = findWalkInRange(far, graph, shelterNodes, MAX_CONNECTOR);
+    expect(nearest).toBeUndefined();
+    expect(outOfRange.reason).toBe('far');
+    expect(outOfRange.connector).toBeCloseTo(geodesicDistance(far, at(10.4, 63.43)), 6);
+    expect(outOfRange.connector).toBeGreaterThan(MAX_CONNECTOR);
+  });
+
+  it('refuses a click whose part of the network reaches no shelter', () => {
+    const island = at(10.4101, 63.4202); // next to the isolated island path
+    const { nearest, outOfRange } = findWalkInRange(island, graph, shelterNodes, MAX_CONNECTOR);
+    expect(nearest).toBeUndefined();
+    expect(outOfRange.reason).toBe('unreachable');
   });
 });

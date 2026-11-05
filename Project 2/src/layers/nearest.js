@@ -46,7 +46,7 @@ export function onGroundClick(viewer, onClick) {
  * @returns {() => void} call to remove the drawing.
  */
 export function drawNearestLine(viewer, point, { shelter, distance, walk }) {
-  const { color, lineWidth, pointSize, outlineColor, outlineWidth } = NEAREST.style;
+  const { color, lineWidth } = NEAREST.style;
   const cesiumColor = Color.fromCssColorString(color);
   const lonLats = walk?.coordinates ?? [
     [point.longitude, point.latitude],
@@ -62,14 +62,7 @@ export function drawNearestLine(viewer, point, { shelter, distance, walk }) {
       ['Address', shelter.adresse],
     ]),
     position: Cartesian3.fromDegrees(point.longitude, point.latitude),
-    point: {
-      pixelSize: pointSize,
-      color: cesiumColor,
-      outlineColor: Color.fromCssColorString(outlineColor),
-      outlineWidth,
-      heightReference: HeightReference.CLAMP_TO_GROUND,
-      disableDepthTestDistance: Number.POSITIVE_INFINITY,
-    },
+    point: pointGraphics(color),
     polyline: {
       positions: Cartesian3.fromDegreesArray(lonLats.flat()),
       // Draped on terrain and 3D Tiles; the default ArcType.GEODESIC joins vertices by geodesics.
@@ -78,8 +71,41 @@ export function drawNearestLine(viewer, point, { shelter, distance, walk }) {
       material: cesiumColor,
     },
   });
-  viewer.scene.requestRender(); // requestRenderMode: adding an entity does not render by itself
+  return showEntity(viewer, entity);
+}
 
+/**
+ * Draw only the clicked point, e.g. when the click is out of the network's range.
+ * @param {import('cesium').Viewer} viewer
+ * @param {import('../utils/nearest.js').LonLat} point - clicked point, WGS84 degrees.
+ * @param {string} color - CSS colour.
+ * @returns {() => void} call to remove the drawing.
+ */
+export function drawClickedPoint(viewer, point, color) {
+  const entity = viewer.entities.add({
+    name: 'Out of range',
+    position: Cartesian3.fromDegrees(point.longitude, point.latitude),
+    point: pointGraphics(color),
+  });
+  return showEntity(viewer, entity);
+}
+
+/** Point graphics for the clicked point, clamped to the ground and never hidden by terrain. */
+function pointGraphics(color) {
+  const { pointSize, outlineColor, outlineWidth } = NEAREST.style;
+  return {
+    pixelSize: pointSize,
+    color: Color.fromCssColorString(color),
+    outlineColor: Color.fromCssColorString(outlineColor),
+    outlineWidth,
+    heightReference: HeightReference.CLAMP_TO_GROUND,
+    disableDepthTestDistance: Number.POSITIVE_INFINITY,
+  };
+}
+
+/** Render an added entity and return a function that removes it again. */
+function showEntity(viewer, entity) {
+  viewer.scene.requestRender(); // requestRenderMode: adding an entity does not render by itself
   return () => {
     if (viewer.isDestroyed()) return;
     viewer.entities.remove(entity);

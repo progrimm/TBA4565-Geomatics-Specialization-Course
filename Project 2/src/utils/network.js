@@ -9,9 +9,10 @@ import { geodesicDistance } from './nearest.js';
  *
  * @typedef {{lon: Float64Array, lat: Float64Array, adjacency: number[][]}} Graph
  *   lon/lat: WGS84 degrees per node. adjacency[i] = [neighbour, metres, neighbour, metres, …].
- * @typedef {{distance: number, networkDistance: number, coordinates: number[][]}} Walk
+ * @typedef {{distance: number, networkDistance: number, toNetwork: number, coordinates: number[][]}} Walk
  *   distance: total metres (click → network → shelter); networkDistance: the part
- *   along the network; coordinates: WGS84 [lon, lat] from the click to the shelter.
+ *   along the network; toNetwork: the straight connector from the click to the
+ *   network; coordinates: WGS84 [lon, lat] from the click to the shelter.
  */
 
 /**
@@ -173,6 +174,36 @@ export function snapShelters(graph, shelters) {
   return byNode;
 }
 
+/** WGS84 degrees of a graph node. */
+const nodeLonLat = ({ lon, lat }, i) => ({ longitude: lon[i], latitude: lat[i] });
+
+/**
+ * The walk from a point that is already snapped to `start`.
+ * @returns {{shelter: import('./nearest.js').Shelter, distance: number, walk: Walk} | undefined}
+ */
+function walkFrom(point, start, graph, shelterNodes) {
+  const result = shortestPathToAny(graph, start, new Set(shelterNodes.keys()));
+  if (!result) return undefined;
+
+  const shelter = shelterNodes.get(result.node);
+  const toNetwork = geodesicDistance(point, nodeLonLat(graph, start));
+  const fromNetwork = geodesicDistance(nodeLonLat(graph, result.node), shelter);
+  return {
+    shelter,
+    distance: geodesicDistance(point, shelter),
+    walk: {
+      distance: toNetwork + result.distance + fromNetwork,
+      networkDistance: result.distance,
+      toNetwork,
+      coordinates: [
+        [point.longitude, point.latitude],
+        ...result.path.map((i) => [graph.lon[i], graph.lat[i]]),
+        [shelter.longitude, shelter.latitude],
+      ],
+    },
+  };
+}
+
 /**
  * Find the shelter with the shortest walk from a point. The walk is: a straight
  * line from the point to its nearest network node, the shortest path along the
@@ -186,25 +217,28 @@ export function snapShelters(graph, shelters) {
  */
 export function findNearestByWalking(point, graph, shelterNodes) {
   const start = nearestNode(graph, point);
-  if (start === -1) return undefined;
-  const result = shortestPathToAny(graph, start, new Set(shelterNodes.keys()));
-  if (!result) return undefined;
+  return start === -1 ? undefined : walkFrom(point, start, graph, shelterNodes);
+}
 
-  const shelter = shelterNodes.get(result.node);
-  const nodeLonLat = (i) => ({ longitude: graph.lon[i], latitude: graph.lat[i] });
-  const toNetwork = geodesicDistance(point, nodeLonLat(start));
-  const fromNetwork = geodesicDistance(nodeLonLat(result.node), shelter);
-  return {
-    shelter,
-    distance: geodesicDistance(point, shelter),
-    walk: {
-      distance: toNetwork + result.distance + fromNetwork,
-      networkDistance: result.distance,
-      coordinates: [
-        [point.longitude, point.latitude],
-        ...result.path.map((i) => [graph.lon[i], graph.lat[i]]),
-        [shelter.longitude, shelter.latitude],
-      ],
-    },
-  };
+/**
+ * Like findNearestByWalking, but refuses clicks the network cannot really serve:
+ * a point further than `maxConnector` metres from the nearest network node (outside
+ * the network's coverage, in the fjord, in a large field), or a point from whose
+ * part of the network no shelter can be reached. Both would otherwise be answered
+ * with a long straight line, which is not a walking route.
+ * @param {import('./nearest.js').LonLat} point - WGS84 degrees.
+ * @param {Graph} graph
+ * @param {Map<number, import('./nearest.js').Shelter>} shelterNodes - from snapShelters.
+ * @param {number} maxConnector - longest allowed straight connector, metres.
+ * @returns {{nearest: NonNullable<ReturnType<typeof findNearestByWalking>>} |
+ *   {outOfRange: {reason: 'far' | 'unreachable', connector?: number}}}
+ *   connector: geodesic metres from the point to its nearest network node.
+ */
+export function findWalkInRange(point, graph, shelterNodes, maxConnector) {
+  const start = nearestNode(graph, point);
+  if (start === -1) return { outOfRange: { reason: 'unreachable' } };
+  const connector = geodesicDistance(point, nodeLonLat(graph, start));
+  if (connector > maxConnector) return { outOfRange: { reason: 'far', connector } };
+  const nearest = walkFrom(point, start, graph, shelterNodes);
+  return nearest ? { nearest } : { outOfRange: { reason: 'unreachable', connector } };
 }

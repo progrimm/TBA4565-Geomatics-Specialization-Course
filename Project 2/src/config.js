@@ -87,12 +87,20 @@ export const NEAREST = {
     url: `${import.meta.env.BASE_URL}data/walking-network.json`,
     credit: 'Walking network: © OpenStreetMap contributors, ODbL',
   },
+  /**
+   * Longest straight connector (geodesic metres) from a click to its nearest network
+   * node. A click further away is outside the network's coverage (the network covers
+   * the shelters' bounding box plus about 1 km), in the fjord or in a large field, and
+   * is refused instead of being answered with a long straight line.
+   */
+  maxConnector: 100,
   style: {
     color: '#22d3ee',
     lineWidth: 4, // pixels
     pointSize: 10, // pixels
     outlineColor: '#000000',
     outlineWidth: 2,
+    outOfRangeColor: '#ff5a4f', // the clicked point when it is out of range
   },
 };
 

@@ -16,8 +16,9 @@ const numberFormat = new Intl.NumberFormat('en-GB');
  * @param {'loading' | 'ready' | 'error'} props.networkStatus - walking network status.
  * @param {import('../utils/nearest.js').Shelter[]} props.shelters
  * @param {import('../hooks/useNearestShelter.js').NearestResult} [props.nearest]
+ * @param {import('../hooks/useNearestShelter.js').OutOfRange} [props.outOfRange]
  */
-export default function NearestShelter({ status, networkStatus, shelters, nearest }) {
+export default function NearestShelter({ status, networkStatus, shelters, nearest, outOfRange }) {
   const { count, capacity } = summarizeShelters(shelters);
 
   return (
@@ -50,7 +51,11 @@ export default function NearestShelter({ status, networkStatus, shelters, neares
                 <dd>{numberFormat.format(nearest.shelter.plasser)} people</dd>
               </dl>
             ) : (
-              <p className="analysis__hint">Click the ground to find the nearest shelter.</p>
+              <p className="analysis__hint">
+                {outOfRange
+                  ? 'Out of range: no walking route from there.'
+                  : 'Click the ground to find the nearest shelter.'}
+              </p>
             )}
           </div>
           {networkStatus === 'ready' ? (

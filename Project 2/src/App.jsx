@@ -9,6 +9,7 @@ import ControlPanel from './components/ControlPanel.jsx';
 import ViewButtons from './components/ViewButtons.jsx';
 import LayerToggle from './components/LayerToggle.jsx';
 import NearestShelter from './components/NearestShelter.jsx';
+import OutOfRange from './components/OutOfRange.jsx';
 import Messages from './components/Messages.jsx';
 
 export default function App() {
@@ -40,6 +41,7 @@ export default function App() {
         </section>
         <NearestShelter status={shelters.status} networkStatus={network.status} {...analysis} />
       </ControlPanel>
+      <OutOfRange outOfRange={analysis.outOfRange} onClose={analysis.dismissOutOfRange} />
       <Messages />
     </>
   );

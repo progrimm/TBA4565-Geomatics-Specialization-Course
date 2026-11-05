@@ -289,6 +289,60 @@ body {
   margin: 0;
 }
 
+/* ---------- Out-of-range popup ---------- */
+/* Covers the map only to centre the card; clicks outside the card still reach the map. */
+.popup-layer {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--gutter);
+  pointer-events: none;
+}
+
+.popup {
+  width: min(100%, 22rem);
+  padding: var(--space-4);
+  border-radius: var(--radius);
+  background: var(--surface);
+  backdrop-filter: var(--glass);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--error);
+  box-shadow: var(--shadow);
+  box-sizing: border-box;
+  pointer-events: auto;
+}
+
+.popup__kicker {
+  margin: 0 0 var(--space-1);
+  color: var(--error);
+  font-size: 0.75rem;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.popup__title {
+  margin: 0 0 var(--space-2);
+  font-size: 1.1rem;
+}
+
+.popup__text {
+  margin: 0 0 var(--space-4);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.popup__button {
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 /* ---------- Messages (toasts) ---------- */
 #messages {
   position: absolute;

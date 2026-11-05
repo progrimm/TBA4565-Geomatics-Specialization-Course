@@ -1,37 +1,41 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { NEAREST } from '../config.js';
 import { toShelterRecords } from '../layers/shelters.js';
-import { drawNearestLine, onGroundClick } from '../layers/nearest.js';
+import { drawClickedPoint, drawNearestLine, onGroundClick } from '../layers/nearest.js';
 import { findNearest } from '../utils/nearest.js';
-import { findNearestByWalking, snapShelters } from '../utils/network.js';
+import { findWalkInRange, snapShelters } from '../utils/network.js';
 
 /**
  * @typedef {{shelter: import('../utils/nearest.js').Shelter, distance: number,
  *   walk?: import('../utils/network.js').Walk}} NearestResult
  *   distance: straight-line (geodesic) metres; walk: undefined when the walking
- *   network is not available or no shelter is reachable on it.
+ *   network is not available.
+ * @typedef {{reason: 'far' | 'unreachable', connector?: number}} OutOfRange
+ *   connector: geodesic metres from the click to the nearest network node.
  */
 
 /**
- * Find the nearest shelter: by walking distance when the network graph is ready,
- * otherwise by straight-line distance.
+ * Find the nearest shelter: by walking distance when the network graph is ready
+ * (refusing clicks out of the network's range), otherwise by straight-line distance.
  * @param {import('../utils/nearest.js').LonLat} point
  * @param {{shelters: import('../utils/nearest.js').Shelter[], graph?: object, shelterNodes?: Map}} analysis
- * @returns {NearestResult}
+ * @returns {{nearest?: NearestResult, outOfRange?: OutOfRange}}
  */
 function findNearestShelter(point, { shelters, graph, shelterNodes }) {
-  return (
-    (graph && findNearestByWalking(point, graph, shelterNodes)) ?? findNearest(point, shelters)
-  );
+  if (!graph) return { nearest: findNearest(point, shelters) };
+  return findWalkInRange(point, graph, shelterNodes, NEAREST.maxConnector);
 }
 
 /**
  * "Nearest shelter" analysis: once the shelters are loaded, every click on the
  * ground finds the nearest shelter and draws a line (the walking route if
- * available) to it, replacing the last one.
+ * available) to it, replacing the last one. A click out of the walking network's
+ * range draws only the clicked point and reports `outOfRange` instead.
  * @param {import('cesium').Viewer | undefined} viewer
  * @param {import('./useAsyncLayer.js').LayerState} sheltersState - from useAsyncLayer(addShelters).
  * @param {{graph?: import('../utils/network.js').Graph}} networkState - from useWalkingNetwork().
- * @returns {{shelters: import('../utils/nearest.js').Shelter[], nearest?: NearestResult}}
+ * @returns {{shelters: import('../utils/nearest.js').Shelter[], nearest?: NearestResult,
+ *   outOfRange?: OutOfRange, dismissOutOfRange: () => void}}
  */
 export function useNearestShelter(viewer, sheltersState, networkState) {
   const { graph } = networkState;
@@ -41,27 +45,37 @@ export function useNearestShelter(viewer, sheltersState, networkState) {
     const shelterNodes = graph && snapShelters(graph, shelters);
     return { shelters, graph, shelterNodes };
   }, [sheltersState, graph]);
-  const [result, setResult] = useState({ analysis: undefined, nearest: undefined });
+  const [result, setResult] = useState({ analysis: undefined });
 
   useEffect(() => {
     if (!viewer || analysis.shelters.length === 0) return undefined;
-    let removeLine = () => {};
+    let removeDrawing = () => {};
     const stopListening = onGroundClick(viewer, (point) => {
-      const nearest = findNearestShelter(point, analysis);
-      removeLine();
-      removeLine = drawNearestLine(viewer, point, nearest);
-      setResult({ analysis, nearest });
+      const { nearest, outOfRange } = findNearestShelter(point, analysis);
+      removeDrawing();
+      removeDrawing = nearest
+        ? drawNearestLine(viewer, point, nearest)
+        : drawClickedPoint(viewer, point, NEAREST.style.outOfRangeColor);
+      setResult({ analysis, nearest, outOfRange });
     });
     return () => {
       stopListening();
-      removeLine();
+      removeDrawing();
     };
   }, [viewer, analysis]);
 
-  // The line is removed when the analysis changes (e.g. the network finished
+  const dismissOutOfRange = useCallback(
+    () => setResult((previous) => ({ ...previous, outOfRange: undefined })),
+    [],
+  );
+
+  // The drawing is removed when the analysis changes (e.g. the network finished
   // loading or the viewer remounted), so the old result is no longer shown.
+  const current = result.analysis === analysis ? result : {};
   return {
     shelters: analysis.shelters,
-    nearest: result.analysis === analysis ? result.nearest : undefined,
+    nearest: current.nearest,
+    outOfRange: current.outOfRange,
+    dismissOutOfRange,
   };
 }
