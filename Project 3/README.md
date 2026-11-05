@@ -48,8 +48,30 @@ and inspect it entirely on the client?_
 - **Two-point measurement.** Click two points on the splat to get the straight distance between
   them. Picking uses Spark's `SplatMesh.raycast` through a three.js
   [`Raycaster`](https://threejs.org/docs/#api/en/core/Raycaster), which hits the nearest splat
-  ellipsoid. Distances are in the file's own units. They are metres only if the capture was
-  scaled, for example with GNSS camera positions or a known distance.
+  ellipsoid. Distances are in the file's own units, or in m or cm once a georeference is
+  applied (then the picked points are also shown in that frame).
+- **Georeference** (per pane), two methods:
+  - _Known distance._ Pick two points and type their real length in m or cm. This gives one scale
+    factor (known ÷ picked). The file's origin and axes are kept, so coordinates become file
+    coordinates × scale. The view does not change.
+  - _Known coordinates._ Define your own frame (right-handed, Z up, in m or cm), for example
+    with a table corner as the origin. Pick 3 or more points on the splat and type their X, Y, Z.
+    The app fits a 7-parameter similarity (Helmert) transform from the file frame to yours by
+    least squares: 1 scale, 3 rotations and 3 translations. It shows the scale, the rotation (angle
+    and axis), where your origin lies in the file, the residual per point (dX, dY, dZ, |d|) and the
+    RMSE. The view is then levelled so your +Z is up, which replaces the up-axis guess. Your
+    origin is drawn as O with the X (red), Y (green) and Z (blue) axes.
+  - The fit is Horn's closed-form unit-quaternion solution
+    ([Horn 1987](https://doi.org/10.1364/JOSAA.4.000629)), with the scale as in
+    [Umeyama 1991](https://doi.org/10.1109/34.88573), so the residuals are least squares in your
+    frame. It needs no iteration and cannot return a mirrored frame. Collinear points are rejected.
+    The splat is only rotated on the GPU, never scaled or moved, and the transform stays in
+    float64 in JavaScript.
+  - _Save / Load_ writes the picks and coordinates to a small JSON file and reads them back. The
+    result is recomputed on load, and there is a warning if the JSON was made for another file.
+    Opening another file in the pane clears the georeference.
+  - Only one tool picks at a time: starting to pick in Georeference stops Measure, and the other
+    way round.
 - **Navigation.** Drag to orbit, right-drag to pan, scroll to zoom
   ([`OrbitControls`](https://threejs.org/docs/#examples/en/controls/OrbitControls)). With the
   view focused, the arrow keys pan and Shift + arrows orbit.
@@ -134,11 +156,12 @@ src/
   main.jsx               React root only
   App.jsx                composes the hooks and components
   config.js              constants: formats, camera, up axes, ellipsoid view, markers, panes,
-                         backgrounds, homepage link
+                         backgrounds, georeference, homepage link
   viewer/splatViewer.js  three.js + Spark scene (no React): load, frame, orient, pick, markers,
                          camera view for linking, background
   viewer/backgrounds.js  colour and sky cube map backgrounds (no React)
   viewer/photoCameras.js frustums of the COLMAP photos (no React)
+  viewer/georefOverlay.js numbered control points and the user's origin/axes (no React)
   workers/               Web Worker for PSNR, SSIM and the difference image
   hooks/                 React hooks: the viewer and its load state, file opening and
                          drag and drop per pane, measurement, linked cameras, media query,
@@ -149,14 +172,16 @@ src/
   state/                 framework-independent stores: messages, which tools are open
   utils/                 pure helpers: PLY header, file formats, bounds and camera framing,
                          up-axis rotations, ellipsoid view settings, distance, formatting,
-                         pane layout tree, COLMAP parsing, photo cameras, PSNR/SSIM
+                         pane layout tree, COLMAP parsing, photo cameras, PSNR/SSIM,
+                         georeference (scale, similarity transform, JSON)
 tests/                   Vitest unit tests for the pure helpers and the message store
 ```
 
 Main design choices:
 
 - **The engine stays out of React.** `viewer/splatViewer.js` owns the three.js objects and offers
-  a small API (`load`, `resetView`, `setUpAxis`, `pick`, `setMarkers`, `dispose`). The hooks
+  a small API (`load`, `resetView`, `setUpAxis`, `pick`, `setMarkers`, `setLevelRotation`,
+  `setControlPoints`, `setFrameAxes`, `dispose`, …). The hooks
   call it and keep only UI state. This is the same split as the Cesium code in Project 2.
 - **Spark.** Spark reads all five formats from bytes, and it is a three.js object, so the
   three.js raycaster, controls and helpers work with it. It had already been integrated in the
@@ -315,8 +340,12 @@ must be tied to a CRS through GNSS camera positions or ground control points. Th
 [`KHR_gaussian_splatting`](https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_gaussian_splatting)
 inside 3D Tiles (ratified by Khronos, checked 2026-10-28) carries splats with a root transform
 onto the globe, which is how CesiumJS streams them. This viewer reads single local files, so it
-shows the file's own frame and units. The up-axis choice is the only "georeferencing" step, and
-the measurements are in file units.
+shows the file's own frame and units until you georeference it by hand (since 2026-11-05).
+"Known distance" fixes only the scale. "Known coordinates" fits a similarity (Helmert)
+transform from 3 or more control points: 7 parameters from 3 equations per point, so 3 points
+already give 2 redundant observations, and the residuals show how well the picks fit. It works
+in a local frame you define, not in a CRS. The step that remains to a national CRS is to type
+projected coordinates (e.g. EUREF89 UTM 32N) for surveyed points, which was not tested.
 
 Reference: B. Kerbl, G. Kopanas, T. Leimkühler and G. Drettakis, "3D Gaussian Splatting for
 Real-Time Radiance Field Rendering", _ACM Transactions on Graphics_ 42(4), July 2023
@@ -364,8 +393,14 @@ Real-Time Radiance Field Rendering", _ACM Transactions on Graphics_ 42(4), July 
 - **One drop, one file.** Dropping several files on a pane opens only the first.
 - **Desktop panel column.** On wide screens the panes start right of the panel, also when the
   panel is collapsed.
-- **No real-world frame or scale.** See [Background](#background-3d-gaussian-splatting).
-  Distances are in file units, and the up-axis choice covers only 90° steps about x.
+- **Real-world frame only by hand.** See [Background](#background-3d-gaussian-splatting).
+  Without a georeference, distances are in file units and the up-axis choice covers only 90°
+  steps about x. The Georeference tool works in a local Cartesian frame (m or cm, Z up). It has
+  no CRS and no map projection, so it cannot take latitude/longitude, and large projected
+  coordinates (UTM) were not tested. Its accuracy is limited by the picks, which lie on splat
+  ellipsoids (see the next item), and the residuals show this. The drawn axes are 1 px WebGL
+  lines and can be hard to see on a busy splat. The extent in File facts is scaled along the file
+  axes, not measured along your axes.
 - **Measurement accuracy.** A pick hits the nearest splat ellipsoid along the ray, not a surface.
   Semi-transparent floaters in front of the scene can be hit first.
 - **Photo comparison.** Only undistorted pinhole COLMAP models. The photos must be the images the
@@ -406,6 +441,47 @@ third-party data credits; Spark (MIT, World Labs) and three.js (MIT) are its ren
 libraries.
 
 ## Verification
+
+2026-11-05, georeference tool:
+
+- `npm run lint`: no problems. `npm run format:check`: all files pass. `npm test`: 13 files,
+  80 tests passed. New: `georef.test.js` with 13 tests:
+  - the eigen-solver satisfies A v = λ v;
+  - quaternion rotation matches three.js;
+  - a known transform (scale 2.5, 40° about a tilted axis, a 6 000 000 / 500 000 / 120 offset)
+    is recovered with RMSE < 10⁻⁶;
+  - exactly 3 points work;
+  - with noise of about 0.01–0.02, the RMSE is between 0.001 and 0.03 and the residuals sum to 0;
+  - your origin and axes map back correctly;
+  - too few, incomplete and collinear points are rejected;
+  - scale from a distance;
+  - levelling turns your +Z into screen up;
+  - the angle and axis are reported correctly;
+  - JSON round trip and rejection of bad files.
+
+  `format.test.js` also checks that −0.000 is now shown as 0.000. `npm run build` passes.
+
+- Playwright (Chromium, headless) on `vite preview` with `nugatti_plySH3.ply`, at 1600 × 900:
+  - _Known distance:_ two picks 0.958 units apart, a real length of 12 cm → "1 file unit =
+    12.526 cm". Measuring the same two screen points then gave "Distance: 12.000 cm". The extent
+    showed as 23.761 × 19.474 × 19.702 cm (file axes).
+  - _Exclusive picking:_ with Measure active, "Pick 2 points" turned Measure off.
+  - _Known coordinates:_ 4 points were picked; one burlap edge missed and the next screen point was
+    used. Their file coordinates were read from a saved JSON. Target coordinates were made from a
+    chosen transform in Node with three.js: scale 6 cm per unit, R = Rz(30°)·Rx(−90°) (file −Y up
+    → your +Z up), and the origin at point 4. The app returned scale 6.000 cm, rotation 93.84°
+    about (−0.935, −0.251, 0.251), and origin (−0.713, 2.527, 0.308) file units. All three equal
+    the values computed from the chosen transform. RMSE 0.000 cm and all residuals 0.000. The
+    view levelled with the cup upright, O was drawn at point 4, and the blue Z axis pointed up.
+  - _Save/Load:_ after a page reload and opening the splat again, loading the saved JSON gave the
+    identical result text.
+  - At 390 × 844 the loaded georeference showed the table with all columns, the markers and the
+    axes, and there was no horizontal page overflow. No console errors.
+  - Screenshots at both widths were looked at. At first the control-point table overflowed the
+    300 px panel; its columns were then fixed.
+- Not verified: real-world accuracy. That needs lengths or coordinates measured on the real cup
+  and table; the numbers above only show that the computation is correct. Also not verified:
+  projected coordinates (UTM) in the app, other formats, and the live site.
 
 2026-11-05, ellipsoid view:
 
@@ -627,6 +703,10 @@ All of that code, its README (with the alignment and benchmark results) and the 
 git history at commit `9442d81`.
 
 ## Status
+
+Georeference tool (2026-11-05): scale from a known distance, or a least-squares similarity
+transform from 3 or more control points in your own frame, with residuals, a levelled view, the
+drawn origin/axes and JSON save/load. See [Verification](#verification).
 
 Ellipsoid view (2026-11-05): a per-pane slider from the normal render to opaque splats cut at
 their 1σ ellipse, to show how the Gaussians are spread. See [Verification](#verification).
