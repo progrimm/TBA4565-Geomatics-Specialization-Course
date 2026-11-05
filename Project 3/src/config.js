@@ -41,6 +41,12 @@ export const CAMERA = {
 export const UP_AXES = ['+y', '-y', '+z', '-z'];
 export const DEFAULT_UP_AXIS = '-y';
 
+/**
+ * Ellipsoid view (0 = normal render, 1 = opaque ellipsoids): where Spark cuts a splat off, in
+ * standard deviations, at 0 (Spark's default, √8) and at 1 (the 1σ ellipse); slider step.
+ */
+export const ELLIPSOID_VIEW = { defaultStdDev: Math.sqrt(8), edgeStdDev: 1, step: 0.01 };
+
 /** Measurement markers: diameter as a fraction of the view height, and colour. */
 export const MARKER = { screenSize: 0.025, color: '#f5a623' };
 

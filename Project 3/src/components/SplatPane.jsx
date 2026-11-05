@@ -6,6 +6,7 @@ import { useMeasurement } from '../hooks/useMeasurement.js';
 import { useEvaluation } from '../hooks/useEvaluation.js';
 import { useSplatViewer } from '../hooks/useSplatViewer.js';
 import FileOpener, { DropOverlay, EmptyState } from './FileOpener.jsx';
+import EllipsoidTool from './EllipsoidTool.jsx';
 import EvaluationTool from './EvaluationTool.jsx';
 import MeasureTool from './MeasureTool.jsx';
 import OrientationTool from './OrientationTool.jsx';
@@ -61,7 +62,17 @@ export default function SplatPane({
   onCompare,
 }) {
   const paneRef = useRef(null);
-  const { canvasRef, viewer, loading, facts, upAxis, setUpAxis, open } = useSplatViewer();
+  const {
+    canvasRef,
+    viewer,
+    loading,
+    facts,
+    upAxis,
+    setUpAxis,
+    ellipsoidView,
+    setEllipsoidView,
+    open,
+  } = useSplatViewer();
   const measurement = useMeasurement(viewer, canvasRef, facts);
   const { inputRef, onInputChange, choose, dragging } = useFileOpener(open, paneRef);
   useEffect(() => {
@@ -102,6 +113,7 @@ export default function SplatPane({
             onUpAxis={setUpAxis}
             onReset={() => viewer?.resetView()}
           />
+          <EllipsoidTool amount={ellipsoidView} onAmount={setEllipsoidView} />
           <MeasureTool measurement={measurement} />
           {photos.length > 0 && (
             <EvaluationTool

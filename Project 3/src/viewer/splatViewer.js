@@ -3,7 +3,7 @@
 // Spark: https://sparkjs.dev/docs/  three.js: https://threejs.org/docs/
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { SparkRenderer, SplatMesh } from '@sparkjsdev/spark';
+import { SparkRenderer, SplatMesh, dyno } from '@sparkjsdev/spark';
 import {
   CAMERA,
   CORE_FRACTION,
@@ -22,6 +22,7 @@ import {
   coreBounds,
   fullBounds,
 } from '../utils/bounds.js';
+import { ellipsoidSettings } from '../utils/ellipsoidView.js';
 import { upAxisRotation } from '../utils/orientation.js';
 import { fitRect, photoProjection } from '../utils/photoCamera.js';
 import { flipRows } from '../utils/metrics.js';
@@ -55,6 +56,20 @@ function circleTexture() {
 }
 
 /**
+ * A Spark object modifier (a dyno graph, run on the GPU for every splat) that pulls each splat's
+ * opacity towards 1 by `amount` (0..1). It never lowers an opacity. The stored splat data is not
+ * changed, so the modifier can be undone at any time. Spark docs: https://sparkjs.dev/docs/
+ * @param {ReturnType<typeof dyno.dynoFloat>} amount - uniform, 0 = unchanged, 1 = all opaque.
+ */
+function opacityModifier(amount) {
+  return dyno.dynoBlock({ gsplat: dyno.Gsplat }, { gsplat: dyno.Gsplat }, ({ gsplat }) => {
+    const { opacity } = dyno.splitGsplat(gsplat).outputs;
+    const raised = dyno.mix(opacity, dyno.dynoConst('float', 1), amount);
+    return { gsplat: dyno.combineGsplat({ gsplat, opacity: dyno.max(opacity, raised) }) };
+  });
+}
+
+/**
  * Create the viewer on a canvas that fills its parent.
  * @param {HTMLCanvasElement} canvas
  * @returns {{
@@ -74,6 +89,7 @@ function circleTexture() {
  *   photoName: () => string | null,
  *   onPhotoView: (callback: (name: string | null) => void) => () => void,
  *   renderPhoto: (photo: import('./photoCameras.js').Photo) => Promise<Uint8Array>,
+ *   setEllipsoidView: (amount: number) => void,
  *   dispose: () => void,
  * }}
  */
@@ -109,6 +125,10 @@ export function createSplatViewer(canvas) {
 
   let mesh = null;
   let core = null;
+  // Ellipsoid view: one modifier for every splat this viewer loads, driven by a uniform.
+  const opacityMix = dyno.dynoFloat(0);
+  const objectModifier = opacityModifier(opacityMix);
+  let ellipsoidAmount = 0;
   const markers = new THREE.Group();
   model.add(markers);
   const photoCameras = createPhotoCameras(model);
@@ -160,7 +180,7 @@ export function createSplatViewer(canvas) {
   }
 
   async function load(bytes, fileName) {
-    const next = new SplatMesh({ fileBytes: bytes, fileName });
+    const next = new SplatMesh({ fileBytes: bytes, fileName, objectModifier });
     try {
       await next.initialized;
     } catch (error) {
@@ -190,6 +210,24 @@ export function createSplatViewer(canvas) {
       fullSize: boundsSize(full),
       coreSize: boundsSize(core),
     };
+  }
+
+  /**
+   * Ellipsoid view, 0 (normal render) to 1 (opaque splats, flat fill cut at the 1σ ellipse).
+   * falloff and maxStdDev belong to this pane's SparkRenderer; opacity to the splat's modifier.
+   */
+  function applyEllipsoidView(amount) {
+    const settings = ellipsoidSettings(amount);
+    opacityMix.value = settings.opacityMix;
+    spark.falloff = settings.falloff;
+    spark.maxStdDev = settings.maxStdDev;
+    // A changed dyno uniform takes effect once Spark regenerates the splats.
+    mesh?.updateVersion();
+  }
+
+  function setEllipsoidView(amount) {
+    ellipsoidAmount = amount;
+    applyEllipsoidView(amount);
   }
 
   function setUpAxis(axis) {
@@ -349,6 +387,8 @@ export function createSplatViewer(canvas) {
     renderer.setClearColor(0x000000, 0);
     markers.visible = false;
     photoCameras.setVisible(false);
+    // PSNR/SSIM always measure the real splat, not the ellipsoid view.
+    applyEllipsoidView(0);
     try {
       // update() waits until the splats are sorted for this camera.
       await photoSpark.update({ scene, camera: photoCamera });
@@ -359,6 +399,7 @@ export function createSplatViewer(canvas) {
       renderer.setClearColor(saved.clearColor, saved.clearAlpha);
       markers.visible = true;
       photoCameras.setVisible(photosVisible && !photoInView);
+      applyEllipsoidView(ellipsoidAmount);
       if (!disposed) renderer.setAnimationLoop(frame);
     }
   }
@@ -458,6 +499,7 @@ export function createSplatViewer(canvas) {
     photoName: () => photoInView?.name ?? null,
     onPhotoView,
     renderPhoto,
+    setEllipsoidView,
     dispose,
   };
 }

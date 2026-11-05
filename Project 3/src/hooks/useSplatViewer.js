@@ -26,6 +26,7 @@ class FileProblem extends Error {}
  * @returns {{canvasRef: import('react').RefObject<HTMLCanvasElement>,
  *   viewer: ReturnType<typeof createSplatViewer> | null, loading: boolean,
  *   facts: SplatFacts | null, upAxis: string, setUpAxis: (axis: string) => void,
+ *   ellipsoidView: number, setEllipsoidView: (amount: number) => void,
  *   open: (file: File) => Promise<void>}}
  */
 export function useSplatViewer() {
@@ -34,6 +35,8 @@ export function useSplatViewer() {
   const [loading, setLoading] = useState(false);
   const [facts, setFacts] = useState(null);
   const [upAxis, setUpAxisState] = useState(DEFAULT_UP_AXIS);
+  // 0 = normal render, 1 = opaque ellipsoids. Kept when another file is opened in this pane.
+  const [ellipsoidView, setEllipsoidViewState] = useState(0);
   const hideError = useRef(() => {});
   // A ref, not state, so open() stays the same function while loading (the drop
   // listeners depend on it) and two quick drops cannot both start a load.
@@ -124,5 +127,23 @@ export function useSplatViewer() {
     [viewer],
   );
 
-  return { canvasRef, viewer, loading, facts, upAxis, setUpAxis, open };
+  const setEllipsoidView = useCallback(
+    (amount) => {
+      viewer?.setEllipsoidView(amount);
+      setEllipsoidViewState(amount);
+    },
+    [viewer],
+  );
+
+  return {
+    canvasRef,
+    viewer,
+    loading,
+    facts,
+    upAxis,
+    setUpAxis,
+    ellipsoidView,
+    setEllipsoidView,
+    open,
+  };
 }
