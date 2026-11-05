@@ -30,6 +30,8 @@ page open and inspect it entirely on the client?"
 - File facts: format, size, splat count, extent with/without floaters, PLY
   header (encoding, properties, SH degree).
 - Orientation fix (up axis +Y/-Y/+Z/-Z) and reset view.
+- Ellipsoid view per pane (slider: opacity towards 1, flat fill cut at 1σ, via a
+  Spark object modifier + SparkRenderer falloff/maxStdDev); off for PSNR/SSIM renders.
 - Two-point distance in file units.
 - "← My GIS module" link to the homepage.
 - Do NOT add features beyond this list without asking.
@@ -48,7 +50,7 @@ page open and inspect it entirely on the client?"
 src/
 main.jsx – React root only
 App.jsx – composes hooks and components
-config.js – constants: formats, camera, up axes, markers, panes, backgrounds, homepage link
+config.js – constants: formats, camera, up axes, ellipsoid view, markers, panes, backgrounds, homepage link
 viewer/splatViewer.js – three.js + Spark scene, no React
 viewer/backgrounds.js – colour and sky backgrounds, no React
 viewer/photoCameras.js – COLMAP camera frustums, no React
@@ -120,3 +122,5 @@ tests/ – Vitest unit tests
 - 2026-11-03: redesign: square sidebar layout, segmented option groups, fiducial
   corner marks on views; Bricolage Grotesque (homepage font) for titles. Keep
   rounded corners only on the home link, markers and histogram bar ends.
+- 2026-11-05: ellipsoid view slider (per pane). PSNR/SSIM unchanged by it, with a
+  control build as evidence; see README Verification.

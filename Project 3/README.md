@@ -34,6 +34,17 @@ and inspect it entirely on the client?_
 - **Orientation fix.** Choose which axis of the file points up: +Y, −Y, +Z or −Z. 3DGS training
   output (COLMAP convention) usually has −Y up, which is the default. GIS and CAD data usually
   have +Z up. Reset view frames the splat again.
+- **Ellipsoid view.** A slider per pane, "Opaque ellipsoids" 0–100 %, shows the Gaussians
+  themselves instead of the blended image. 0 % is the normal render. Towards 100 % each splat's
+  opacity is pulled towards 1 (α′ = max(α, mix(α, 1, t)), never lower than before). Its
+  Gaussian falloff also turns into a flat fill, cut at the 1σ ellipse instead of Spark's default
+  √8 σ. The opacity is changed on the GPU by a Spark object modifier (a dyno graph run on every
+  splat; `objectModifier` on `SplatMesh`), and the kernel by the pane's `SparkRenderer`
+  `falloff` and `maxStdDev` ([Spark docs](https://sparkjs.dev/docs/)). The file's data is not
+  changed, so the slider is instant and reversible. The setting is per pane, so one pane can show
+  the normal render and another the same file as ellipsoids, with linked cameras. It is kept
+  when another file is opened in that pane. PSNR/SSIM renders always use the normal render.
+  Picking is not affected, because Spark's raycast reads the stored splats.
 - **Two-point measurement.** Click two points on the splat to get the straight distance between
   them. Picking uses Spark's `SplatMesh.raycast` through a three.js
   [`Raycaster`](https://threejs.org/docs/#api/en/core/Raycaster), which hits the nearest splat
@@ -122,8 +133,8 @@ format check, tests and build on every push and pull request that touches `Proje
 src/
   main.jsx               React root only
   App.jsx                composes the hooks and components
-  config.js              constants: formats, camera, up axes, markers, panes, backgrounds,
-                         homepage link
+  config.js              constants: formats, camera, up axes, ellipsoid view, markers, panes,
+                         backgrounds, homepage link
   viewer/splatViewer.js  three.js + Spark scene (no React): load, frame, orient, pick, markers,
                          camera view for linking, background
   viewer/backgrounds.js  colour and sky cube map backgrounds (no React)
@@ -137,8 +148,8 @@ src/
                          photo overlay, evaluation, messages
   state/                 framework-independent stores: messages, which tools are open
   utils/                 pure helpers: PLY header, file formats, bounds and camera framing,
-                         up-axis rotations, distance, formatting, pane layout tree, COLMAP
-                         parsing, photo cameras, PSNR/SSIM
+                         up-axis rotations, ellipsoid view settings, distance, formatting,
+                         pane layout tree, COLMAP parsing, photo cameras, PSNR/SSIM
 tests/                   Vitest unit tests for the pure helpers and the message store
 ```
 
@@ -396,6 +407,27 @@ libraries.
 
 ## Verification
 
+2026-11-05, ellipsoid view:
+
+- `npm run lint`: no problems. `npm run format:check`: all files pass. `npm test`: 12 files,
+  67 tests passed (new: `ellipsoidView.test.js`, 4 tests: Spark's defaults at 0, flat and 1σ at
+  1, linear in between, out-of-range and NaN clamped). `npm run build` passes. Vite still warns
+  about the chunk size.
+- Playwright (Chromium, headless) on `vite preview`, with `nugatti_plySH3.ply` (see
+  [Test data](#test-data)). Screenshots at 1600 × 900 and 390 × 844 with the slider at 0, 50 and
+  100 % were looked at. At 0 % the render looks as before. At 50 % the splats are denser and
+  harder. At 100 % the separate ellipses show: long thin splats on the burlap, flat discs on
+  the lid, and large pale floaters around the cup. At 390 px the tool fits the panel and the
+  slider spans its width. No console errors at either width.
+- PSNR/SSIM stay on the normal render. With `nugatti/dense` opened, "Evaluate IMG_6424.JPEG" gave
+  the same numbers with the slider at 0 % and at 100 %: PSNR 5.50 dB whole / 21.92 dB splat area,
+  SSIM 0.148 / 0.729, coverage 17.1 %. As a control, a build with the switch-off in
+  `renderPhotoNow` removed gave 5.88 dB / 14.51 dB, SSIM 0.102 / 0.345 and coverage 22.9 % at
+  100 %. So the switch-off is what keeps the metrics honest. After the evaluation, the pane
+  showed the ellipsoid view again.
+- Not verified: other formats (SPZ, SOG, .splat, .ksplat) with the slider, frame rate at 100 %,
+  and the live site.
+
 2026-11-03, redesign and space background removed:
 
 - `npm run lint`: no problems. `npm run format:check`: all files pass. `npm test`: 11 files,
@@ -595,6 +627,9 @@ All of that code, its README (with the alignment and benchmark results) and the 
 git history at commit `9442d81`.
 
 ## Status
+
+Ellipsoid view (2026-11-05): a per-pane slider from the normal render to opaque splats cut at
+their 1σ ellipse, to show how the Gaussians are spread. See [Verification](#verification).
 
 Redesign (2026-11-03): square sidebar layout with fiducial-marked views, the homepage's display
 font, and the space background removed. See [Verification](#verification).
