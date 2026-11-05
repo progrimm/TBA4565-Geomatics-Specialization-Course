@@ -20,6 +20,14 @@ on code quality: linting, tests, error handling and CI.
   shelter's number, address and capacity, the walking distance and the straight-line distance.
   It also shows the total number of shelters and their total capacity. Routing runs entirely in
   the browser, with no API key and no server (see [Nearest shelter](#nearest-shelter))
+- Out of range: a click more than 100 m from the walking network, or on a part of it that reaches
+  no shelter, gets a popup ("Good luck, champ. You won't make it…") instead of a long straight
+  line (see [Out of range](#out-of-range))
+- Building passages: if the route goes through a building (a shopping centre, a station hall, a
+  building passage), that building is coloured green in the 3D view and named in the panel (see
+  [Building passages](#building-passages))
+- A dark "crisis tool" design: near-black panel, the shelter amber as the accent, a thin hazard
+  stripe (see [Status](#status))
 - Loading and error messages for every layer. If one layer fails, the rest of the app keeps
   working
 - A collapsible control panel that becomes a bottom sheet on mobile. All panel controls work
@@ -58,18 +66,19 @@ load.
 
 Run these from `Project 2/`.
 
-| Command                 | Purpose                                                                   |
-| ----------------------- | ------------------------------------------------------------------------- |
-| `npm run dev`           | Start the Vite dev server                                                 |
-| `npm run build`         | Production build to `dist/`                                               |
-| `npm run preview`       | Serve the production build locally                                        |
-| `npm run lint`          | ESLint, including React hooks rules                                       |
-| `npm run format`        | Format all files with Prettier                                            |
-| `npm run format:check`  | Check formatting without writing                                          |
-| `npm test`              | Run the Vitest unit tests once                                            |
-| `npm run test:watch`    | Run Vitest in watch mode                                                  |
-| `npm run data:shelters` | Re-download the shelter dataset (see [Data](#shelters))                   |
-| `npm run data:network`  | Re-download the walking network (see [Walking network](#walking-network)) |
+| Command                 | Purpose                                                                            |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| `npm run dev`           | Start the Vite dev server                                                          |
+| `npm run build`         | Production build to `dist/`                                                        |
+| `npm run preview`       | Serve the production build locally                                                 |
+| `npm run lint`          | ESLint, including React hooks rules                                                |
+| `npm run format`        | Format all files with Prettier                                                     |
+| `npm run format:check`  | Check formatting without writing                                                   |
+| `npm test`              | Run the Vitest unit tests once                                                     |
+| `npm run test:watch`    | Run Vitest in watch mode                                                           |
+| `npm run data:shelters` | Re-download the shelter dataset (see [Data](#shelters))                            |
+| `npm run data:network`  | Re-download the walking network (see [Walking network](#walking-network))          |
+| `npm run data:passages` | Recompute the building passages (see [Building passages](#building-passages-data)) |
 
 Browser checks and the benchmark are plain Node scripts that use Playwright (see
 [Quality checks](#quality-checks)):
@@ -98,7 +107,7 @@ src/
   utils/          pure helpers (CRS conversion, camera options, HTML escaping, distances, routing)
 scripts/          Node data-prep scripts
 tests/            Vitest unit tests and fixtures
-public/data/      static datasets (shelters GeoJSON, walking network)
+public/data/      static datasets (shelters GeoJSON, walking network, building passages)
 ```
 
 Main design choices:
@@ -232,6 +241,106 @@ These timings come from Node, not the browser.
 - Two shelters that snap to the same node are merged into the first one.
 - Loading adds a 3.5 MB file (1.4 MB gzipped).
 
+#### Out of range
+
+Every walk starts with a straight connector from the click to its nearest network node. Far from
+the network that connector stops being a walk: the network only covers the shelters' bounding
+box plus about 1 km, and clicks in the fjord, the river or a large field snap to a node hundreds
+of metres away. `findWalkInRange` (`utils/network.js`) therefore refuses a click when:
+
+- the connector is longer than `NEAREST.maxConnector` = 100 m (geodesic, `config.js`), or
+- no shelter can be reached from the click's part of the network (Dijkstra finds no target).
+
+A refused click draws only the clicked point (red) and opens a popup: "Good luck, champ. You
+won't make it…", followed by the reason ("That spot is 553 m from the nearest mapped path…" or
+"No path from there reaches a shelter…"). The popup is a non-modal `role="alertdialog"`: focus
+moves to its "Try again" button, Escape closes it, and the next click on the map replaces it.
+While the network is still loading, or if it failed, the straight-line fallback stays, because
+the panel already says that routes are unavailable.
+
+The 100 m limit is a design choice, not a standard: it is well above the usual connector in town
+and well below the gaps over water. On the same 30 × 30 grid as above (points evenly spaced
+from corner to corner of the shelters' bounding box, `public/data` as committed on 2026-11-05):
+
+- 835 of 900 points got a route, 55 were refused as too far from the network and 10 as
+  unreachable.
+- For the 835 routed points the connector had a median of 17.0 m and a 90th percentile of 53.4 m.
+
+Tests (`tests/network.test.js`): a click 5 m from the network returns the same walk as
+`findNearestByWalking`; a click ≈ 199 m away returns `far` with the connector length; a click
+on the isolated island path returns `unreachable`.
+
+#### Building passages
+
+OSM maps some footways _through_ buildings: building passages (`tunnel=building_passage`),
+arcades, shopping centres and station halls. A route that uses one looks odd in 3D, because the
+line drapes over the roof. The app therefore colours those buildings green in Cesium OSM
+Buildings and lists them under "Through" in the panel.
+
+1. **Overlay, once, in a script.** `scripts/fetch-passages.js` downloads the walkable ways (same
+   filter as the network, with tags and geometry) and the building footprints (OSM ways and
+   multipolygon relations, `out geom`) for the network's bounding box. `utils/passages.js` cuts
+   every way segment where it crosses a footprint ring and tests the midpoint of each piece with
+   an even–odd point-in-polygon test, so the length inside the building is exact for straight
+   segments and courtyards (inner rings) count as outside. This runs in a local planar frame
+   (equirectangular on a sphere around the segment), whose error over building-sized distances is
+   far below the accuracy of OSM footprints.
+2. **Thresholds and filters.** A building counts for a way only if at least 5 m of that way
+   lies inside it, summed over the way's segments, so a footway that grazes a wall because of
+   mapping noise is not a passage. `building=roof` (canopies) is skipped, and so are ways tagged
+   `tunnel=yes|culvert|flooded` or `bridge=*`, which pass under or over a footprint.
+3. **Lookup at click time.** The segments are mapped to node indices of the committed
+   `walking-network.json` by exact micro-degree coordinates. The app indexes them by edge, and
+   after Dijkstra it checks each edge of the route path (`buildingsOnPath`).
+4. **Highlighting.** `layers/buildings.js` sets a
+   [`Cesium3DTileStyle`](https://cesium.com/learn/cesiumjs/ref-doc/Cesium3DTileStyle.html) whose
+   `color` conditions match `${elementType}` and `${elementId}`. Cesium OSM Buildings keeps these
+   properties from the OSM way or relation each building was made from (checked in the InfoBox,
+   for example `elementType way`, `elementId 127108892`). All other buildings keep the tileset's
+   previous colour expression, and the old style is restored with the next click. This uses the
+   [3D Tiles styling language](https://github.com/CesiumGS/3d-tiles/tree/main/specification/Styling),
+   so no geometry has to be loaded or drawn by the app.
+
+Results (2026-11-05):
+
+- 254 buildings are passed through by the network, from 33 025 walkable ways and 57 945
+  footprints. All 773 segments inside them were found in the 2026-10-27 network snapshot.
+- By `building` tag: 76 apartments, 27 retail, 20 dormitory, 18 office, 14 parking, 13
+  commercial and 9 civic buildings, and fewer of 25 other types (including 4 bunkers and 4
+  train stations).
+- On the 30 × 30 grid, 45 of the 835 routes (5.4 %) pass through at least one building. The
+  most frequent were an unnamed school (21 routes), an unnamed apartment building (12) and
+  Byhaven kjøpesenter (5).
+- Browser check (dev server, 1600 × 900): a click on the Brattøra pier gave shelter no. 30667
+  (Olav Tryggvasons gate 28), a 1.69 km walk, "Through: Byhaven kjøpesenter (retail)". The
+  building turned green next to the shelter (screenshot inspected). From the Nidarosdomen view
+  a route listed "a religious building" (OSM way 538616652, unnamed).
+
+Tests (`tests/passages.test.js`, hand-made geometry): the length inside a square and a square
+with a courtyard; a way through a building (found), the same way split into 3 m segments
+(found, by summing), a way cutting a corner by 2.8 m (ignored), a path inside a courtyard
+(ignored) and across the whole block (found); roofs, tunnels and bridges (ignored); joining a
+relation's outer ring from two ways; edge lookup in both directions; and a passages file made
+for another network snapshot (ignored with a warning).
+
+**Is a building on the route a public place?** Often, but not always. The network already
+leaves out `access=no|private` and `foot=no` ways, and the named results are mostly shopping
+centres, stations, university buildings and the cathedral. But the largest group is apartment
+buildings, which are mostly passages through a block, and opening hours are not considered: a
+shopping centre at 03:00 is still on the route.
+
+Limitations:
+
+- The node indices are tied to one network snapshot. The file stores the network's OSM
+  timestamp, and the app ignores the passages (with a console warning) if it does not match;
+  after `npm run data:network`, run `npm run data:passages` too.
+- The footprints are from 2026-11-05 but Cesium OSM Buildings is an older processed copy of OSM.
+  A building that was redrawn since then has a new id and is named in the panel but not
+  coloured.
+- A straight connector (click → network, network → shelter) that crosses a building is not
+  checked; only network edges are.
+- Opening hours, doors and indoor levels are not modelled.
+
 ### Walking network
 
 `public/data/walking-network.json` is committed. To regenerate it from the Overpass API:
@@ -251,6 +360,22 @@ south-west origin, and each way as a list of node indices (`utils/osmNetwork.js`
 the size compared with decimal degrees. The 2026-10-27 extract has 164 294 nodes and 32 944
 ways (OSM data timestamp 2026-10-27T10:35:02Z). The script refuses to overwrite the file if
 Overpass returns no ways.
+
+### Building passages (data)
+
+`public/data/building-passages.json` (43 kB) is committed. To recompute it:
+
+```powershell
+npm run data:passages
+```
+
+It needs the committed `walking-network.json`, because it stores node indices of that file (see
+[Building passages](#building-passages)). The walkable-way filter is shared with the network
+script (`walkableWaysQuery` in `utils/osmNetwork.js`). Overpass answered HTTP 502 twice before
+the first successful run, so the script retries 429/502/503/504 answers up to three times with
+30 s in between. The 2026-11-05 run (OSM data 2026-11-05T19:44:49Z) took 97 s to download and
+4.3 s for the overlay. The script refuses to write the file if Overpass returns no ways or no
+buildings. The file is kept out of Prettier, so a re-run does not break `format:check`.
 
 ### Shelters
 
@@ -314,6 +439,7 @@ Unit tests cover the failure cases that matter for the data:
   cases: an empty shelter list, a click on a shelter (distance 0), identical points and
   unreachable shelters.
 - `tests/credit.test.js`: a missing or malformed fetch date leaves the credit unchanged.
+- `tests/passages.test.js`: a passages file made for another network snapshot is ignored.
 
 `scripts/check-failed-layers.js` blocks one request with Playwright's
 [`page.route`](https://playwright.dev/docs/api/class-page#page-route), then flies to Nidarosdomen
@@ -321,11 +447,12 @@ and clicks the ground. It asserts the expected switch states, messages and resul
 there are no page errors, and exits with code 1 if any check fails (it exited 0). Result at
 1600 × 900:
 
-| Case                           | Messages and panel                                                                           | After a ground click                                     | Page errors |
-| ------------------------------ | -------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ----------- |
-| Nothing blocked                | Both layers ready, "12 public shelters · 5,268 places in total"                              | Shelter no. 30671: 489 m walk, 335 m straight            | none        |
-| `shelters.geojson` blocked     | "Shelter data could not be loaded." Shelter switch disabled ("Unavailable"), buildings ready | No search (no shelters); view buttons and map still work | none        |
-| `walking-network.json` blocked | "Walking network unavailable: showing straight-line distances." Both layers ready            | Shelter no. 30671: 335 m straight, no walking distance   | none        |
+| Case                                          | Messages and panel                                                                           | After a ground click                                     | Page errors |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ----------- |
+| Nothing blocked                               | Both layers ready, "12 public shelters · 5,268 places in total"                              | Shelter no. 30671: 489 m walk, 335 m straight            | none        |
+| `shelters.geojson` blocked                    | "Shelter data could not be loaded." Shelter switch disabled ("Unavailable"), buildings ready | No search (no shelters); view buttons and map still work | none        |
+| `walking-network.json` blocked                | "Walking network unavailable: showing straight-line distances." Both layers ready            | Shelter no. 30671: 335 m straight, no walking distance   | none        |
+| `building-passages.json` blocked (2026-11-05) | "Building passages unavailable: routes are shown without them." Both layers ready            | Shelter no. 30671: 489 m walk, 335 m straight            | none        |
 
 ### Performance
 
@@ -384,17 +511,17 @@ re-run only.
   two layer switches. Every stop has a visible focus outline. Space toggles a switch (checked
   before and after) and Enter presses a button. The script asserts these points and exited 0. On mobile, the first stops in the collapsed panel are "← My GIS module" and then "Show controls", and
   Enter opens it.
-- Contrast: since 2026-10-28 the panel and the toasts are white (94 % opaque) with navy text,
-  in the NTNU look of the module homepage. The worst case is black imagery behind the glass,
-  where the panel mixes to rgb(240 240 240). There, normal text (#0f2a47) has 12.8:1, muted text
-  (#44607f) 5.7:1 and NTNU blue (#00509e) 7.0:1
+- Contrast: since 2026-11-05 the panel, popup and toasts are near-black (rgb(16 17 15), 92 %
+  opaque). The worst case is white imagery behind it, where the panel mixes to rgb(35 36 34).
+  There, text (#e8e6df) has 12.5:1, muted text (#a3a29a) 6.1:1, the amber accent (#f5a623)
+  7.7:1, the red "No route" label (#ff5a4f) 5.1:1 and the green "highlighted on the map" note
+  (#3ddc84) 8.7:1
   ([WCAG 2.2 contrast minimum, 4.5:1](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)).
-  The switch's off track uses the muted ink (5.7:1), because the first, lighter track had only
-  1.26:1 ([non-text contrast, 3:1](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html)).
-  Cesium's InfoBox stays dark (NTNU navy, white text 12.6:1), because its description is an
-  iframe with Cesium's own light-on-dark styles. These ratios are computed from the colours with
-  the WCAG formula, not measured on screen. (Before: a dark surface at 85 % gave 5.0:1 for muted
-  text.)
+  The switch's off track (#8a8983) has 4.4:1
+  ([non-text contrast, 3:1](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html)),
+  and the dark button text on amber 9.2:1. These ratios are computed from the colours with the
+  WCAG formula, not measured on screen. (Before: the NTNU design's white panel gave 5.7:1 for
+  muted text.)
 - Reduced motion: with `prefers-reduced-motion: reduce` (Playwright's
   [`reducedMotion`](https://playwright.dev/docs/api/class-browser#browser-new-context-option-reduced-motion)),
   pressing Nidarosdomen jumped straight to the view, and `tests/motion.test.js` checks that the
@@ -438,12 +565,13 @@ On-screen credits come from Cesium's credit display, the shelter layer's credit 
 credit under the nearest-shelter result. The InfoBox
 and credits are kept enabled on purpose.
 
-| Data                                          | Source                                                  | Licence / terms                                                           |
-| --------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Cesium World Terrain (ion 1), default imagery | Cesium ion                                              | [Cesium ion Terms of Service](https://cesium.com/legal/terms-of-service/) |
-| Cesium OSM Buildings (ion 96188)              | © OpenStreetMap contributors                            | [ODbL](https://opendatacommons.org/licenses/odbl/)                        |
-| Tilfluktsrom – Offentlige (public shelters)   | © DSB (Direktoratet for samfunnssikkerhet og beredskap) | [NLOD 2.0](https://data.norge.no/nlod/en/2.0)                             |
-| Walking network (OSM ways via Overpass API)   | © OpenStreetMap contributors                            | [ODbL](https://opendatacommons.org/licenses/odbl/)                        |
+| Data                                                | Source                                                  | Licence / terms                                                           |
+| --------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Cesium World Terrain (ion 1), default imagery       | Cesium ion                                              | [Cesium ion Terms of Service](https://cesium.com/legal/terms-of-service/) |
+| Cesium OSM Buildings (ion 96188)                    | © OpenStreetMap contributors                            | [ODbL](https://opendatacommons.org/licenses/odbl/)                        |
+| Tilfluktsrom – Offentlige (public shelters)         | © DSB (Direktoratet for samfunnssikkerhet og beredskap) | [NLOD 2.0](https://data.norge.no/nlod/en/2.0)                             |
+| Walking network (OSM ways via Overpass API)         | © OpenStreetMap contributors                            | [ODbL](https://opendatacommons.org/licenses/odbl/)                        |
+| Building passages (OSM footprints via Overpass API) | © OpenStreetMap contributors                            | [ODbL](https://opendatacommons.org/licenses/odbl/)                        |
 
 CesiumJS is licensed under Apache 2.0.
 
@@ -511,3 +639,29 @@ on aerial imagery, where NTNU blue would disappear on dark water. Lint, format c
 (54) and build pass. `scripts/check-accessibility.js` passed against the built site after its
 mobile tab-order expectation was updated for the home link. Screenshots at 1600 and 390 px
 (panel, nearest-shelter result, InfoBox, a switched-off layer) were inspected.
+
+Out of range, building passages and crisis design (2026-11-05), in four commits:
+
+- **Out of range** (see [Out of range](#out-of-range)). Browser check on the dev server: at
+  1600 × 900 a click on the railway yard by Trondheim S was refused at 101 m and a click in the
+  fjord at 553 m; at 390 × 844 a fjord click at 654 m. The popup opened with focus on "Try
+  again" and Escape closed it. A click in Midtbyen still gave a route. No console errors.
+- **Building passages** (see [Building passages](#building-passages)): new script, data file and
+  highlighting. `check-failed-layers.js` got a fourth case that blocks the passages file; all
+  four cases passed (exit 0, no `FAIL`).
+- **Design.** The NTNU light look was replaced by a dark crisis-tool look: near-black panel and
+  popup, bone-white text, the shelter amber `#f5a623` as the only UI accent, uppercase monospace
+  section labels with hairlines, a 4 px amber–black hazard stripe on the panel and popup, and the
+  kicker "Emergency shelter finder" under the title. The home link is now an outlined button
+  instead of an NTNU-blue pill. `color-scheme: dark`. Map symbology: the route is now
+  emergency-exit green `#3ddc84` (was cyan), the same green as the passage buildings, the
+  clicked point is white, and an out-of-range point is red. The collapsed mobile sheet is now
+  117 px tall (measured), so the credit offset went from 108 to 128 px. At 390 px the credits
+  end at y = 716 and the sheet starts at y = 727.
+  `scripts/check-accessibility.js` passed against the built site (exit 0, no `FAIL`).
+  Screenshots at 1600 and 390 px (start view, a route through Byhaven, the popup) were inspected.
+
+Lint, format check, tests (12 files, 70 tests) and build pass after each commit.
+
+Not verified: screen-reader announcement of the popup, Firefox and Safari, and the deployed
+GitHub Pages build (not deployed yet).

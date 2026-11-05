@@ -28,6 +28,10 @@ Learning goals:
   shortest walk along the OSM network (Dijkstra in the browser, no routing API),
   its walking and geodesic distance and capacity, with the route drawn; shelter
   totals (count, capacity) in the panel
+- Out-of-range popup: a click > 100 m from the network or unable to reach a shelter gets a
+  popup instead of a straight line (added 2026-11-05 on request)
+- Building passages: buildings the route goes through are coloured in OSM Buildings and named
+  in the panel (added 2026-11-05 on request)
 - Do NOT add features beyond this list without asking.
 
 ## Tech stack
@@ -144,4 +148,10 @@ public/data/ – static datasets (shelters GeoJSON, walking network JSON)
 - 2026-10-28: live on GitHub Pages; production token restricted to the Pages origin (checked).
 - 2026-10-28: NTNU design. White panel, navy text, NTNU-blue accent (tokens in style.css);
   InfoBox stays navy (its iframe has light-on-dark styles). Map symbology colours unchanged.
+- 2026-11-05: out-of-range popup (`findWalkInRange` in utils/network.js, `NEAREST.maxConnector`
+  = 100 m, components/OutOfRange.jsx). Building passages: scripts/fetch-passages.js (Overpass,
+  segment–polygon overlay in utils/passages.js, ≥ 5 m inside) → public/data/building-passages.json
+  (node indices of the 2026-10-27 network, guarded by its OSM timestamp); highlighted with a
+  Cesium3DTileStyle on `elementType`/`elementId`. Dark crisis-tool design replaced the NTNU look
+  (tokens in style.css; route and passages green `#3ddc84`). Browser-checked at 1600 and 390 px.
   (Update this section after each module.)
