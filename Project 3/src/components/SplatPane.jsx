@@ -1,13 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ACCEPT, MAX_PANES } from '../config.js';
 import { useFileOpener } from '../hooks/useFileOpener.js';
+import { useGeoreference } from '../hooks/useGeoreference.js';
 import { useMeasurement } from '../hooks/useMeasurement.js';
 import { useEvaluation } from '../hooks/useEvaluation.js';
 import { useSplatViewer } from '../hooks/useSplatViewer.js';
 import FileOpener, { DropOverlay, EmptyState } from './FileOpener.jsx';
 import EllipsoidTool from './EllipsoidTool.jsx';
 import EvaluationTool from './EvaluationTool.jsx';
+import GeoreferenceTool from './GeoreferenceTool.jsx';
 import MeasureTool from './MeasureTool.jsx';
 import OrientationTool from './OrientationTool.jsx';
 import PhotoOverlay from './PhotoOverlay.jsx';
@@ -73,7 +75,23 @@ export default function SplatPane({
     setEllipsoidView,
     open,
   } = useSplatViewer();
-  const measurement = useMeasurement(viewer, canvasRef, facts);
+  // One tool picks points at a time: starting to pick in one stops the other.
+  const [picker, setPicker] = useState(null);
+  const pickerSetter = useCallback(
+    (tool) => (active) =>
+      setPicker((current) => (active ? tool : current === tool ? null : current)),
+    [],
+  );
+  const setMeasuring = useMemo(() => pickerSetter('measure'), [pickerSetter]);
+  const setGeoPicking = useMemo(() => pickerSetter('georef'), [pickerSetter]);
+  const measurement = useMeasurement(viewer, canvasRef, facts, picker === 'measure', setMeasuring);
+  const georeference = useGeoreference(
+    viewer,
+    canvasRef,
+    facts,
+    picker === 'georef',
+    setGeoPicking,
+  );
   const { inputRef, onInputChange, choose, dragging } = useFileOpener(open, paneRef);
   useEffect(() => {
     onViewer(id, viewer);
@@ -107,14 +125,16 @@ export default function SplatPane({
       <FileOpener paneLabel={label} onChoose={choose} loading={loading} />
       {facts && (
         <>
-          <SplatFacts facts={facts} />
+          <SplatFacts facts={facts} georef={georeference.georef} />
           <OrientationTool
             upAxis={upAxis}
             onUpAxis={setUpAxis}
             onReset={() => viewer?.resetView()}
+            levelled={georeference.levelled}
           />
           <EllipsoidTool amount={ellipsoidView} onAmount={setEllipsoidView} />
-          <MeasureTool measurement={measurement} />
+          <MeasureTool measurement={measurement} georef={georeference.georef} />
+          <GeoreferenceTool georeference={georeference} splatName={facts.name} />
           {photos.length > 0 && (
             <EvaluationTool
               evaluation={evaluation}

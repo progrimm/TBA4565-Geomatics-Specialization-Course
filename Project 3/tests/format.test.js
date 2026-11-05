@@ -6,6 +6,8 @@ describe('format helpers', () => {
     expect(formatNumber(1.23456)).toBe('1.235');
     expect(formatNumber(1234.56)).toBe('1234.6');
     expect(formatNumber(-250)).toBe('-250.0');
+    expect(formatNumber(-0.0000001)).toBe('0.000');
+    expect(formatNumber(-0.0006)).toBe('-0.001');
     expect(formatLength(2.5)).toBe('2.500 units');
   });
 

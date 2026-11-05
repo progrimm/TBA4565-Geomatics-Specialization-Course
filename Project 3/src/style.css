@@ -446,6 +446,40 @@ body {
 }
 
 /* Tables scroll sideways in a narrow panel instead of squeezing their headers. */
+.tool__note--error {
+  color: var(--error);
+}
+
+/* Georeference control points: fixed columns, so the table fits the narrowest panel. */
+.georef-points {
+  table-layout: fixed;
+}
+
+.georef-points .georef-points__point {
+  width: 3.4rem;
+}
+
+.georef-points .georef-points__remove {
+  width: 1.9rem;
+}
+
+.georef-points td {
+  padding: 2px 1px;
+}
+
+.georef-points .number-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 3px 4px;
+  text-align: right;
+}
+
+.georef-points .chip {
+  padding: 3px 6px;
+  white-space: nowrap;
+}
+
 .table-scroll {
   margin-top: var(--space-3);
   overflow-x: auto;

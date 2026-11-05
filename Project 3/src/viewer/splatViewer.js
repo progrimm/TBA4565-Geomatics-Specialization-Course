@@ -10,10 +10,12 @@ import {
   CORE_MAX_SAMPLES,
   DEFAULT_BACKGROUND,
   DEFAULT_UP_AXIS,
+  GEOREF,
   MARKER,
   PHOTOS,
 } from '../config.js';
 import { createBackground } from './backgrounds.js';
+import { createGeorefOverlay } from './georefOverlay.js';
 import { createPhotoCameras } from './photoCameras.js';
 import {
   boundsSize,
@@ -90,6 +92,9 @@ function opacityModifier(amount) {
  *   onPhotoView: (callback: (name: string | null) => void) => () => void,
  *   renderPhoto: (photo: import('./photoCameras.js').Photo) => Promise<Uint8Array>,
  *   setEllipsoidView: (amount: number) => void,
+ *   setLevelRotation: (quaternion: number[] | null) => void,
+ *   setControlPoints: (points: (number[] | null)[]) => void,
+ *   setFrameAxes: (frame: {origin: number[], axes: number[][]} | null) => void,
  *   dispose: () => void,
  * }}
  */
@@ -131,6 +136,7 @@ export function createSplatViewer(canvas) {
   let ellipsoidAmount = 0;
   const markers = new THREE.Group();
   model.add(markers);
+  const georefOverlay = createGeorefOverlay(model);
   const photoCameras = createPhotoCameras(model);
   let photos = [];
   let selectedPhoto = null;
@@ -230,9 +236,28 @@ export function createSplatViewer(canvas) {
     applyEllipsoidView(amount);
   }
 
-  function setUpAxis(axis) {
-    model.quaternion.fromArray(upAxisRotation(axis));
+  // The model's rotation: the up-axis fix, or a georeference's levelling while one is applied.
+  let upAxis = DEFAULT_UP_AXIS;
+  let levelRotation = null;
+  function applyRotation() {
+    model.quaternion.fromArray(levelRotation ?? upAxisRotation(upAxis));
     resetView();
+  }
+
+  function setUpAxis(axis) {
+    upAxis = axis;
+    applyRotation();
+  }
+
+  /** Rotate the model so the user's frame is level (+Z up); null goes back to the up axis. */
+  function setLevelRotation(quaternion) {
+    levelRotation = quaternion;
+    applyRotation();
+  }
+
+  /** The user's origin and axes (file coordinates), drawn at a size that fits the scene. */
+  function setFrameAxes(frame) {
+    georefOverlay.setFrame(frame, frame ? sceneSize() * GEOREF.axesFraction : 0);
   }
 
   // Linked cameras: another pane copies this camera's pose. OrbitControls fires 'change'
@@ -386,6 +411,7 @@ export function createSplatViewer(canvas) {
     scene.background = null;
     renderer.setClearColor(0x000000, 0);
     markers.visible = false;
+    georefOverlay.setVisible(false);
     photoCameras.setVisible(false);
     // PSNR/SSIM always measure the real splat, not the ellipsoid view.
     applyEllipsoidView(0);
@@ -398,6 +424,7 @@ export function createSplatViewer(canvas) {
       scene.background = saved.background;
       renderer.setClearColor(saved.clearColor, saved.clearAlpha);
       markers.visible = true;
+      georefOverlay.setVisible(true);
       photoCameras.setVisible(photosVisible && !photoInView);
       applyEllipsoidView(ellipsoidAmount);
       if (!disposed) renderer.setAnimationLoop(frame);
@@ -471,6 +498,7 @@ export function createSplatViewer(canvas) {
     observer.disconnect();
     controls.dispose();
     setMarkers([]);
+    georefOverlay.dispose();
     photoCameras.dispose();
     markerMaterial.map.dispose();
     markerMaterial.dispose();
@@ -500,6 +528,9 @@ export function createSplatViewer(canvas) {
     onPhotoView,
     renderPhoto,
     setEllipsoidView,
+    setLevelRotation,
+    setControlPoints: georefOverlay.setControlPoints,
+    setFrameAxes,
     dispose,
   };
 }

@@ -142,3 +142,24 @@ export const MOBILE_QUERY = '(max-width: 640px)';
 
 /** The "My GIS module" homepage, relative to this app's subpath. */
 export const HOME_URL = '../';
+
+/**
+ * Georeference tool:
+ * - units: what the user's lengths and coordinates are in.
+ * - minPoints: control points needed for the similarity transform (7 parameters, 3 per point).
+ * - collinearTolerance: points whose second-largest spread (variance) is below this share of
+ *   the largest count as collinear.
+ * - markerColor: numbered control-point markers; axesColors: X, Y, Z of the user's frame;
+ *   axesFraction: length of the drawn axes as a share of the scene size.
+ * - fileFormat/fileVersion: the saved JSON.
+ */
+export const GEOREF = {
+  units: ['m', 'cm'],
+  minPoints: 3,
+  collinearTolerance: 1e-6,
+  markerColor: '#ffd54f',
+  axesColors: ['#e53935', '#43a047', '#1e88e5'],
+  axesFraction: 0.3,
+  fileFormat: '3dgs-viewer-georeference',
+  fileVersion: 1,
+};

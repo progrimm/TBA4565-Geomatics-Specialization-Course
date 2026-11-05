@@ -2,13 +2,16 @@ import { CORE_FRACTION } from '../config.js';
 import { formatBytes, formatCount, formatNumber } from '../utils/format.js';
 import Tool from './Tool.jsx';
 
-const size = (extent) => extent.map(formatNumber).join(' × ');
+/** An extent along the file axes, scaled into the user's unit when georeferenced. */
+const size = (extent, georef) =>
+  `${extent.map((value) => formatNumber(value * (georef?.scale ?? 1))).join(' × ')} ${georef ? `${georef.unit} (file axes)` : 'units'}`;
 
 /**
  * What the opened file contains.
- * @param {{facts: import('../hooks/useSplatViewer.js').SplatFacts}} props
+ * @param {{facts: import('../hooks/useSplatViewer.js').SplatFacts,
+ *   georef: import('../utils/georef.js').Georeference | null}} props
  */
-export default function SplatFacts({ facts }) {
+export default function SplatFacts({ facts, georef }) {
   const { header } = facts;
   return (
     <Tool id="facts" title="File">
@@ -25,11 +28,11 @@ export default function SplatFacts({ facts }) {
         <dd
           title={`Bounding box of the central ${CORE_FRACTION * 100} % of splat centres per axis (x × y × z, file axes)`}
         >
-          {size(facts.coreSize)} units
+          {size(facts.coreSize, georef)}
         </dd>
         <dt>Full extent</dt>
         <dd title="Bounding box of all splat centres, including floaters">
-          {size(facts.fullSize)} units
+          {size(facts.fullSize, georef)}
         </dd>
         <dt>Opened in</dt>
         <dd>{facts.loadSeconds.toFixed(2)} s</dd>
@@ -56,7 +59,9 @@ export default function SplatFacts({ facts }) {
         </details>
       )}
       <p className="tool__note">
-        Units are the file&apos;s own: metres only if the capture was scaled.
+        {georef
+          ? `Scaled by the georeference: 1 file unit = ${formatNumber(georef.scale)} ${georef.unit}.`
+          : 'Units are the file’s own: metres only if the capture was scaled.'}
       </p>
     </Tool>
   );

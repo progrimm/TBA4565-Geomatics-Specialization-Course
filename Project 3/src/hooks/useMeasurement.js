@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CLICK_TOLERANCE_PX } from '../config.js';
 import { distance } from '../utils/measure.js';
+import { usePointPicking } from './usePointPicking.js';
 
 /**
  * Two-point measurement: while active, clicks on the splat pick points.
  * @param {ReturnType<import('../viewer/splatViewer.js').createSplatViewer> | null} viewer
  * @param {import('react').RefObject<HTMLCanvasElement>} canvasRef
  * @param {unknown} splatKey - changes when a new splat is loaded (clears the points).
+ * @param {boolean} active - picking points now (exclusive with the other picking tools).
+ * @param {(active: boolean) => void} setActive
  * @returns {{active: boolean, setActive: (active: boolean) => void, points: number[][],
  *   distance: number | null, missed: boolean, clear: () => void}}
  *   missed = the last click did not hit the splat.
  */
-export function useMeasurement(viewer, canvasRef, splatKey) {
-  const [active, setActive] = useState(false);
+export function useMeasurement(viewer, canvasRef, splatKey, active, setActive) {
   const [points, setPoints] = useState([]);
   const [missed, setMissed] = useState(false);
   const [pointsKey, setPointsKey] = useState(splatKey);
@@ -34,40 +35,11 @@ export function useMeasurement(viewer, canvasRef, splatKey) {
     viewer?.setMarkers(points);
   }, [viewer, points]);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!active || !viewer || !canvas) return undefined;
-    let down = null;
-    const onDown = (event) => {
-      // Only the primary button (left mouse, touch, pen) picks; right-drag pans.
-      down = event.button === 0 ? { x: event.clientX, y: event.clientY } : null;
-    };
-    const onUp = (event) => {
-      if (!down) return;
-      const moved = Math.hypot(event.clientX - down.x, event.clientY - down.y);
-      down = null;
-      if (moved > CLICK_TOLERANCE_PX) return;
-      const point = viewer.pick(event.clientX, event.clientY);
-      setMissed(!point);
-      if (point) setPoints((current) => (current.length >= 2 ? [point] : [...current, point]));
-    };
-    const onKey = (event) => {
-      // Escape inside a <details> or a form field belongs to that element.
-      if (event.key === 'Escape' && !event.target.closest?.('details, input, select, textarea')) {
-        setActive(false);
-      }
-    };
-    canvas.addEventListener('pointerdown', onDown);
-    canvas.addEventListener('pointerup', onUp);
-    window.addEventListener('keydown', onKey);
-    canvas.style.cursor = 'crosshair';
-    return () => {
-      canvas.removeEventListener('pointerdown', onDown);
-      canvas.removeEventListener('pointerup', onUp);
-      window.removeEventListener('keydown', onKey);
-      canvas.style.cursor = '';
-    };
-  }, [active, viewer, canvasRef]);
+  const onPick = useCallback((point) => {
+    setMissed(!point);
+    if (point) setPoints((current) => (current.length >= 2 ? [point] : [...current, point]));
+  }, []);
+  usePointPicking(viewer, canvasRef, active, setActive, onPick);
 
   return {
     active,

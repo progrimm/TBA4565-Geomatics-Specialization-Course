@@ -1,5 +1,6 @@
 import { EVALUATION } from '../config.js';
 import { formatNumber } from '../utils/format.js';
+import { download } from './download.js';
 import PhotoDetail from './PhotoDetail.jsx';
 import Tool from './Tool.jsx';
 
@@ -35,15 +36,6 @@ function toCsv(rows) {
   return ['image,role,psnr_db,ssim,psnr_splat_area_db,ssim_splat_area,coverage', ...lines].join(
     '\n',
   );
-}
-
-function download(text, fileName) {
-  const url = URL.createObjectURL(new Blob([text], { type: 'text/csv' }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  URL.revokeObjectURL(url);
 }
 
 /**

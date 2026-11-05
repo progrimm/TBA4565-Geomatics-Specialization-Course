@@ -9,12 +9,35 @@ export function formatLength(value) {
 }
 
 /**
+ * A length in the file's units, or in the user's unit when a georeference is applied (the
+ * scale is the same everywhere, so a length only needs scaling).
+ * @param {number} value - in file units.
+ * @param {{scale: number, unit: string} | null} georef
+ * @returns {string}
+ */
+export function formatScaledLength(value, georef) {
+  return georef ? `${formatNumber(value * georef.scale)} ${georef.unit}` : formatLength(value);
+}
+
+/**
+ * Coordinates as "(x, y, z) unit".
+ * @param {number[]} point
+ * @param {string} unit
+ * @returns {string}
+ */
+export function formatPoint(point, unit) {
+  return `(${point.map(formatNumber).join(', ')}) ${unit}`;
+}
+
+/**
  * A length as a bare number: 3 decimals below 100, 1 above.
  * @param {number} value
  * @returns {string}
  */
 export function formatNumber(value) {
-  return value.toFixed(Math.abs(value) >= 100 ? 1 : 3);
+  const text = value.toFixed(Math.abs(value) >= 100 ? 1 : 3);
+  // A tiny negative value rounds to "-0.000"; show it as 0.
+  return /^-0\.?0*$/.test(text) ? text.slice(1) : text;
 }
 
 /**
