@@ -670,5 +670,13 @@ the Pages prefix (`/TBA4565-Geomatics-Specialization-Course/trondheim-3d/`) with
 the building highlighted, and a fjord click gave the popup (553 m). At 390 × 844 a fjord click
 gave the popup (654 m). No responses ≥ 400 and no console errors or warnings in any run.
 
-Not verified: screen-reader announcement of the popup, Firefox and Safari, and the live
-GitHub Pages deploy (not pushed yet).
+Firefox check (2026-11-05): the same build and clicks in Playwright's Firefox 157 (WebGL through
+ANGLE/Direct3D 11) gave the same results at 1600 × 900 and 390 × 844: the route through
+Byhaven with the building highlighted, the popup at 553 m and 654 m with focus on "Try again",
+and Escape closing it. The collapsed mobile sheet is 117 px tall, the same as in Chromium, and
+the credits end above it. No responses ≥ 400 and no console errors. Firefox printed only
+warnings: WebGL "lazy initialization" performance hints from Cesium's texture uploads and one
+"Quirks Mode" warning for an `about:blank` frame. Screenshots at both widths were inspected.
+
+Not verified: screen-reader announcement of the popup, Safari (no macOS or iOS device), and the
+live GitHub Pages deploy (not pushed yet).
