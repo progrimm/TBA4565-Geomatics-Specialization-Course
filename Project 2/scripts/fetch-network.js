@@ -6,7 +6,11 @@
  */
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { toWalkingNetwork } from '../src/utils/osmNetwork.js';
+import {
+  WALKABLE_HIGHWAYS as HIGHWAYS,
+  toWalkingNetwork,
+  walkableWaysQuery,
+} from '../src/utils/osmNetwork.js';
 
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 const SHELTERS = new URL('../public/data/shelters.geojson', import.meta.url);
@@ -14,27 +18,6 @@ const OUTPUT = new URL('../public/data/walking-network.json', import.meta.url);
 // Margin around the shelters' bounding box, in degrees (WGS84). ≈ 1.1 km north–south
 // and ≈ 1 km east–west at 63.4°N, so routes may leave the box a little.
 const MARGIN = { lat: 0.01, lon: 0.02 };
-// OSM highway types a pedestrian can use. Motorways and trunk roads are excluded.
-const HIGHWAYS = [
-  'footway',
-  'path',
-  'pedestrian',
-  'steps',
-  'living_street',
-  'residential',
-  'service',
-  'unclassified',
-  'road',
-  'track',
-  'cycleway',
-  'tertiary',
-  'tertiary_link',
-  'secondary',
-  'secondary_link',
-  'primary',
-  'primary_link',
-  'trunk_link',
-];
 
 const shelters = JSON.parse(await readFile(SHELTERS, 'utf8')).features.map(
   (feature) => feature.geometry.coordinates,
@@ -49,7 +32,7 @@ const box = [bbox.south, bbox.west, bbox.north, bbox.east].map((v) => v.toFixed(
 
 // Ways where walking is not explicitly forbidden, plus all their nodes.
 const query = `[out:json][timeout:180];
-way["highway"~"^(${HIGHWAYS.join('|')})$"]["foot"!~"^(no|private)$"]["access"!~"^(no|private)$"](${box});
+${walkableWaysQuery(box)}
 (._;>;);
 out skel qt;`;
 

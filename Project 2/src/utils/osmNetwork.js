@@ -10,6 +10,51 @@
 /** Micro-degrees per degree. */
 export const SCALE = 1e6;
 
+/** OSM highway types a pedestrian can use. Motorways and trunk roads are excluded. */
+export const WALKABLE_HIGHWAYS = [
+  'footway',
+  'path',
+  'pedestrian',
+  'steps',
+  'living_street',
+  'residential',
+  'service',
+  'unclassified',
+  'road',
+  'track',
+  'cycleway',
+  'tertiary',
+  'tertiary_link',
+  'secondary',
+  'secondary_link',
+  'primary',
+  'primary_link',
+  'trunk_link',
+];
+
+/**
+ * Overpass QL statement for the walkable ways in a bounding box: a walkable
+ * highway type where walking is not explicitly forbidden. Shared by
+ * scripts/fetch-network.js and scripts/fetch-passages.js so both use the same ways.
+ * @param {string} box - "south,west,north,east" in WGS84 degrees.
+ * @returns {string}
+ */
+export function walkableWaysQuery(box) {
+  return `way["highway"~"^(${WALKABLE_HIGHWAYS.join('|')})$"]["foot"!~"^(no|private)$"]["access"!~"^(no|private)$"](${box});`;
+}
+
+/**
+ * A WGS84 coordinate as an integer micro-degree offset from an origin, exactly as
+ * stored in the walking-network file.
+ * @param {number} value - degrees.
+ * @param {number} base - origin, degrees.
+ * @returns {number}
+ */
+export function toOffset(value, base) {
+  // Offsets are >= 0; Math.max also turns a rounded -0 at the origin into 0.
+  return Math.max(0, Math.round((value - base) * SCALE));
+}
+
 /**
  * @typedef {{origin: [number, number], scale: number, nodes: number[], ways: number[][]}} WalkingNetwork
  *   origin: WGS84 [lon, lat] in degrees.
@@ -49,8 +94,9 @@ export function toWalkingNetwork(overpass) {
   // (reduce, not Math.min(...): spreading 100k+ arguments can overflow the stack.)
   const min = (key) => used.reduce((value, node) => Math.min(value, node[key]), Infinity);
   const origin = [Math.round(min('lon') * SCALE) / SCALE, Math.round(min('lat') * SCALE) / SCALE];
-  // Offsets are >= 0; Math.max also turns a rounded -0 at the origin into 0.
-  const offset = (value, base) => Math.max(0, Math.round((value - base) * SCALE));
-  const nodes = used.flatMap(({ lon, lat }) => [offset(lon, origin[0]), offset(lat, origin[1])]);
+  const nodes = used.flatMap(({ lon, lat }) => [
+    toOffset(lon, origin[0]),
+    toOffset(lat, origin[1]),
+  ]);
   return { origin, scale: SCALE, nodes, ways };
 }
