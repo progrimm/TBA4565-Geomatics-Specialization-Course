@@ -678,5 +678,9 @@ the credits end above it. No responses ≥ 400 and no console errors. Firefox pr
 warnings: WebGL "lazy initialization" performance hints from Cesium's texture uploads and one
 "Quirks Mode" warning for an `about:blank` frame. Screenshots at both widths were inspected.
 
-Not verified: screen-reader announcement of the popup, Safari (no macOS or iOS device), and the
-live GitHub Pages deploy (not pushed yet).
+Live check (2026-11-05): after the push, [Project 2 CI](https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course/actions/runs/42110176134)
+and the [Pages deploy](https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course/actions/runs/42110176362)
+succeeded. The same Chromium clicks on the live site (production token) gave the same results at
+1600 × 900 and 390 × 844, with no responses ≥ 400 and no console errors or warnings.
+
+Not verified: screen-reader announcement of the popup and Safari (no macOS or iOS device).
