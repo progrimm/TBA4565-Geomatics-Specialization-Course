@@ -9,6 +9,17 @@ const NETWORK_TEXT = {
 const numberFormat = new Intl.NumberFormat('en-GB');
 
 /**
+ * "Name (type)" for a building, e.g. "Trondheim Torg (retail)". `building=yes`
+ * says nothing about the type, so it is left out.
+ * @param {import('../utils/passages.js').PassageBuilding} building
+ */
+const describeBuilding = ({ name, building }) => {
+  const type = building === 'yes' ? '' : building.replaceAll('_', ' ');
+  if (!name) return type ? `a ${type} building` : 'a building';
+  return type ? `${name} (${type})` : name;
+};
+
+/**
  * Panel section for the "Nearest shelter" analysis: shelter totals, an
  * instruction, and the result of the last ground click.
  * @param {object} props
@@ -43,6 +54,15 @@ export default function NearestShelter({ status, networkStatus, shelters, neares
                   <>
                     <dt>Walk</dt>
                     <dd>{formatDistance(nearest.walk.distance)} along streets and paths</dd>
+                  </>
+                )}
+                {nearest.through?.length > 0 && (
+                  <>
+                    <dt>Through</dt>
+                    <dd>
+                      {nearest.through.map(describeBuilding).join('; ')}{' '}
+                      <span className="analysis__note">(highlighted on the map)</span>
+                    </dd>
                   </>
                 )}
                 <dt>Straight</dt>

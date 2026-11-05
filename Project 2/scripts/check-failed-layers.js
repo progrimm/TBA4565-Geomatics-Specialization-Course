@@ -16,6 +16,13 @@ const CASES = [
   { name: 'nothing-blocked', block: undefined, shelters: true, walk: true },
   { name: 'shelters-blocked', block: '**/data/shelters.geojson', shelters: false, walk: false },
   { name: 'network-blocked', block: '**/data/walking-network.json', shelters: true, walk: false },
+  // Optional data: routes still work, only building highlighting is lost.
+  {
+    name: 'passages-blocked',
+    block: '**/data/building-passages.json',
+    shelters: true,
+    walk: true,
+  },
 ];
 const VIEWPORT = { width: 1600, height: 900 };
 // A ground point in the Nidarosdomen view, right of the panel.

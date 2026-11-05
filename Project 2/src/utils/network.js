@@ -9,10 +9,12 @@ import { geodesicDistance } from './nearest.js';
  *
  * @typedef {{lon: Float64Array, lat: Float64Array, adjacency: number[][]}} Graph
  *   lon/lat: WGS84 degrees per node. adjacency[i] = [neighbour, metres, neighbour, metres, …].
- * @typedef {{distance: number, networkDistance: number, toNetwork: number, coordinates: number[][]}} Walk
+ * @typedef {{distance: number, networkDistance: number, toNetwork: number,
+ *   nodes: number[], coordinates: number[][]}} Walk
  *   distance: total metres (click → network → shelter); networkDistance: the part
  *   along the network; toNetwork: the straight connector from the click to the
- *   network; coordinates: WGS84 [lon, lat] from the click to the shelter.
+ *   network; nodes: the network path as node indices; coordinates: WGS84 [lon, lat]
+ *   from the click to the shelter.
  */
 
 /**
@@ -195,6 +197,7 @@ function walkFrom(point, start, graph, shelterNodes) {
       distance: toNetwork + result.distance + fromNetwork,
       networkDistance: result.distance,
       toNetwork,
+      nodes: result.path,
       coordinates: [
         [point.longitude, point.latitude],
         ...result.path.map((i) => [graph.lon[i], graph.lat[i]]),

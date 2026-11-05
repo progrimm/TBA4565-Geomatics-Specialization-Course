@@ -17,7 +17,7 @@ export default function App() {
   const buildings = useAsyncLayer(viewer, addBuildings);
   const shelters = useAsyncLayer(viewer, addShelters);
   const network = useWalkingNetwork();
-  const analysis = useNearestShelter(viewer, shelters, network);
+  const analysis = useNearestShelter(viewer, shelters, network, buildings);
 
   return (
     <>

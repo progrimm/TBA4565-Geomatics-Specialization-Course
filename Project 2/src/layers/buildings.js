@@ -1,4 +1,4 @@
-import { createOsmBuildingsAsync } from 'cesium';
+import { Cesium3DTileStyle, createOsmBuildingsAsync } from 'cesium';
 import { TILESET_SETTINGS } from '../config.js';
 import { showMessage } from '../state/messages.js';
 
@@ -30,4 +30,39 @@ export async function addBuildings(viewer) {
     showMessage('3D buildings could not be loaded.', 'error');
     return undefined;
   }
+}
+
+/**
+ * Colour some OSM buildings in the tileset, e.g. the ones a route passes through.
+ * Uses the 3D Tiles styling language: a Cesium3DTileStyle `conditions` expression
+ * matches each feature's `elementType`/`elementId` (the OSM way or relation it was
+ * built from); every other feature keeps the tileset's previous colour expression.
+ * https://cesium.com/learn/cesiumjs/ref-doc/Cesium3DTileStyle.html
+ * @param {import('cesium').Scene} scene - used to request a render (requestRenderMode is on).
+ * @param {import('cesium').Cesium3DTileset} tileset - Cesium OSM Buildings.
+ * @param {Array<{type: 'way' | 'relation', id: number}>} buildings - OSM elements.
+ * @param {string} color - CSS colour.
+ * @returns {() => void} call to restore the previous style.
+ */
+export function highlightBuildings(scene, tileset, buildings, color) {
+  if (buildings.length === 0) return () => {};
+  const original = tileset.style;
+  // Integer ids and the fixed type names come from our own data file, not user input.
+  const match = buildings
+    .map(({ type, id }) => `(\${elementType} === '${type}' && \${elementId} === ${Number(id)})`)
+    .join(' || ');
+  tileset.style = new Cesium3DTileStyle({
+    color: {
+      conditions: [
+        [match, `color('${color}')`],
+        ['true', original?.color?.expression ?? "color('white')"],
+      ],
+    },
+  });
+  scene.requestRender();
+  return () => {
+    if (tileset.isDestroyed()) return;
+    tileset.style = original;
+    scene.requestRender();
+  };
 }

@@ -1,15 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NEAREST } from '../config.js';
 import { toShelterRecords } from '../layers/shelters.js';
+import { highlightBuildings } from '../layers/buildings.js';
 import { drawClickedPoint, drawNearestLine, onGroundClick } from '../layers/nearest.js';
 import { findNearest } from '../utils/nearest.js';
 import { findWalkInRange, snapShelters } from '../utils/network.js';
+import { buildingsOnPath } from '../utils/passages.js';
 
 /**
  * @typedef {{shelter: import('../utils/nearest.js').Shelter, distance: number,
- *   walk?: import('../utils/network.js').Walk}} NearestResult
+ *   walk?: import('../utils/network.js').Walk,
+ *   through?: import('../utils/passages.js').PassageBuilding[]}} NearestResult
  *   distance: straight-line (geodesic) metres; walk: undefined when the walking
- *   network is not available.
+ *   network is not available; through: buildings the walk passes through.
  * @typedef {{reason: 'far' | 'unreachable', connector?: number}} OutOfRange
  *   connector: geodesic metres from the click to the nearest network node.
  */
@@ -18,34 +21,62 @@ import { findWalkInRange, snapShelters } from '../utils/network.js';
  * Find the nearest shelter: by walking distance when the network graph is ready
  * (refusing clicks out of the network's range), otherwise by straight-line distance.
  * @param {import('../utils/nearest.js').LonLat} point
- * @param {{shelters: import('../utils/nearest.js').Shelter[], graph?: object, shelterNodes?: Map}} analysis
+ * @param {{shelters: import('../utils/nearest.js').Shelter[], graph?: object,
+ *   shelterNodes?: Map, passages?: Map}} analysis
  * @returns {{nearest?: NearestResult, outOfRange?: OutOfRange}}
  */
-function findNearestShelter(point, { shelters, graph, shelterNodes }) {
+function findNearestShelter(point, { shelters, graph, shelterNodes, passages }) {
   if (!graph) return { nearest: findNearest(point, shelters) };
-  return findWalkInRange(point, graph, shelterNodes, NEAREST.maxConnector);
+  const { nearest, outOfRange } = findWalkInRange(point, graph, shelterNodes, NEAREST.maxConnector);
+  if (!nearest) return { outOfRange };
+  const through = passages ? buildingsOnPath(nearest.walk.nodes, passages) : [];
+  return { nearest: { ...nearest, through } };
+}
+
+/** Draw a result: the route and the buildings it passes through, or only the clicked point. */
+function drawResult(viewer, tileset, point, nearest) {
+  const { outOfRangeColor, passageColor } = NEAREST.style;
+  if (!nearest) return drawClickedPoint(viewer, point, outOfRangeColor);
+  const removeLine = drawNearestLine(viewer, point, nearest);
+  const removeHighlight =
+    tileset && nearest.through
+      ? highlightBuildings(viewer.scene, tileset, nearest.through, passageColor)
+      : () => {};
+  return () => {
+    removeLine();
+    removeHighlight();
+  };
 }
 
 /**
  * "Nearest shelter" analysis: once the shelters are loaded, every click on the
  * ground finds the nearest shelter and draws a line (the walking route if
  * available) to it, replacing the last one. A click out of the walking network's
- * range draws only the clicked point and reports `outOfRange` instead.
+ * range draws only the clicked point and reports `outOfRange` instead. Buildings
+ * the route passes through are highlighted in the buildings tileset.
  * @param {import('cesium').Viewer | undefined} viewer
  * @param {import('./useAsyncLayer.js').LayerState} sheltersState - from useAsyncLayer(addShelters).
- * @param {{graph?: import('../utils/network.js').Graph}} networkState - from useWalkingNetwork().
+ * @param {{graph?: import('../utils/network.js').Graph, passages?: Map}} networkState - from useWalkingNetwork().
+ * @param {import('./useAsyncLayer.js').LayerState} buildingsState - from useAsyncLayer(addBuildings).
  * @returns {{shelters: import('../utils/nearest.js').Shelter[], nearest?: NearestResult,
  *   outOfRange?: OutOfRange, dismissOutOfRange: () => void}}
  */
-export function useNearestShelter(viewer, sheltersState, networkState) {
-  const { graph } = networkState;
+export function useNearestShelter(viewer, sheltersState, networkState, buildingsState) {
+  const { graph, passages } = networkState;
   const analysis = useMemo(() => {
     const shelters = sheltersState.status === 'ready' ? toShelterRecords(sheltersState.layer) : [];
     // Snapping shelters to the network once here keeps each click fast.
     const shelterNodes = graph && snapShelters(graph, shelters);
-    return { shelters, graph, shelterNodes };
-  }, [sheltersState, graph]);
+    return { shelters, graph, shelterNodes, passages };
+  }, [sheltersState, graph, passages]);
   const [result, setResult] = useState({ analysis: undefined });
+
+  // A ref, not an effect dependency: the buildings finishing loading must not
+  // clear the current result. Read on each click.
+  const tilesetRef = useRef();
+  useEffect(() => {
+    tilesetRef.current = buildingsState.layer;
+  }, [buildingsState]);
 
   useEffect(() => {
     if (!viewer || analysis.shelters.length === 0) return undefined;
@@ -53,9 +84,7 @@ export function useNearestShelter(viewer, sheltersState, networkState) {
     const stopListening = onGroundClick(viewer, (point) => {
       const { nearest, outOfRange } = findNearestShelter(point, analysis);
       removeDrawing();
-      removeDrawing = nearest
-        ? drawNearestLine(viewer, point, nearest)
-        : drawClickedPoint(viewer, point, NEAREST.style.outOfRangeColor);
+      removeDrawing = drawResult(viewer, tilesetRef.current, point, nearest);
       setResult({ analysis, nearest, outOfRange });
     });
     return () => {
