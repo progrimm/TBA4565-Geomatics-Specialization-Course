@@ -640,7 +640,7 @@ on aerial imagery, where NTNU blue would disappear on dark water. Lint, format c
 mobile tab-order expectation was updated for the home link. Screenshots at 1600 and 390 px
 (panel, nearest-shelter result, InfoBox, a switched-off layer) were inspected.
 
-Out of range, building passages and crisis design (2026-11-05), in four commits:
+Out of range, building passages and crisis design (2026-11-05), in five commits:
 
 - **Out of range** (see [Out of range](#out-of-range)). Browser check on the dev server: at
   1600 × 900 a click on the railway yard by Trondheim S was refused at 101 m and a click in the
@@ -663,5 +663,12 @@ Out of range, building passages and crisis design (2026-11-05), in four commits:
 
 Lint, format check, tests (12 files, 70 tests) and build pass after each commit.
 
-Not verified: screen-reader announcement of the popup, Firefox and Safari, and the deployed
-GitHub Pages build (not deployed yet).
+Site build check (2026-11-05): the root `npm run site:build` was run and the result served under
+the Pages prefix (`/TBA4565-Geomatics-Specialization-Course/trondheim-3d/`) with
+`scripts/preview-site.mjs`. `data/building-passages.json` is in the build. With Playwright at
+1600 × 900 a click at Brattøra gave a 1.69 km route "Through: Byhaven kjøpesenter (retail)" with
+the building highlighted, and a fjord click gave the popup (553 m). At 390 × 844 a fjord click
+gave the popup (654 m). No responses ≥ 400 and no console errors or warnings in any run.
+
+Not verified: screen-reader announcement of the popup, Firefox and Safari, and the live
+GitHub Pages deploy (not pushed yet).
