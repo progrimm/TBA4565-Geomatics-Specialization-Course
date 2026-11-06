@@ -497,10 +497,11 @@ libraries.
   | Build                      | Runs                      |
   | -------------------------- | ------------------------- |
   | before (1 worker)          | 125.7, 169.4, 264.5 s     |
-  | after, 3 workers (trial)   | 43.3 s                    |
+  | f34d6d5, 3 workers (trial) | 43.3 s                    |
   | f34d6d5, 4 workers         | 33.4, 33.3, 33.2, 226.8 s |
   | f34d6d5, 6 workers (trial) | 24.4 s                    |
   | fd9b346, 4 workers (final) | 19.4, 19.4, 19.4 s        |
+
   - In a profiled "before" run (164.7 s), each worker job took 2.6–5.2 s, and the jobs ran
     back to back. So the single worker was the bottleneck, not the GPU.
   - With the pool, 4 jobs overlap: about 2.3–4.0 s each on `f34d6d5`, and 1.6–1.9 s each on
