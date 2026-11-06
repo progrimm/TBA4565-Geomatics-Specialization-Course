@@ -122,8 +122,10 @@ export const DEFAULT_COMPARE = { mode: 'swipe', amount: 0.5 };
  * Evaluation against the photos. Renders are made at the photo's size on black, the 3DGS
  * default background. "Splat area" metrics count only pixels with render alpha at least
  * coverageThreshold. The difference image shows the mean RGB error times differenceGain.
+ * workers: metric Web Workers side by side (fewer on machines with few cores). By array sizes,
+ * each needs about 130 MB while it compares a 1539 × 2058 photo (not measured).
  */
-export const EVALUATION = { coverageThreshold: 0.5, differenceGain: 4 };
+export const EVALUATION = { coverageThreshold: 0.5, differenceGain: 4, workers: 4 };
 
 /** While measuring, a press that moves more than this (CSS px) is a drag, not a pick. */
 export const CLICK_TOLERANCE_PX = 5;
