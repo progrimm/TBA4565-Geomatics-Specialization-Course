@@ -98,30 +98,64 @@ function gaussian(size, sigma) {
   return kernel.map((value) => value / total);
 }
 
-/** Separable Gaussian blur with zero padding (as PyTorch conv2d with padding). */
-function blur(source, width, height, kernel, temp, out) {
-  const half = (kernel.length - 1) / 2;
+/**
+ * Separable Gaussian blur with zero padding (as PyTorch conv2d with padding). Each output pixel
+ * sums its taps in kernel order in double precision, so the result does not depend on how the
+ * loops are arranged: the interior of a row skips the bounds checks, and the vertical pass runs
+ * row by row (contiguous memory) into a double-precision row of sums.
+ */
+function blur(source, width, height, kernel, temp, out, rowSums) {
+  const size = kernel.length;
+  const half = (size - 1) / 2;
+  // Columns whose whole window lies inside the row.
+  const innerStart = Math.min(half, width);
+  const innerEnd = Math.max(innerStart, width - half);
+  const edgeSum = (row, x) => {
+    let sum = 0;
+    for (let k = 0; k < size; k++) {
+      const xx = x + k - half;
+      if (xx >= 0 && xx < width) sum += kernel[k] * source[row + xx];
+    }
+    return sum;
+  };
   for (let y = 0; y < height; y++) {
     const row = y * width;
-    for (let x = 0; x < width; x++) {
+    for (let x = 0; x < innerStart; x++) temp[row + x] = edgeSum(row, x);
+    for (let x = innerStart; x < innerEnd; x++) {
+      const start = row + x - half;
       let sum = 0;
-      for (let k = 0; k < kernel.length; k++) {
-        const xx = x + k - half;
-        if (xx >= 0 && xx < width) sum += kernel[k] * source[row + xx];
-      }
+      for (let k = 0; k < size; k++) sum += kernel[k] * source[start + k];
       temp[row + x] = sum;
     }
+    for (let x = innerEnd; x < width; x++) temp[row + x] = edgeSum(row, x);
   }
   for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      let sum = 0;
-      for (let k = 0; k < kernel.length; k++) {
-        const yy = y + k - half;
-        if (yy >= 0 && yy < height) sum += kernel[k] * temp[yy * width + x];
-      }
-      out[y * width + x] = sum;
+    rowSums.fill(0);
+    for (let k = 0; k < size; k++) {
+      const yy = y + k - half;
+      if (yy < 0 || yy >= height) continue;
+      const weight = kernel[k];
+      const from = yy * width;
+      for (let x = 0; x < width; x++) rowSums[x] += weight * temp[from + x];
     }
+    out.set(rowSums, y * width);
   }
+}
+
+/** The per-pixel inputs of SSIM, in the order of their blurred maps (μa, μb, a², b², ab). */
+const SSIM_INPUTS = ['a', 'b', 'aa', 'bb', 'ab'];
+
+/**
+ * One SSIM input of channel c for every pixel, on [0, 1]. One plain loop per input (no callback
+ * per pixel), as this runs 15 times per image.
+ */
+function fillInput(out, a, b, c, input) {
+  const n = out.length;
+  if (input === 'a') for (let i = 0, j = c; i < n; i++, j += 4) out[i] = a[j] / 255;
+  else if (input === 'b') for (let i = 0, j = c; i < n; i++, j += 4) out[i] = b[j] / 255;
+  else if (input === 'aa') for (let i = 0, j = c; i < n; i++, j += 4) out[i] = (a[j] / 255) ** 2;
+  else if (input === 'bb') for (let i = 0, j = c; i < n; i++, j += 4) out[i] = (b[j] / 255) ** 2;
+  else for (let i = 0, j = c; i < n; i++, j += 4) out[i] = (a[j] / 255) * (b[j] / 255);
 }
 
 /**
@@ -159,18 +193,15 @@ export function ssimMap(a, b, width, height, { windowSize = 11, sigma = 1.5 } = 
   const C2 = 0.03 ** 2;
   const product = new Float32Array(n);
   const temp = new Float32Array(n);
-  const [muA, muB, aa, bb, ab] = Array.from({ length: 5 }, () => new Float32Array(n));
+  const rowSums = new Float64Array(width);
+  const blurred = Array.from({ length: SSIM_INPUTS.length }, () => new Float32Array(n));
+  const [muA, muB, aa, bb, ab] = blurred;
   const map = new Float32Array(n);
-  const blurred = (out, value) => {
-    for (let i = 0; i < n; i++) product[i] = value(i * 4);
-    blur(product, width, height, kernel, temp, out);
-  };
   for (let c = 0; c < 3; c++) {
-    blurred(muA, (i) => a[i + c] / 255);
-    blurred(muB, (i) => b[i + c] / 255);
-    blurred(aa, (i) => (a[i + c] / 255) ** 2);
-    blurred(bb, (i) => (b[i + c] / 255) ** 2);
-    blurred(ab, (i) => (a[i + c] / 255) * (b[i + c] / 255));
+    SSIM_INPUTS.forEach((input, q) => {
+      fillInput(product, a, b, c, input);
+      blur(product, width, height, kernel, temp, blurred[q], rowSums);
+    });
     for (let i = 0; i < n; i++) {
       const mA = muA[i];
       const mB = muB[i];

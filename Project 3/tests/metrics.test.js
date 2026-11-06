@@ -109,6 +109,52 @@ describe('ssim', () => {
     expect(ssim(a, b, W, H)).toBeCloseTo(total / (3 * W * H), 5);
   });
 
+  it('matches the direct definition per pixel, also for images narrower than the window', () => {
+    // The blur has separate paths for edge and interior columns; sizes below and around the
+    // 11-pixel window exercise both, and a row or column with no interior at all.
+    const g = Array.from({ length: 11 }, (_, i) => Math.exp(-((i - 5) ** 2) / (2 * 1.5 ** 2)));
+    const gSum = g.reduce((s, v) => s + v, 0);
+    const random = seededRandom(3);
+    for (const [w, h] of [
+      [4, 13],
+      [13, 4],
+      [11, 11],
+      [23, 17],
+    ]) {
+      const bytes = () => Uint8Array.from({ length: w * h * 4 }, () => Math.floor(random() * 256));
+      const a = bytes();
+      const b = bytes();
+      const map = ssimMap(a, b, w, h);
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          let value = 0;
+          for (let c = 0; c < 3; c++) {
+            let [ma, mb, aa, bb, ab] = [0, 0, 0, 0, 0];
+            for (let dy = -5; dy <= 5; dy++) {
+              for (let dx = -5; dx <= 5; dx++) {
+                const [xx, yy] = [x + dx, y + dy];
+                if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+                const i = (yy * w + xx) * 4 + c;
+                const k = (g[dx + 5] / gSum) * (g[dy + 5] / gSum);
+                const [va, vb] = [a[i] / 255, b[i] / 255];
+                ma += k * va;
+                mb += k * vb;
+                aa += k * va * va;
+                bb += k * vb * vb;
+                ab += k * va * vb;
+              }
+            }
+            value +=
+              ((2 * ma * mb + 0.01 ** 2) * (2 * (ab - ma * mb) + 0.03 ** 2)) /
+              ((ma * ma + mb * mb + 0.01 ** 2) * (aa - ma * ma + bb - mb * mb + 0.03 ** 2)) /
+              3;
+          }
+          expect(map[y * w + x]).toBeCloseTo(value, 4);
+        }
+      }
+    }
+  });
+
   it('rejects images of different sizes', () => {
     expect(() => ssim(image(), image().subarray(4), W, H)).toThrow('differ in size');
   });
