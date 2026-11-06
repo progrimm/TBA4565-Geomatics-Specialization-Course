@@ -167,7 +167,8 @@ src/
   viewer/backgrounds.js  colour and sky cube map backgrounds (no React)
   viewer/photoCameras.js frustums of the COLMAP photos (no React)
   viewer/frameOverlay.js  numbered control points and the user's origin/axes (no React)
-  workers/               Web Worker for PSNR, SSIM and the difference image
+  workers/               Web Worker: decodes a photo, computes PSNR, SSIM and the difference
+                         image (several run side by side, see utils/workerPool.js)
   hooks/                 React hooks: the viewer and its load state, file opening and
                          drag and drop per pane, measurement, linked cameras, media query,
                          COLMAP photos, evaluation
@@ -178,7 +179,7 @@ src/
   utils/                 pure helpers: PLY header, file formats, bounds and camera framing,
                          up-axis rotations, ellipsoid view settings, distance, formatting,
                          pane layout tree, COLMAP parsing, photo cameras, PSNR/SSIM,
-                         local frame (scale, similarity transform, JSON)
+                         local frame (scale, similarity transform, JSON), worker pool
 tests/                   Vitest unit tests for the pure helpers and the message store
 ```
 
@@ -211,6 +212,17 @@ Main design choices:
   Browsers limit a page to a number of live WebGL contexts (about 16 in Chromium), and the open
   splats share the machine's memory, so `MAX_PANES` in `config.js` is 4. The panes split the
   screen between them, so together they draw about as many pixels as one full-screen view.
+- **Render on demand** (2026-11-06). A pane used to redraw on every display frame, even when
+  nothing moved. Now `splatViewer.js` draws a frame only after `requestRender()`
+  ([three.js: rendering on demand](https://threejs.org/manual/#en/rendering-on-demand)). Calls
+  come from OrbitControls' `change` event (mouse, touch, keys), from every setter (background,
+  up axis, markers, photos, ellipsoid view, local frame), from resize and load, and from Spark.
+  Spark sorts the splats by depth in a worker, so a new sort order arrives a few frames after
+  the camera stopped. `SparkRenderer`'s `onDirty` callback (Spark 2.4.0,
+  [docs](https://sparkjs.dev/docs/)) asks for that frame. Frames continue for
+  `RENDER.settleMs` (500 ms) after the last request as a safety margin. Between frames the
+  canvas keeps showing the last image, so an idle pane costs no GPU time. The offscreen photo
+  renders pause the pane with a flag instead of stopping an animation loop.
 - **A layout tree, rendered flat.** The layout is a binary tree (`utils/layout.js`): a leaf is a
   pane, an inner node splits its area in two (`row` = side by side, `column` = stacked) at a
   `ratio`. Rendering the panes nested inside the tree would make React remount a pane, and so
@@ -285,9 +297,21 @@ Main design choices:
   R, G, B in [0, 1]; SSIM (Wang et al. 2004) with an 11 × 11 Gaussian window, σ = 1.5, zero
   padding, C1 = 0.01², C2 = 0.03², averaged over pixels and channels. A unit test checks the
   separable implementation against a direct one. The means per role are means of the per-photo
-  values. LPIPS is not computed: it needs a neural network. SSIM on a 1539 × 2058 photo runs in a
-  [Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API), so the page
-  stays responsive, and the next photo is rendered while the worker compares the previous one.
+  values. LPIPS is not computed: it needs a neural network. SSIM on a 1539 × 2058 photo runs in
+  [Web Workers](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API), so the page
+  stays responsive.
+- **Evaluation in parallel** (2026-11-06). The GPU renders the photos one at a time, but
+  comparing a photo (decode the JPEG, SSIM with fifteen 11-tap blurs over 3.2 million pixels)
+  takes far longer than rendering it, and it only uses one CPU core. A small pool of workers
+  (`utils/workerPool.js`, `EVALUATION.workers` = 4, at most the number of cores − 1)
+  therefore compares several photos at once while the next one renders. At most one photo per
+  worker is in flight, so renders do not pile up in memory. The photo is decoded in the worker
+  (`createImageBitmap` and `OffscreenCanvas` work there too), not on the main thread. The SSIM
+  blur itself was also made faster without changing a single bit of its output. It no longer
+  calls a function per pixel, skips the bounds checks inside the rows, and runs the vertical
+  pass row by row through memory. Each pixel still sums its taps in the same order in double
+  precision, which is why the result stays identical. The trade-off is memory: by array sizes,
+  each busy worker needs about 130 MB for a photo of this size (not measured).
 - **Error in numbers.** PSNR and SSIM compress a photo into one number each. The per-pixel
   error histogram shows how the error is spread: many small errors (blur, noise) or few large
   ones (missing or wrong geometry, floaters). The colour offset (mean signed difference) shows a
@@ -447,6 +471,99 @@ third-party data credits; Spark (MIT, World Labs) and three.js (MIT) are its ren
 libraries.
 
 ## Verification
+
+2026-11-06, speed and efficiency (no feature removed):
+
+- What changed:
+  - A faster SSIM blur, with output identical to the old one.
+  - A pool of 4 metric workers, with the photos decoded in the workers.
+  - Render on demand instead of a redraw on every display frame.
+
+  See "Evaluation in parallel" and "Render on demand" above.
+
+- Setup for all numbers below: this machine (AMD Radeon 780M, 16 logical cores, Node 24.20.0).
+  The browser runs were Playwright's Chromium, headless, with the GPU on
+  (`--use-angle=d3d11 --enable-gpu`, renderer string "ANGLE (AMD, AMD Radeon(TM) 780M …
+  Direct3D11)"), on `vite preview` at 1600 × 900. The data was `nugatti_plySH3.ply` and
+  `nugatti/dense` (44 photos, 1539 × 2058). "Before" is a build of commit `adb657b`. The
+  rows below name which later build was timed: `f34d6d5` (pool only) or `fd9b346` (pool and
+  render on demand). The scripts were throwaway Playwright and Node scripts, not committed.
+- SSIM alone (Node, two random 1539 × 2058 images, median of 5 runs, old and new run
+  alternately): old 2370 and 2406 ms, new 1355 and 1375 ms. A check script compared
+  `ssimMap` of old and new on 9 image sizes from 1 × 1 to 1539 × 2058. Every pixel was
+  bit-identical.
+- "Evaluate all photos" (the app's own time):
+
+  | Build                      | Runs                      |
+  | -------------------------- | ------------------------- |
+  | before (1 worker)          | 125.7, 169.4, 264.5 s     |
+  | after, 3 workers (trial)   | 43.3 s                    |
+  | f34d6d5, 4 workers         | 33.4, 33.3, 33.2, 226.8 s |
+  | f34d6d5, 6 workers (trial) | 24.4 s                    |
+  | fd9b346, 4 workers (final) | 19.4, 19.4, 19.4 s        |
+  - In a profiled "before" run (164.7 s), each worker job took 2.6–5.2 s, and the jobs ran
+    back to back. So the single worker was the bottleneck, not the GPU.
+  - With the pool, 4 jobs overlap: about 2.3–4.0 s each on `f34d6d5`, and 1.6–1.9 s each on
+    `fd9b346` (first six jobs).
+  - The final build is faster again (19.4 s against ≈ 33 s), although the evaluation code is
+    the same. This fits less CPU and GPU contention once the visible pane stops redrawing at
+    120 Hz during the run, but the cause was not isolated.
+  - Two pool runs took about 220 s (226.8 s above, and 222.6 s in a trial run), and the before
+    series has a 264.5 s run. These
+    outliers are not explained. They are probably the machine's power or thermal state, but
+    that was not checked. Treat the typical values (≈ 125–170 s before, 19.4 s final) as the
+    result, not a precise factor.
+  - 6 workers was faster still. 4 was kept to limit memory (see the design note).
+  - These numbers come from a different session than the 88.8–102.5 s further down, so the
+    two sets are not comparable.
+
+- Same results: every "after" CSV (all 44 photos, full precision) is byte-identical to the
+  "before" CSV. So decoding in the worker reads the same pixels.
+- One photo in detail ("Evaluate IMG_6424.JPEG", time from click to the button coming back):
+  before 3.07, 3.04 and 3.02 s; after 4.14, 2.60 and 3.66 s. This is **not measurably faster**
+  on this machine: the pool does not help a single photo, and the render, difference image and
+  PNG encoding are unchanged.
+- Idle cost (WebGL draw calls counted by wrapping `drawArrays`/`drawElements*`, over 5 s after
+  the view settled):
+
+  | Panes | Before | After |
+  | ----- | ------ | ----- |
+  | 1     | 601    | 0     |
+  | 2     | 1202   | 0     |
+
+  Before, that is one frame per pane at the display's 120 Hz.
+
+- Function check (Playwright, both builds, the same script): all 19 checks pass on both, with
+  no console errors. A check that "changes the view" passes when a screenshot of the pane
+  differs before and after the action. The checks:
+  - Orbit drag changes the view, and two shots 1 s later are equal (the view settled).
+  - Arrow keys change the view.
+  - Reset view changes it, and the result matches the first frame exactly.
+  - +Z up axis and the ellipsoid slider at 100 % change the view.
+  - The Black and Sky backgrounds change the view.
+  - Two measure clicks show the markers and "Distance: …".
+  - Picking control point 1 shows its marker.
+  - Apply (known coordinates) and "Show your axes" change the view.
+  - Choosing IMG_6440 enters photo view.
+  - Difference mode shows the difference image, and hovering shows the pixel readout.
+  - "Free view" leaves photo view.
+  - With Link cameras on, Pane 2 follows a drag in Pane 1.
+  - At 390 px the splat opens.
+- Screenshots looked at, at 1600 px (two panes; photo view in difference mode with the readout;
+  the local frame with control points) and at 390 px. The splat is drawn sharp after settling;
+  no pane is blank or stale.
+- `npm run lint`: no problems. `npm run format:check`: all files pass. `npm test`: 14 files,
+  85 tests passed. New tests: SSIM per pixel against the direct definition for 4 × 13,
+  13 × 4, 11 × 11 and 23 × 17 images (edge-only and interior paths), and the worker pool
+  (queueing, errors, terminate, size). `npm run build` passes, with the same chunk-size
+  warning as before.
+- **Not verified:**
+  - Memory use with 4 busy workers (only estimated from array sizes).
+  - Machines with few cores, where the pool shrinks.
+  - Firefox, Safari and real phones.
+  - Battery or GPU power: only draw calls were counted.
+  - 3 or 4 panes idle.
+  - The cause of the ≈ 220 s outliers.
 
 2026-11-05, rename of the georeference tool to "Scale & coordinate system":
 
@@ -727,6 +844,10 @@ All of that code, its README (with the alignment and benchmark results) and the 
 git history at commit `9442d81`.
 
 ## Status
+
+Speed (2026-11-06): "Evaluate all photos" on the 44 nugatti photos dropped from ≈ 125–170 s
+to 19.4 s on this machine, with identical results. Idle panes no longer redraw (0 draw calls
+in 5 s instead of 601 per pane). See [Verification](#verification).
 
 Rename (2026-11-05): the georeference tool is now "Scale & coordinate system", since it
 assigns a local frame, not a CRS. See [Verification](#verification).

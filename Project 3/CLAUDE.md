@@ -60,7 +60,7 @@ viewer/splatViewer.js – three.js + Spark scene, no React
 viewer/backgrounds.js – colour and sky backgrounds, no React
 viewer/photoCameras.js – COLMAP camera frustums, no React
 viewer/frameOverlay.js – control-point markers and the user's origin/axes, no React
-workers/ – Web Worker for PSNR/SSIM
+workers/ – Web Worker for PSNR/SSIM (run as a pool, utils/workerPool.js)
 hooks/ – React hooks bridging React and the viewer (viewer, file opening, measurement, linked cameras)
 components/ – React UI: panel, pane layout, pane, file opener, facts, orientation, measurement, "All panes", messages
 state/ – small framework-independent stores (messages)
@@ -135,3 +135,7 @@ tests/ – Vitest unit tests
 - 2026-11-05: renamed to "Scale & coordinate system" (code: localFrame /
   LOCAL_FRAME / frameOverlay), since it has no CRS. Save format is now
   `3dgs-viewer-coordinate-system`; old georeference JSON is not read.
+- 2026-11-06: speed. Metric worker pool (EVALUATION.workers = 4) with photo decoding in the
+  workers, a faster bit-identical SSIM blur, and render on demand (requestRender + Spark
+  onDirty, RENDER.settleMs). Evaluate all 44 photos ≈ 125–170 s → 19.4 s, same CSV; idle draw
+  calls 601 → 0 per pane in 5 s. See README Verification.
