@@ -13,6 +13,7 @@ import {
   LOCAL_FRAME,
   MARKER,
   PHOTOS,
+  RENDER,
 } from '../config.js';
 import { createBackground } from './backgrounds.js';
 import { createFrameOverlay } from './frameOverlay.js';
@@ -102,6 +103,20 @@ export function createSplatViewer(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
   renderer.setPixelRatio(window.devicePixelRatio);
 
+  // Render on demand (https://threejs.org/manual/#en/rendering-on-demand): a frame is drawn only
+  // after requestRender(), e.g. when the camera moves, a setting changes or Spark reports a new
+  // sort order (its onDirty callback). The canvas keeps showing the last frame in between, so an
+  // idle pane costs no GPU time. Frames continue for RENDER.settleMs after the last request.
+  let frameId = 0;
+  let settleUntil = 0;
+  // True while an offscreen photo render has the scene.
+  let paused = false;
+  let disposed = false;
+  function requestRender() {
+    settleUntil = performance.now() + RENDER.settleMs;
+    if (!frameId && !paused && !disposed) frameId = requestAnimationFrame(frame);
+  }
+
   const scene = new THREE.Scene();
   let background = null;
   let backgroundId = null;
@@ -112,15 +127,19 @@ export function createSplatViewer(canvas) {
     background = next;
     backgroundId = id;
     scene.background = next.value;
+    requestRender();
   }
   setBackground(DEFAULT_BACKGROUND);
-  const spark = new SparkRenderer({ renderer });
+  // onDirty: Spark asks for a frame, e.g. when a sort for the current view has finished.
+  const spark = new SparkRenderer({ renderer, onDirty: requestRender });
   scene.add(spark);
 
   const camera = new THREE.PerspectiveCamera(CAMERA.verticalFovDeg, 1, 0.01, 1000);
   const controls = new OrbitControls(camera, canvas);
   // Arrow keys pan (Shift + arrows orbit) while the canvas has focus.
   controls.listenToKeyEvents(canvas);
+  // Any orbit, pan or zoom (mouse, touch, keys) and every controls.update() that moves the camera.
+  controls.addEventListener('change', requestRender);
 
   // Holds the splat and the markers, so one rotation (the up-axis fix) applies to both
   // and picked points stay in file coordinates.
@@ -150,18 +169,23 @@ export function createSplatViewer(canvas) {
     camera.aspect = clientWidth / clientHeight;
     if (photoInView) applyPhotoProjection();
     else camera.updateProjectionMatrix();
+    // setSize clears the canvas.
+    requestRender();
   };
   const observer = new ResizeObserver(resize);
   observer.observe(canvas);
   resize();
 
   function frame() {
+    frameId = 0;
     // In photo view the camera keeps the photo's exact orientation (incl. roll), which
     // OrbitControls' lookAt would level out.
     if (!photoInView) controls.update();
     renderer.render(scene, camera);
+    if (!frameId && !paused && !disposed && performance.now() < settleUntil) {
+      frameId = requestAnimationFrame(frame);
+    }
   }
-  renderer.setAnimationLoop(frame);
 
   function resetView() {
     if (!core) return;
@@ -183,6 +207,7 @@ export function createSplatViewer(canvas) {
     camera.position.fromArray(view.position);
     controls.target.fromArray(view.target);
     controls.update();
+    requestRender();
   }
 
   async function load(bytes, fileName) {
@@ -229,6 +254,7 @@ export function createSplatViewer(canvas) {
     spark.maxStdDev = settings.maxStdDev;
     // A changed dyno uniform takes effect once Spark regenerates the splats.
     mesh?.updateVersion();
+    requestRender();
   }
 
   function setEllipsoidView(amount) {
@@ -242,6 +268,7 @@ export function createSplatViewer(canvas) {
   function applyRotation() {
     model.quaternion.fromArray(levelRotation ?? upAxisRotation(upAxis));
     resetView();
+    requestRender();
   }
 
   function setUpAxis(axis) {
@@ -258,6 +285,12 @@ export function createSplatViewer(canvas) {
   /** The user's origin and axes (file coordinates), drawn at a size that fits the scene. */
   function setFrameAxes(frame) {
     frameOverlay.setFrame(frame, frame ? sceneSize() * LOCAL_FRAME.axesFraction : 0);
+    requestRender();
+  }
+
+  function setControlPoints(points) {
+    frameOverlay.setControlPoints(points);
+    requestRender();
   }
 
   // Linked cameras: another pane copies this camera's pose. OrbitControls fires 'change'
@@ -298,6 +331,7 @@ export function createSplatViewer(canvas) {
     // Only around a splat: in an empty pane the camera sits inside the ring of frustums.
     const shown = core ? photos : [];
     photoCameras.set(shown, shown.length ? sceneSize() * PHOTOS.frustumFraction : 0, selectedPhoto);
+    requestRender();
   }
 
   function setPhotos(next, selected) {
@@ -354,6 +388,7 @@ export function createSplatViewer(canvas) {
     // The frustums would frame the photo's own border; hidden while looking through one.
     photoCameras.setVisible(false);
     applyPhotoProjection();
+    requestRender();
     emitPhoto();
   }
 
@@ -361,6 +396,7 @@ export function createSplatViewer(canvas) {
   function setPhotosVisible(visible) {
     photosVisible = visible;
     if (!photoInView) photoCameras.setVisible(visible);
+    requestRender();
   }
 
   function exitPhotoView() {
@@ -368,6 +404,7 @@ export function createSplatViewer(canvas) {
     photoInView = null;
     camera.updateProjectionMatrix();
     photoCameras.setVisible(photosVisible);
+    requestRender();
     emitPhoto();
   }
 
@@ -402,7 +439,9 @@ export function createSplatViewer(canvas) {
     photoCamera.projectionMatrix.set(...photoProjection(photo.intrinsics, camera.near, camera.far));
     photoCamera.projectionMatrixInverse.copy(photoCamera.projectionMatrix).invert();
     // Pause the view while the scene is set up for the offscreen render.
-    renderer.setAnimationLoop(null);
+    paused = true;
+    cancelAnimationFrame(frameId);
+    frameId = 0;
     const saved = {
       background: scene.background,
       clearColor: renderer.getClearColor(new THREE.Color()),
@@ -426,8 +465,8 @@ export function createSplatViewer(canvas) {
       markers.visible = true;
       frameOverlay.setVisible(true);
       photoCameras.setVisible(photosVisible && !photoInView);
+      paused = false;
       applyEllipsoidView(ellipsoidAmount);
-      if (!disposed) renderer.setAnimationLoop(frame);
     }
   }
 
@@ -489,12 +528,12 @@ export function createSplatViewer(canvas) {
       line.renderOrder = 1;
       markers.add(line);
     }
+    requestRender();
   }
 
-  let disposed = false;
   function dispose() {
     disposed = true;
-    renderer.setAnimationLoop(null);
+    cancelAnimationFrame(frameId);
     observer.disconnect();
     controls.dispose();
     setMarkers([]);
@@ -529,7 +568,7 @@ export function createSplatViewer(canvas) {
     renderPhoto,
     setEllipsoidView,
     setLevelRotation,
-    setControlPoints: frameOverlay.setControlPoints,
+    setControlPoints,
     setFrameAxes,
     dispose,
   };

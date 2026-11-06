@@ -127,6 +127,13 @@ export const DEFAULT_COMPARE = { mode: 'swipe', amount: 0.5 };
  */
 export const EVALUATION = { coverageThreshold: 0.5, differenceGain: 4, workers: 4 };
 
+/**
+ * Render on demand: a pane draws only after something changed (camera, settings, a load, or
+ * Spark reporting a new sort order), and keeps drawing for settleMs after the last change as a
+ * safety margin, then stops until the next change.
+ */
+export const RENDER = { settleMs: 500 };
+
 /** While measuring, a press that moves more than this (CSS px) is a drag, not a pick. */
 export const CLICK_TOLERANCE_PX = 5;
 
