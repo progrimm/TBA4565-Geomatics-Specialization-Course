@@ -354,3 +354,9 @@ Clearly relevant but not cited in the repo (each URL returned HTTP 200 on 2026-1
 - **[re-run]** Coverage: 17.7 % of 182 561 residents within 10 min, 52.6 % within 20 min, 79.8 % within 30 min; for 8 047 residents (39 cells) the fastest shelter differs from the nearest. Checked against the single-point search for 53 cells.
 - **[re-run]** Checks: lint, format, tests (17 files, 108 tests), build; failed-layer script (6 cases incl. node heights blocked) and accessibility script exit 0; Playwright at 1600 and 390 px inspected.
 - Note: the README's "Coverage and capacity" section was missing after the step-3 commit (a scratch file path had been written instead) and was restored in this step.
+
+## Update 2026-11-08 (step 5): route check against an independent router
+
+- **[re-run]** `Project 2/scripts/validate-routes.js`: the app's shortest walk vs OSRM (foot profile, FOSSGIS server <https://routing.openstreetmap.de/about.html>, usage policy ≤ 1 request/s; 209 requests, 1.1 s apart) from every 4th routed grid point (209) to the shelter the app chose; OSRM distance = route + both snapping distances. OSRM − app: median +1.28 %, median |Δ| 1.59 %, p90 |Δ| 6.14 %, 84.7 % within 5 %, 95.2 % within 10 %. Per point: `Project 2/results/route-validation.csv`.
+- **[re-run]** Largest differences: +42.2 % (63.37580 N 10.43397 E → no. 11848; OSRM follows the app's network but a longer way, cause not determined), +21.8 % (63.41888 N 10.35561 E → no. 30673, not inspected), −19.0 % (63.43503 N 10.38919 E → no. 30667; OSRM uses a connection whose vertices lie up to 37 m from any app node, i.e. not in the 2026-10-27 snapshot; whether new in OSM or filtered out was not determined).
+- Interpretation: agreement within a few per cent for most points; outliers point to data and rule differences (snapshot age, way filter, barriers), not the shortest-path search.

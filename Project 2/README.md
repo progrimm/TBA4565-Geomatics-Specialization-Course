@@ -41,6 +41,8 @@ on code quality: linting, tests, error handling and CI.
   from one multi-source Dijkstra. A "Walking distance" layer colours each cell by the walk from
   home to the nearest shelter, and the panel gives the share of residents within 500 m, 1 km and
   2 km and the residents per shelter place (see [Coverage and capacity](#coverage-and-capacity))
+- Route check: the app's walks compared with an independent router (OSRM, foot profile) at 209
+  test points (see [Route check](#route-check-against-an-independent-router))
 - Walking time on slopes: every network node has a height from Kartverket's terrain model, and
   Tobler's hiking function turns slopes into minutes. "Nearest" is the fastest walk, with the
   shortest one shown when it leads elsewhere (see [Walking time on slopes](#walking-time-on-slopes))
@@ -103,12 +105,13 @@ Run these from `Project 2/`.
 Browser checks and the benchmark are plain Node scripts that use Playwright (see
 [Quality checks](#quality-checks)):
 
-| Command                               | Purpose                                                                                        |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `node scripts/check-failed-layers.js` | Block one data request at a time and check the app still works                                 |
-| `node scripts/check-accessibility.js` | Tab through the panel at 1600 px and 390 px, operate controls                                  |
-| `node scripts/benchmark-buildings.js` | First-load time and frame rate for two SSE values                                              |
-| `node scripts/check-terrain.js`       | Cesium World Terrain vs Kartverket DTM 1 (see [Heights and the geoid](#heights-and-the-geoid)) |
+| Command                               | Purpose                                                                                             |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `node scripts/check-failed-layers.js` | Block one data request at a time and check the app still works                                      |
+| `node scripts/check-accessibility.js` | Tab through the panel at 1600 px and 390 px, operate controls                                       |
+| `node scripts/validate-routes.js`     | Compare walks with OSRM foot routes (see [Route check](#route-check-against-an-independent-router)) |
+| `node scripts/benchmark-buildings.js` | First-load time and frame rate for two SSE values                                                   |
+| `node scripts/check-terrain.js`       | Cesium World Terrain vs Kartverket DTM 1 (see [Heights and the geoid](#heights-and-the-geoid))      |
 
 CI ([`.github/workflows/project2-ci.yml`](../.github/workflows/project2-ci.yml)) runs lint,
 format check, tests and build on every push and pull request that touches `Project 2/`.
@@ -618,6 +621,64 @@ by distance ("Slope data unavailable…", sixth case in `check-failed-layers.js`
 data. It does not model stairs (they get the terrain slope), crowds, traffic lights, age,
 fitness or carrying things. A 5 m terrain model smooths short ramps and kerbs. Heights inside
 building passages are the terrain model's interpolation under the building.
+
+## Route check against an independent router
+
+Are the app's walks right? `node scripts/validate-routes.js` compares them with
+[OSRM](https://project-osrm.org/) and its foot profile on FOSSGIS's public server
+([routing.openstreetmap.de](https://routing.openstreetmap.de/about.html)). OSRM is an
+independent router with its own OSM extract (updated about every two days) and its own rules
+for which ways a pedestrian may use.
+
+**Method.**
+
+- **Points:** every 4th of the 835 routed points of the 30 × 30 grid (209 points).
+- **Comparison:** for each point the app's shortest walk (by distance) and OSRM's route from the
+  same point to the shelter the app chose. OSRM's distance is counted end to end like the
+  app's: route plus the straight snapping distances at both ends. OSRM snaps to the nearest
+  street, the app to the nearest node.
+- **Usage policy:** at most one request per second, no heavy use, a valid User-Agent. The script
+  waits 1.1 s between requests (209 requests, 4 min 12 s) and sends the project's User-Agent.
+  OSRM is only used for this check. Nothing from it is in the app.
+- **Output:** every point is in `results/route-validation.csv`; the summary is in
+  `analysis-summary.json` (`routeValidation`), which "How it works" shows.
+
+**Results** (2026-11-08, 209 points; difference = OSRM − app, in % of the app's walk):
+
+| Measure                    | Value   |
+| -------------------------- | ------- |
+| Median difference (signed) | +1.28 % |
+| Median absolute difference | 1.59 %  |
+| 90th percentile, absolute  | 6.14 %  |
+| Within 5 %                 | 84.7 %  |
+| Within 10 %                | 95.2 %  |
+
+For most points the two routers agree within a few per cent; OSRM's walks are slightly longer
+on median (not investigated further). The largest differences:
+
+| Start (WGS84)         | Shelter | App     | OSRM    | Difference |
+| --------------------- | ------- | ------- | ------- | ---------- |
+| 63.37580 N 10.43397 E | 11848   | 2 812 m | 3 999 m | +42.2 %    |
+| 63.41888 N 10.35561 E | 30673   | 2 899 m | 3 530 m | +21.8 %    |
+| 63.43503 N 10.38919 E | 30667   | 1 269 m | 1 029 m | −19.0 %    |
+
+Two of them were looked into by comparing OSRM's route geometry (`overview=full`) with the
+app's network nodes:
+
+- **−19.0 %** (Brattøra, OSRM shorter): eight of OSRM's 74 route vertices lie more than 3 m from
+  any node of the app's network, up to 37 m, around 63.4347 N, 10.3925 E. OSRM uses a
+  connection there (its off-network vertices span 54 m) that is not in the app's 2026-10-27
+  snapshot. Not determined: whether
+  that way is new in OSM since the snapshot or left out by the app's way filter.
+- **+42.2 %** (the app shorter): only OSRM's first and last vertices are more than 3 m from the
+  app's network, so OSRM follows the same network but takes a longer way round. Not determined:
+  which way of the app's path OSRM's foot profile avoids (for example because of an access tag
+  or a barrier node; the app ignores barriers).
+
+The check does not say which router is right. For most points an independent router finds a
+walk of about the same length, and the two outliers that were inspected point to differences
+in the data and the rules (snapshot age, way filter, barriers), not in the shortest-path search
+itself.
 
 ## Heights and the geoid
 
@@ -1178,3 +1239,15 @@ Walking time on slopes (2026-11-08):
 - **Not verified:** the "Shortest" row in the browser. No browser click hit a point where the
   fastest and the nearest shelter differ; the logic is unit-tested and the example above is
   from Node.
+
+Route check against OSRM (2026-11-08):
+
+- **Script only** (`node scripts/validate-routes.js`): the app's shortest walks from 209 grid
+  points compared with OSRM foot routes on FOSSGIS's server (one request per 1.1 s): median
+  absolute difference 1.59 %, 90th percentile 6.14 %, 84.7 % within 5 % (see
+  [Route check](#route-check-against-an-independent-router)). Two of the three largest
+  differences were inspected; one comes from a short connection missing in the app's snapshot,
+  the other is not explained.
+- **App:** "How it works" shows a "Route check" row and a limitation about the snapshot.
+- **Verified:** lint, format check, tests (17 files, 108 tests) and build pass; Playwright at
+  1600 × 900 and 390 × 844 shows the new row in the sheet with no console errors.

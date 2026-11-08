@@ -192,4 +192,7 @@ public/data/ – static datasets (shelters GeoJSON, walking network JSON)
   byTime edge costs and withHeights in utils/network.js (multi-source cost is reversed).
   scripts/overpass.js shared. Grid and coverage scripts report times. The view buttons stay
   (removal started and reverted on request).
+- 2026-11-08: step 5 done. scripts/validate-routes.js: app walks vs OSRM foot
+  (routing.openstreetmap.de, ≤ 1 req/s) at 209 grid points → results/route-validation.csv and
+  analysis-summary.json `routeValidation` (median |Δ| 1.59 %). Plan steps 0–5 complete.
   (Update this section after each module.)

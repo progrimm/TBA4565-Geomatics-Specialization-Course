@@ -231,6 +231,7 @@ export const LIMITATIONS = [
   'The network is an OpenStreetMap snapshot: missing or wrongly tagged paths change the result. Stairs, barriers and opening hours are not considered.',
   'Walking times use Tobler’s average hiker on the terrain under the path, with heights interpolated across bridges and tunnels; stairs, crowds, age and fitness are not modelled.',
   'Snapping uses the nearest vertex, not the nearest point on a street, and the connectors are straight lines.',
+  'The network is a snapshot from 2026-10-27. An independent router on newer OpenStreetMap data finds walks of about the same length for most points, but not for all (see the route check).',
   'Cesium World Terrain is much coarser than Kartverket’s 1 m terrain model (see the terrain check), so a clicked ground height is approximate, and so is how the 3D view drapes routes.',
   'The routes cover the shelters’ area plus about 1 km. Clicks outside it are refused, and the coverage analysis only counts residents inside it.',
   'Coverage uses where people live (registered residents in 250 m cells), not where they are during the day, and gives everyone in a cell the walk from its centre.',
@@ -265,6 +266,7 @@ export function keyResults(summary) {
     },
     ...(summary.coverage ? coverageRows(summary.coverage) : []),
     ...(summary.walkingTime ? walkingTimeRows(summary.walkingTime, summary.coverage) : []),
+    ...(summary.routeValidation ? [routeRow(summary.routeValidation)] : []),
     ...(summary.terrainCheck ? [terrainRow(summary.terrainCheck)] : []),
   ];
 }
@@ -311,6 +313,14 @@ function walkingTimeRows({ fastestDifferentFromShortest, shortestWalkSlopeFactor
     });
   }
   return rows;
+}
+
+/** The external route check (scripts/validate-routes.js) as a result row. */
+function routeRow({ points, medianAbsDifferencePercent, p90AbsDifferencePercent, within5Percent }) {
+  return {
+    label: 'Route check',
+    value: `against OSRM (foot, FOSSGIS) at ${points} test points: median difference ${medianAbsDifferencePercent.toFixed(1)} %, 90th percentile ${p90AbsDifferencePercent.toFixed(1)} %; ${percent(within5Percent)} within 5 %`,
+  };
 }
 
 /** The terrain check (scripts/check-terrain.js) as a result row. */

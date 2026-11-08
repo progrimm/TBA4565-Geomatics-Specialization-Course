@@ -44,9 +44,11 @@ describe('"How it works" content', () => {
       'Capacity',
       'Slopes',
       'Residents by time',
+      'Route check',
       'Terrain check',
     ]);
-    expect(rows[8].value).toContain(`RMSE ${summary.terrainCheck.rmseMetres.toFixed(1)} m`);
+    expect(rows[8].value).toContain(`${summary.routeValidation.points} test points`);
+    expect(rows[9].value).toContain(`RMSE ${summary.terrainCheck.rmseMetres.toFixed(1)} m`);
     const { residents, places } = summary.coverage;
     expect(rows[5].value).toContain(
       `${(residents / places).toFixed(1)} residents per shelter place`,

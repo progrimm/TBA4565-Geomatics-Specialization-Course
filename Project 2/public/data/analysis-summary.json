@@ -234,5 +234,17 @@
       "median": 1.052,
       "p90": 1.143
     }
+  },
+  "routeValidation": {
+    "date": "2026-11-08",
+    "router": "OSRM foot profile, routing.openstreetmap.de (FOSSGIS e.V.)",
+    "points": 209,
+    "sampled": 209,
+    "medianDifferencePercent": 1.28,
+    "medianAbsDifferencePercent": 1.59,
+    "p90AbsDifferencePercent": 6.14,
+    "within5Percent": 0.8469,
+    "within10Percent": 0.9522,
+    "definition": "OSRM (route + both snapping distances) minus the app’s shortest walk, in % of the app’s walk, from every 4th routed grid point to the shelter the app chose."
   }
 }

@@ -165,8 +165,9 @@ export default function About({ open, onClose, network, shelterTotals }) {
           )}
           {facts.summary && (
             <p className="about__note">
-              From <code>scripts/analyse-grid.js</code>, run {facts.summary.generated}: the same
-              search as a click, from every grid point.
+              From the analysis scripts in <code>scripts/</code> (grid, coverage, route and terrain
+              checks), last grid run {facts.summary.generated}. The test points use the same search
+              as a click.
             </p>
           )}
         </section>
