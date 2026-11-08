@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CAMERA_VIEWS, SHELTERS } from './config.js';
 import { addBuildings } from './layers/buildings.js';
 import { addShelters } from './layers/shelters.js';
+import { loadCoverage } from './layers/coverage.js';
 import { useCesiumViewer } from './hooks/useCesiumViewer.js';
 import { useAsyncLayer } from './hooks/useAsyncLayer.js';
 import { useNearestShelter } from './hooks/useNearestShelter.js';
@@ -14,15 +15,18 @@ import OutOfRange from './components/OutOfRange.jsx';
 import Messages from './components/Messages.jsx';
 import Legend from './components/Legend.jsx';
 import About from './components/About.jsx';
+import Coverage from './components/Coverage.jsx';
 import { summarizeShelters } from './utils/nearest.js';
 
 export default function App() {
   const [viewer, containerRef] = useCesiumViewer();
   const buildings = useAsyncLayer(viewer, addBuildings);
   const shelters = useAsyncLayer(viewer, addShelters);
+  const coverage = useAsyncLayer(viewer, loadCoverage);
   const network = useWalkingNetwork();
   const analysis = useNearestShelter(viewer, shelters, network, buildings);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [coverageVisible, setCoverageVisible] = useState(false);
 
   return (
     <>
@@ -42,10 +46,18 @@ export default function App() {
               scene={viewer?.scene}
               swatch={SHELTERS.style.color}
             />
+            <LayerToggle
+              label="Walking distance"
+              state={coverage}
+              scene={viewer?.scene}
+              initiallyVisible={false}
+              onToggle={setCoverageVisible}
+            />
           </ul>
         </section>
         <NearestShelter status={shelters.status} networkStatus={network.status} {...analysis} />
-        <Legend />
+        <Coverage state={coverage} shelters={analysis.shelters} layerVisible={coverageVisible} />
+        <Legend coverageVisible={coverageVisible} />
       </ControlPanel>
       <About
         open={aboutOpen}

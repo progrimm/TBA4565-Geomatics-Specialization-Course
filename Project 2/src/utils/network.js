@@ -161,6 +161,43 @@ export function shortestPathToAny({ adjacency }, start, targets) {
 }
 
 /**
+ * Multi-source Dijkstra: the network distance from every node to its nearest source,
+ * in one search. All sources start at distance 0 and grow together, so each node is
+ * reached first from its nearest source; labelling nodes by that source splits the
+ * network into service areas (a network Voronoi diagram). Edges are undirected, so the
+ * distance from a source to a node equals the distance from the node to the source.
+ * @param {Graph} graph
+ * @param {Iterable<number>} sources - node indices (e.g. the shelters' nodes).
+ * @returns {{distance: Float64Array, source: Int32Array}} per node: metres to the nearest
+ *   source (Infinity if none is connected) and that source's node index (-1 if none).
+ */
+export function multiSourceDijkstra({ adjacency }, sources) {
+  const distance = new Float64Array(adjacency.length).fill(Infinity);
+  const source = new Int32Array(adjacency.length).fill(-1);
+  const heap = new MinHeap();
+  for (const node of sources) {
+    distance[node] = 0;
+    source[node] = node;
+    heap.push(0, node);
+  }
+  while (heap.size > 0) {
+    const [d, node] = heap.pop();
+    if (d > distance[node]) continue; // stale heap entry
+    const edges = adjacency[node];
+    for (let k = 0; k < edges.length; k += 2) {
+      const next = edges[k];
+      const candidate = d + edges[k + 1];
+      if (candidate < distance[next]) {
+        distance[next] = candidate;
+        source[next] = source[node];
+        heap.push(candidate, next);
+      }
+    }
+  }
+  return { distance, source };
+}
+
+/**
  * Snap every shelter to its nearest network node. Do this once per graph.
  * @param {Graph} graph
  * @param {import('./nearest.js').Shelter[]} shelters

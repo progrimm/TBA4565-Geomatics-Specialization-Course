@@ -13,15 +13,36 @@ import { expect, launchBrowser, screenshotDir } from './browser.js';
 const URL = process.env.APP_URL ?? 'http://localhost:4174/';
 const OUT_DIR = screenshotDir(process.argv[2]);
 const CASES = [
-  { name: 'nothing-blocked', block: undefined, shelters: true, walk: true },
-  { name: 'shelters-blocked', block: '**/data/shelters.geojson', shelters: false, walk: false },
-  { name: 'network-blocked', block: '**/data/walking-network.json', shelters: true, walk: false },
+  { name: 'nothing-blocked', block: undefined, shelters: true, walk: true, coverage: true },
+  {
+    name: 'shelters-blocked',
+    block: '**/data/shelters.geojson',
+    shelters: false,
+    walk: false,
+    coverage: true,
+  },
+  {
+    name: 'network-blocked',
+    block: '**/data/walking-network.json',
+    shelters: true,
+    walk: false,
+    coverage: true,
+  },
   // Optional data: routes still work, only building highlighting is lost.
   {
     name: 'passages-blocked',
     block: '**/data/building-passages.json',
     shelters: true,
     walk: true,
+    coverage: true,
+  },
+  // The coverage layer is optional: its switch is disabled, everything else works.
+  {
+    name: 'coverage-blocked',
+    block: '**/data/coverage.json',
+    shelters: true,
+    walk: true,
+    coverage: false,
   },
 ];
 const VIEWPORT = { width: 1600, height: 900 };
@@ -42,7 +63,7 @@ const readState = (page) =>
   }));
 
 const browser = await launchBrowser();
-for (const { name, block, shelters, walk } of CASES) {
+for (const { name, block, shelters, walk, coverage } of CASES) {
   const context = await browser.newContext({ viewport: VIEWPORT });
   const page = await context.newPage();
   const pageErrors = [];
@@ -65,6 +86,7 @@ for (const { name, block, shelters, walk } of CASES) {
   expect(pageErrors.length === 0, `${name}: page errors ${pageErrors.join('; ')}`);
   expect(layer('Buildings').enabled, `${name}: buildings switch should be enabled`);
   expect(layer('Public shelters').enabled === shelters, `${name}: shelter switch state`);
+  expect(layer('Walking distance').enabled === coverage, `${name}: coverage switch state`);
   expect(nearest.includes('Straight') === shelters, `${name}: nearest result after click`);
   expect(nearest.includes('Walk\n') === walk, `${name}: walking distance shown`);
   if (block) expect(loaded.toasts.length > 0, `${name}: an error message should be shown`);

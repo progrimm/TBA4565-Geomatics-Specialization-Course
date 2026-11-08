@@ -48,6 +48,16 @@ export const CAMERA_VIEWS = {
     pitch: -20,
     range: 400,
   },
+  // Centre of the walking network's bounding box (the study area of the coverage
+  // analysis), ground 58.1 m NN2000 (Kartverket DTM 1 m, 2026-11-08). Looking north from
+  // high up, so the whole area fits on screen.
+  studyArea: {
+    label: 'Whole study area',
+    target: { longitude: 10.4144, latitude: 63.3987, heightNN2000: 58.1 },
+    heading: 0,
+    pitch: -65,
+    range: 20000,
+  },
 };
 
 /** Media query for the mobile layout. Keep in sync with the breakpoint in style.css. */
@@ -117,6 +127,31 @@ export const NEAREST = {
     outOfRangeColor: '#ff6b61', // the clicked point when it is out of range
     passageColor: '#3ddc84', // buildings the route passes through
   },
+};
+
+/**
+ * Coverage layer: SSB's 250 m population grid, each cell coloured by the walking
+ * distance from its centre to the nearest shelter (scripts/analyse-coverage.js).
+ */
+export const COVERAGE = {
+  url: `${DATA_URL}coverage.json`,
+  credit: 'Befolkning på rutenett 250 m: © Statistisk sentralbyrå (SSB), NLOD',
+  /**
+   * Walking-distance classes in metres (upper bounds, inclusive), nearest first. Not an
+   * official standard: 500 m and 1 km are about 6 and 12 minutes at 5 km/h. A 5-class
+   * blue–purple sequential scheme (ColorBrewer BuPu), readable with colour-vision
+   * deficiencies; cells with no route are grey.
+   */
+  classes: [
+    { max: 500, label: '≤ 500 m', color: '#bfd3e6' },
+    { max: 1000, label: '500 m – 1 km', color: '#9ebcda' },
+    { max: 2000, label: '1–2 km', color: '#8c96c6' },
+    { max: 4000, label: '2–4 km', color: '#8856a7' },
+    { max: Infinity, label: '> 4 km', color: '#810f7c' },
+  ],
+  noRouteColor: '#9e9e9e',
+  /** Fill opacity on the map (0–1): the imagery and buildings stay visible. */
+  alpha: 0.55,
 };
 
 /**

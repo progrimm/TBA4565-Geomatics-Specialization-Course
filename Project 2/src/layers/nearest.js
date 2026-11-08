@@ -8,13 +8,16 @@ import {
   ScreenSpaceEventType,
 } from 'cesium';
 import { NEAREST } from '../config.js';
+import { isCoverageCell } from './coverage.js';
 import { toDescriptionTable } from '../utils/html.js';
 import { formatDistance } from '../utils/nearest.js';
 
 /**
  * Call `onClick` with the WGS84 position of every left click on the ground.
  * Clicks on objects (shelters, buildings, the drawn line) are ignored: the
- * Viewer's InfoBox handles those. Clicks on the sky are ignored too.
+ * Viewer's InfoBox handles those. Clicks on the sky are ignored too. A click on a
+ * coverage cell counts as a ground click (the cells cover the ground); the InfoBox
+ * shows the cell as well.
  * @param {import('cesium').Viewer} viewer
  * @param {(point: import('../utils/nearest.js').LonLat & {height: number}) => void} onClick -
  *   WGS84 degrees; height: metres above the WGS84 ellipsoid on Cesium World Terrain, at
@@ -25,7 +28,8 @@ export function onGroundClick(viewer, onClick) {
   const { scene, camera } = viewer;
   const handler = new ScreenSpaceEventHandler(scene.canvas);
   handler.setInputAction(({ position }) => {
-    if (scene.pick(position)) return;
+    const picked = scene.pick(position);
+    if (picked && !isCoverageCell(picked)) return;
     // Intersect the camera ray through the clicked pixel with the terrain surface (ECEF).
     const ray = camera.getPickRay(position);
     const ground = ray && scene.globe.pick(ray, scene);

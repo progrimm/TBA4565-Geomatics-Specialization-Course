@@ -37,6 +37,10 @@ on code quality: linting, tests, error handling and CI.
   converted with h = H + N, and a clicked ground point shows its NN2000 height. A terrain check
   compares Cesium World Terrain with Kartverket's 1 m terrain model (see
   [Heights and the geoid](#heights-and-the-geoid))
+- Coverage and capacity: SSB's 250 m population grid joined to the shelters' service areas
+  from one multi-source Dijkstra. A "Walking distance" layer colours each cell by the walk from
+  home to the nearest shelter, and the panel gives the share of residents within 500 m, 1 km and
+  2 km and the residents per shelter place (see [Coverage and capacity](#coverage-and-capacity))
 - Loading and error messages for every layer. If one layer fails, the rest of the app keeps
   working
 - A collapsible control panel that becomes a bottom sheet on mobile. All panel controls work
@@ -75,21 +79,22 @@ load.
 
 Run these from `Project 2/`.
 
-| Command                 | Purpose                                                                              |
-| ----------------------- | ------------------------------------------------------------------------------------ |
-| `npm run dev`           | Start the Vite dev server                                                            |
-| `npm run build`         | Production build to `dist/`                                                          |
-| `npm run preview`       | Serve the production build locally                                                   |
-| `npm run lint`          | ESLint, including React hooks rules                                                  |
-| `npm run format`        | Format all files with Prettier                                                       |
-| `npm run format:check`  | Check formatting without writing                                                     |
-| `npm test`              | Run the Vitest unit tests once                                                       |
-| `npm run test:watch`    | Run Vitest in watch mode                                                             |
-| `npm run data:shelters` | Re-download the shelter dataset (see [Data](#shelters))                              |
-| `npm run data:network`  | Re-download the walking network (see [Walking network](#walking-network))            |
-| `npm run data:passages` | Recompute the building passages (see [Building passages](#building-passages-data))   |
-| `npm run analysis:grid` | Re-run the grid analysis behind "How it works" (see [Grid analysis](#grid-analysis)) |
-| `npm run data:geoid`    | Re-cut the geoid model subgrid (see [Heights and the geoid](#heights-and-the-geoid)) |
+| Command                     | Purpose                                                                              |
+| --------------------------- | ------------------------------------------------------------------------------------ |
+| `npm run dev`               | Start the Vite dev server                                                            |
+| `npm run build`             | Production build to `dist/`                                                          |
+| `npm run preview`           | Serve the production build locally                                                   |
+| `npm run lint`              | ESLint, including React hooks rules                                                  |
+| `npm run format`            | Format all files with Prettier                                                       |
+| `npm run format:check`      | Check formatting without writing                                                     |
+| `npm test`                  | Run the Vitest unit tests once                                                       |
+| `npm run test:watch`        | Run Vitest in watch mode                                                             |
+| `npm run data:shelters`     | Re-download the shelter dataset (see [Data](#shelters))                              |
+| `npm run data:network`      | Re-download the walking network (see [Walking network](#walking-network))            |
+| `npm run data:passages`     | Recompute the building passages (see [Building passages](#building-passages-data))   |
+| `npm run analysis:grid`     | Re-run the grid analysis behind "How it works" (see [Grid analysis](#grid-analysis)) |
+| `npm run data:geoid`        | Re-cut the geoid model subgrid (see [Heights and the geoid](#heights-and-the-geoid)) |
+| `npm run analysis:coverage` | Re-run the coverage analysis (see [Coverage and capacity](#coverage-and-capacity))   |
 
 Browser checks and the benchmark are plain Node scripts that use Playwright (see
 [Quality checks](#quality-checks)):
@@ -156,11 +161,12 @@ ECEF with
 The landmark is then in the centre of the screen by construction. The old presets stored a camera
 position and were estimated by eye.
 
-| View         | Target (OpenStreetMap, via Nominatim)                      | Ground, NN2000 (Kartverket DTM 1 m) | Target H, NN2000 (`config.js`) | N (HREF2025A) | Target h = H + N | Heading / pitch / range |
-| ------------ | ---------------------------------------------------------- | ----------------------------------- | ------------------------------ | ------------- | ---------------- | ----------------------- |
-| Midtbyen     | Torvet, relation 4681742: 63.4303661 N, 10.3953233 E       | 9.6 m                               | 9.6 m (ground)                 | 39.373 m      | 48.97 m          | 0° / −45° / 2000 m      |
-| Nidarosdomen | Nidarosdomen, way 417245741: 63.4269308 N, 10.3969145 E    | 13.8 m                              | 33.8 m (ground + 20 m)         | 39.387 m      | 73.19 m          | 90° / −15° / 350 m      |
-| Bakklandet   | Nedre Bakklandet, way 22652739: 63.4288329 N, 10.4032895 E | 2.7 m                               | 10.7 m (ground + 8 m)          | 39.367 m      | 50.07 m          | 110° / −20° / 400 m     |
+| View             | Target (OpenStreetMap, via Nominatim)                      | Ground, NN2000 (Kartverket DTM 1 m) | Target H, NN2000 (`config.js`) | N (HREF2025A) | Target h = H + N | Heading / pitch / range |
+| ---------------- | ---------------------------------------------------------- | ----------------------------------- | ------------------------------ | ------------- | ---------------- | ----------------------- |
+| Midtbyen         | Torvet, relation 4681742: 63.4303661 N, 10.3953233 E       | 9.6 m                               | 9.6 m (ground)                 | 39.373 m      | 48.97 m          | 0° / −45° / 2000 m      |
+| Nidarosdomen     | Nidarosdomen, way 417245741: 63.4269308 N, 10.3969145 E    | 13.8 m                              | 33.8 m (ground + 20 m)         | 39.387 m      | 73.19 m          | 90° / −15° / 350 m      |
+| Bakklandet       | Nedre Bakklandet, way 22652739: 63.4288329 N, 10.4032895 E | 2.7 m                               | 10.7 m (ground + 8 m)          | 39.367 m      | 50.07 m          | 110° / −20° / 400 m     |
+| Whole study area | Centre of the walking network's box: 63.3987 N, 10.4144 E  | 58.1 m (2026-11-08)                 | 58.1 m (ground)                | 39.510 m      | 97.61 m          | 0° / −65° / 20 000 m    |
 
 Coordinates come from the [Nominatim](https://nominatim.openstreetmap.org/) search API
 (© OpenStreetMap contributors, ODbL). Ground heights come from Kartverket's height API
@@ -437,6 +443,8 @@ format; `npm run data:shelters -- --allow-skipped` writes the valid ones after a
 The 2026-10-28 fetch left out none. The script formats its output with
 Prettier, so `npm run format:check` passes after a re-fetch.
 
+C:/Users/aamgr/AppData/Local/Temp/claude/2b378ed8abbf8342/200b5ab7-51cc-4c83-b904-bc8e4ab168db/scratchpad/readme-coverage.md
+
 ## Heights and the geoid
 
 Cesium positions everything with **ellipsoidal heights** h, above the WGS84 ellipsoid.
@@ -534,8 +542,8 @@ click on the backdrop also closes it. It has five parts:
    "streamed".
 3. **GIS concepts**, in the order a click uses them: CRS conversion, ellipsoidal vs NN2000
    heights, ECEF and ENU frames, picking the ground, geodesic distance, the network graph and
-   Dijkstra, snapping and the 100 m rule, the building-passage overlay, and 3D Tiles level of
-   detail. Each has a 2–3 sentence explanation and a link to the API docs, the EPSG entry or the
+   Dijkstra, snapping and the 100 m rule, service areas from one search, population on a grid
+   (MAUP), the building-passage overlay, and 3D Tiles level of detail (11 since 2026-11-08). Each has a 2–3 sentence explanation and a link to the API docs, the EPSG entry or the
    original paper.
 4. **Key results** from `public/data/analysis-summary.json` (see [Grid analysis](#grid-analysis)),
    plus the live shelter count and capacity.
@@ -697,6 +705,9 @@ re-run only.
   a click is therefore not a survey-grade NN2000 height, even though the geoid conversion
   itself is accurate to about a millimetre. It also depends on the terrain detail loaded at the
   time of the click.
+- **Coverage is about where people live.** The SSB grid counts registered residents in 250 m
+  cells, gives everyone in a cell the walk from its centre, and only covers the network's
+  bounding box; see [Coverage and capacity](#coverage-and-capacity).
 - **NN2000:2025 vs NN2000:2018.** The geoid model is HREF2025A (official from 2026-10-14). DTM 1
   heights from the height API and Kartverket's transformation API still use NN2000:2018
   (HREF2018B). In Trøndelag the two differ by less than 1 mm (measured below), far below the
@@ -743,13 +754,16 @@ On-screen credits come from Cesium's credit display, the shelter layer's credit 
 credit under the nearest-shelter result. The InfoBox
 and credits are kept enabled on purpose.
 
-| Data                                                | Source                                                  | Licence / terms                                                           |
-| --------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Cesium World Terrain (ion 1), default imagery       | Cesium ion                                              | [Cesium ion Terms of Service](https://cesium.com/legal/terms-of-service/) |
-| Cesium OSM Buildings (ion 96188)                    | © OpenStreetMap contributors                            | [ODbL](https://opendatacommons.org/licenses/odbl/)                        |
-| Tilfluktsrom – Offentlige (public shelters)         | © DSB (Direktoratet for samfunnssikkerhet og beredskap) | [NLOD 2.0](https://data.norge.no/nlod/en/2.0)                             |
-| Walking network (OSM ways via Overpass API)         | © OpenStreetMap contributors                            | [ODbL](https://opendatacommons.org/licenses/odbl/)                        |
-| Building passages (OSM footprints via Overpass API) | © OpenStreetMap contributors                            | [ODbL](https://opendatacommons.org/licenses/odbl/)                        |
+| Data                                                 | Source                                                  | Licence / terms                                                           |
+| ---------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Cesium World Terrain (ion 1), default imagery        | Cesium ion                                              | [Cesium ion Terms of Service](https://cesium.com/legal/terms-of-service/) |
+| Cesium OSM Buildings (ion 96188)                     | © OpenStreetMap contributors                            | [ODbL](https://opendatacommons.org/licenses/odbl/)                        |
+| Tilfluktsrom – Offentlige (public shelters)          | © DSB (Direktoratet for samfunnssikkerhet og beredskap) | [NLOD 2.0](https://data.norge.no/nlod/en/2.0)                             |
+| Walking network (OSM ways via Overpass API)          | © OpenStreetMap contributors                            | [ODbL](https://opendatacommons.org/licenses/odbl/)                        |
+| Building passages (OSM footprints via Overpass API)  | © OpenStreetMap contributors                            | [ODbL](https://opendatacommons.org/licenses/odbl/)                        |
+| Befolkning på rutenett 250 m, 2026 (population grid) | © Statistisk sentralbyrå (SSB)                          | [NLOD](https://data.norge.no/nlod/no/1.0)                                 |
+| Height reference model HREF2025A (geoid)             | © Kartverket                                            | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                 |
+| DTM 1 point heights (height API)                     | © Kartverket                                            | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                 |
 
 CesiumJS is licensed under Apache 2.0.
 
@@ -919,3 +933,27 @@ NN2000 heights from a geoid model, and a terrain check (2026-11-08):
   and no responses ≥ 400. Screenshots inspected.
 - **Not verified:** the crosshair check at 390 px (the open sheet covers the centre of the
   view), and how Cesium World Terrain was made for Norway.
+
+Coverage and capacity (2026-11-08):
+
+- **Analysis** (`npm run analysis:coverage`): SSB 250 m population grid 2026 (1 045 cells,
+  182 561 residents) joined to the shelters' service areas from one multi-source Dijkstra.
+  26.3 % of residents live within 1 km on foot, 68.5 % within 2 km; 34.7 residents per shelter
+  place, from 2.6 to 178.9 per place by catchment (see
+  [Coverage and capacity](#coverage-and-capacity)). New pure code: `multiSourceDijkstra`,
+  `utm33ToWgs84`, `utils/coverage.js`, each unit-tested (the multi-source result equals a
+  single search from every node of the river fixture).
+- **App:** "Walking distance" layer (off by default), its classes in the map key, a "Coverage"
+  panel section, a "Whole study area" view, cell clicks that open the InfoBox and still run the
+  nearest-shelter search, and "How it works" entries (SSB data source, two concepts, two result
+  rows). `check-failed-layers.js` got a fifth case that blocks `coverage.json`.
+- **Verified** against the production build: lint, format check, tests (16 files, 98 tests) and
+  build pass; `check-accessibility.js` and `check-failed-layers.js` exited 0 with no `FAIL` (with
+  `coverage.json` blocked: "Walking-distance layer could not be loaded.", the switch disabled
+  as "Unavailable", the other layers and the search unchanged). Playwright at 1600 × 900 and
+  390 × 844: the panel shows "182,561 residents … 34.7 per shelter place" and 7 / 26 / 68 %; with
+  the layer on, a click near Torvet opened "91 residents (250 m cell)", walk 201 m, shelter
+  no. 6870, and drew the route; the "Whole study area" view shows the whole layer; the SSB
+  credit is in "Data attribution". No console errors or warnings and no responses ≥ 400.
+  Screenshots inspected.
+- **Not verified:** frame rate with the layer on (the benchmark covers the buildings only).

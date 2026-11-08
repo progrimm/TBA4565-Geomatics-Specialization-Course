@@ -7,13 +7,13 @@
 
 /** The question the app answers. */
 export const QUESTION =
-  'Where is the nearest public shelter on foot from a point in Trondheim, how far is the walk, and how much longer is it than a straight line?';
+  'Where is the nearest public shelter on foot from a point in Trondheim, and how far is the walk? Across the city: how many residents live within walking distance of a shelter, and how many residents are there per shelter place?';
 
 /**
  * @typedef {{name: string, url: string}} Link
  * @typedef {{name: string, provider: string, format: string, crs: string,
  *   date?: 'sheltersFetched' | 'networkTimestamp' | 'passagesTimestamp' | 'geoidFetched' |
- *   'terrainChecked', dateLabel?: string,
+ *   'terrainChecked' | 'coverageFetched', dateLabel?: string,
  *   use: string, licence: Link, source: Link}} DataSource
  *   date: key into the run-time dates (see useAboutFacts); omitted for streamed services.
  */
@@ -55,6 +55,20 @@ export const DATA_SOURCES = [
     use: 'Finding the buildings a route passes through.',
     licence: { name: 'ODbL 1.0', url: 'https://www.openstreetmap.org/copyright' },
     source: { name: 'Overpass API', url: 'https://wiki.openstreetmap.org/wiki/Overpass_API' },
+  },
+  {
+    name: 'Population on a 250 m grid (Befolkning på rutenett 250 m), 2026',
+    provider: 'Statistics Norway (SSB)',
+    format: 'OGC API Features, 250 m square cells with residents',
+    crs: 'EUREF89 / UTM 33N (SSB: EPSG:32633) → WGS84 lon/lat',
+    date: 'coverageFetched',
+    dateLabel: 'downloaded',
+    use: 'Where people live: the coverage and capacity analysis.',
+    licence: { name: 'NLOD', url: 'https://data.norge.no/nlod/no/1.0' },
+    source: {
+      name: 'SSB OGC API',
+      url: 'https://kart.ssb.no/api/ogc/v1/befolkning_paa_rutenett_ogc_api/collections/befolkning_250m_2026',
+    },
   },
   {
     name: 'Height reference model NN2000:2025 (HREF2025A)',
@@ -160,6 +174,22 @@ export const CONCEPTS = [
     },
   },
   {
+    title: 'Service areas from one search',
+    text: 'For the whole city, one Dijkstra search starts from all shelters at once. Every network vertex is reached first from its nearest shelter, which splits the network into service areas (a network Voronoi diagram) and gives each vertex its walking distance in a single pass, instead of one search per point.',
+    link: {
+      name: 'Erwig (2000), graph Voronoi diagrams',
+      url: 'https://doi.org/10.1002/1097-0037(200010)36:3%3C156::AID-NET2%3E3.0.CO;2-L',
+    },
+  },
+  {
+    title: 'Population on a grid and its limits',
+    text: 'SSB counts registered residents in 250 m squares. Each square is given the walk from its centre, so everyone in it gets the same distance. Results depend on the cell size and position (the modifiable areal unit problem), and the grid shows where people live, not where they are during the day.',
+    link: {
+      name: 'SSB: population on grids',
+      url: 'https://kartkatalog.geonorge.no/metadata/uuid/0c0ad0ce-55e8-4d73-9c12-0eb0e2454acb',
+    },
+  },
+  {
     title: 'Overlay: routes through buildings',
     text: 'Some footways run through buildings (passages, shopping centres, stations). A script cuts every way segment at the building outlines and tests each piece with an even–odd point-in-polygon test; at least 5 m inside counts. Those buildings are coloured with a 3D Tiles style when a route uses them.',
     link: {
@@ -183,7 +213,8 @@ export const LIMITATIONS = [
   'Distance, not time: slopes are ignored, so an uphill walk counts the same as a flat one.',
   'Snapping uses the nearest vertex, not the nearest point on a street, and the connectors are straight lines.',
   'Cesium World Terrain is much coarser than Kartverket’s 1 m terrain model (see the terrain check), so a clicked ground height is approximate, and so is how the 3D view drapes routes.',
-  'The routes cover the shelters’ area plus about 1 km. Clicks outside it are refused.',
+  'The routes cover the shelters’ area plus about 1 km. Clicks outside it are refused, and the coverage analysis only counts residents inside it.',
+  'Coverage uses where people live (registered residents in 250 m cells), not where they are during the day, and gives everyone in a cell the walk from its centre.',
 ];
 
 const percent = (share) => `${(share * 100).toFixed(1)} %`;
@@ -213,7 +244,30 @@ export function keyResults(summary) {
       label: 'Through a building',
       value: `${percent(summary.throughBuildings.share)} of routes (${summary.throughBuildings.count})`,
     },
+    ...(summary.coverage ? coverageRows(summary.coverage) : []),
     ...(summary.terrainCheck ? [terrainRow(summary.terrainCheck)] : []),
+  ];
+}
+
+/** The coverage analysis (scripts/analyse-coverage.js) as result rows. */
+function coverageRows({ residents, residentsPerPlace, within, catchments }) {
+  const shares = within
+    .map(
+      ({ metres, share }) =>
+        `${percent(share)} within ${metres < 1000 ? `${metres} m` : `${metres / 1000} km`}`,
+    )
+    .join(', ');
+  const most = catchments[0];
+  const least = catchments.at(-1);
+  return [
+    {
+      label: 'Residents covered',
+      value: `Of ${integer.format(residents)} residents in the study area (SSB 2026): ${shares} on foot`,
+    },
+    {
+      label: 'Capacity',
+      value: `${residentsPerPlace.toFixed(1)} residents per shelter place; by catchment from ${least.residentsPerPlace.toFixed(1)} (no. ${least.romnr}) to ${most.residentsPerPlace.toFixed(1)} (no. ${most.romnr})`,
+    },
   ];
 }
 

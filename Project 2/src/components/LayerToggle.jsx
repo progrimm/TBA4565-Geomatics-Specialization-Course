@@ -11,14 +11,24 @@ const STATUS_TEXT = { loading: 'Loading…', error: 'Unavailable' };
  * @param {import('../hooks/useAsyncLayer.js').LayerState} props.state
  * @param {import('cesium').Scene} [props.scene]
  * @param {string} [props.swatch] - CSS colour of the legend dot.
+ * @param {boolean} [props.initiallyVisible] - must match the layer's own initial `show`.
+ * @param {(visible: boolean) => void} [props.onToggle] - called after the layer is shown or hidden.
  */
-export default function LayerToggle({ label, state, scene, swatch }) {
-  const [visible, setVisible] = useState(true);
+export default function LayerToggle({
+  label,
+  state,
+  scene,
+  swatch,
+  initiallyVisible = true,
+  onToggle,
+}) {
+  const [visible, setVisible] = useState(initiallyVisible);
   const ready = state.status === 'ready';
 
   const onChange = (event) => {
     setVisible(event.target.checked);
     setLayerVisible(scene, state.layer, event.target.checked);
+    onToggle?.(event.target.checked);
   };
 
   return (

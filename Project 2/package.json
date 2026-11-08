@@ -19,7 +19,8 @@
     "data:network": "node scripts/fetch-network.js",
     "data:passages": "node scripts/fetch-passages.js",
     "data:geoid": "node scripts/fetch-geoid.js",
-    "analysis:grid": "node scripts/analyse-grid.js"
+    "analysis:grid": "node scripts/analyse-grid.js",
+    "analysis:coverage": "node scripts/analyse-coverage.js"
   },
   "dependencies": {
     "cesium": "1.146.0",

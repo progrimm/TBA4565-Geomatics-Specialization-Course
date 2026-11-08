@@ -347,6 +347,17 @@ a:hover {
   font-size: 0.8rem;
 }
 
+.legend + .legend__title {
+  margin: var(--space-3) 0 var(--space-1);
+  padding: 0 var(--space-3);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.analysis__row {
+  display: contents;
+}
+
 .legend__item {
   display: flex;
   align-items: center;

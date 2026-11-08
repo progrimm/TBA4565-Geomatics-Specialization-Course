@@ -5,6 +5,7 @@ import {
   buildGraph,
   findNearestByWalking,
   findWalkInRange,
+  multiSourceDijkstra,
   nearestNode,
   shortestPathToAny,
   snapShelters,
@@ -168,5 +169,34 @@ describe('findWalkInRange', () => {
     const { nearest, outOfRange } = findWalkInRange(island, graph, shelterNodes, MAX_CONNECTOR);
     expect(nearest).toBeUndefined();
     expect(outOfRange.reason).toBe('unreachable');
+  });
+});
+
+describe('multiSourceDijkstra', () => {
+  const shelterNodes = snapShelters(graph, [eastShelter, southShelter, islandShelter]);
+  const { distance, source } = multiSourceDijkstra(graph, shelterNodes.keys());
+  const targets = new Set(shelterNodes.keys());
+
+  it('gives every node the same distance as a single search to the nearest source', () => {
+    for (let node = 0; node < graph.lon.length; node += 1) {
+      const single = shortestPathToAny(graph, node, targets);
+      expect(distance[node]).toBeCloseTo(single.distance, 9);
+      expect(source[node]).toBe(single.node);
+    }
+  });
+
+  it('splits the river banks into service areas', () => {
+    // Node 1 (west bank, 10.4000 / 63.4300) is nearer the south shelter on foot, even
+    // though the east-bank shelter is nearer in a straight line (the bridge is north).
+    expect(shelterNodes.get(source[nodeOf(10.4, 63.43)])).toBe(southShelter);
+    expect(shelterNodes.get(source[nodeOf(10.402, 63.43)])).toBe(eastShelter);
+    expect(shelterNodes.get(source[nodeOf(10.41, 63.4205)])).toBe(islandShelter);
+  });
+
+  it('leaves nodes with no connected source at Infinity', () => {
+    const { distance: d, source: s } = multiSourceDijkstra(graph, [nodeOf(10.41, 63.42)]);
+    expect(d[nodeOf(10.4, 63.43)]).toBe(Infinity);
+    expect(s[nodeOf(10.4, 63.43)]).toBe(-1);
+    expect(d[nodeOf(10.41, 63.4205)]).toBeGreaterThan(0);
   });
 });

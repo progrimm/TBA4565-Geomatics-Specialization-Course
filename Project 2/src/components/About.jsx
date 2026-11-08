@@ -84,6 +84,7 @@ export default function About({ open, onClose, network, shelterTotals }) {
     passagesTimestamp: network.passagesTimestamp,
     geoidFetched: GEOID_GRID.fetched,
     terrainChecked: facts.summary?.terrainCheck?.date,
+    coverageFetched: facts.summary?.coverage?.date,
   };
 
   return (

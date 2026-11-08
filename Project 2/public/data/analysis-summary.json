@@ -50,5 +50,149 @@
     "maxAbsDifferenceMetres": 21.52,
     "geoidModel": "HREF2025A_NN2000_EUREF89",
     "definition": "Cesium World Terrain (sampleTerrainMostDetailed, h − N) minus Kartverket DTM 1 (NN2000) at walking-network nodes near an 8 × 8 grid over the shelters’ bounding box."
+  },
+  "coverage": {
+    "date": "2026-11-08",
+    "dataset": "Befolkning på rutenett 250 m (Statistisk sentralbyrå), 2026 edition",
+    "cells": 1045,
+    "cellsOutsideNetworkBox": 40,
+    "residentsOutsideNetworkBox": 4191,
+    "residents": 182561,
+    "places": 5268,
+    "residentsPerPlace": 34.65,
+    "within": [
+      {
+        "metres": 500,
+        "residents": 12598,
+        "share": 0.069
+      },
+      {
+        "metres": 1000,
+        "residents": 48058,
+        "share": 0.2632
+      },
+      {
+        "metres": 2000,
+        "residents": 124988,
+        "share": 0.6846
+      }
+    ],
+    "classes": [
+      {
+        "label": "≤ 500 m",
+        "residents": 12598
+      },
+      {
+        "label": "500 m – 1 km",
+        "residents": 35460
+      },
+      {
+        "label": "1–2 km",
+        "residents": 76930
+      },
+      {
+        "label": "2–4 km",
+        "residents": 53174
+      },
+      {
+        "label": "> 4 km",
+        "residents": 4290
+      }
+    ],
+    "noRoute": {
+      "cells": 6,
+      "residents": 109
+    },
+    "farFromNetwork": {
+      "cells": 15,
+      "residents": 235
+    },
+    "catchments": [
+      {
+        "romnr": 12330,
+        "adresse": "Øvre Flatåsveg 16",
+        "places": 45,
+        "residents": 8051,
+        "residentsPerPlace": 178.91
+      },
+      {
+        "romnr": 12325,
+        "adresse": "Øvre Flatåsveg 2 A",
+        "places": 200,
+        "residents": 25618,
+        "residentsPerPlace": 128.09
+      },
+      {
+        "romnr": 12333,
+        "adresse": "Gamle Jonsvannsveien 12",
+        "places": 280,
+        "residents": 26848,
+        "residentsPerPlace": 95.89
+      },
+      {
+        "romnr": 11848,
+        "adresse": "Siriusveien 10",
+        "places": 200,
+        "residents": 17959,
+        "residentsPerPlace": 89.8
+      },
+      {
+        "romnr": 48494,
+        "adresse": "Mellomveien 5",
+        "places": 450,
+        "residents": 26519,
+        "residentsPerPlace": 58.93
+      },
+      {
+        "romnr": 30673,
+        "adresse": "Olav Kyrres gate 6 -Revmatismebygget - St. Olavs H",
+        "places": 500,
+        "residents": 24575,
+        "residentsPerPlace": 49.15
+      },
+      {
+        "romnr": 30667,
+        "adresse": "Olav Tryggvasons gate 28",
+        "places": 220,
+        "residents": 9459,
+        "residentsPerPlace": 43
+      },
+      {
+        "romnr": 30677,
+        "adresse": "Østre Rosten 39 - Rostenhallen",
+        "places": 780,
+        "residents": 20882,
+        "residentsPerPlace": 26.77
+      },
+      {
+        "romnr": 30678,
+        "adresse": "Hasselbakken 5A og 5 C",
+        "places": 513,
+        "residents": 10766,
+        "residentsPerPlace": 20.99
+      },
+      {
+        "romnr": 30671,
+        "adresse": "Nedre Bakklandet 11 - 41",
+        "places": 800,
+        "residents": 7768,
+        "residentsPerPlace": 9.71
+      },
+      {
+        "romnr": 20798,
+        "adresse": "Kjøpmannsgata 34",
+        "places": 650,
+        "residents": 2373,
+        "residentsPerPlace": 3.65
+      },
+      {
+        "romnr": 6870,
+        "adresse": "Westermannsveita 4 Tidl. Nordre gate 1",
+        "places": 630,
+        "residents": 1634,
+        "residentsPerPlace": 2.59
+      }
+    ],
+    "checkedAgainstSingleSearch": 53
   }
 }

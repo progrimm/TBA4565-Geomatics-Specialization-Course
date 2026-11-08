@@ -35,6 +35,9 @@ Learning goals:
 - Map key and "How it works" side sheet (question, data sources with live dates, GIS concepts,
   key results from scripts/analyse-grid.js, limitations), neutral dark design (added
   2026-11-08 on request; plan: geoid heights, coverage/capacity, Tobler time, route validation)
+- NN2000 heights via Kartverket's geoid model, terrain check (2026-11-08 on request)
+- Coverage and capacity: SSB 250 m population grid, "Walking distance" layer, "Coverage"
+  panel section, "Whole study area" view (2026-11-08 on request)
 - Do NOT add features beyond this list without asking.
 
 ## Tech stack
@@ -175,4 +178,10 @@ public/data/ – static datasets (shelters GeoJSON, walking network JSON)
   shows NN2000 height. scripts/check-terrain.js: Cesium World Terrain vs DTM 1 (RMSE 8.0 m) →
   results/terrain-vs-dtm1.csv and analysis-summary.json `terrainCheck`. Vite build/preview
   helpers moved to scripts/browser.js.
+- 2026-11-08: step 3 done. scripts/analyse-coverage.js (npm run analysis:coverage): SSB
+  befolkning_250m_2026 via OGC API Features (EPSG:32633 → utm33ToWgs84), multiSourceDijkstra
+  (utils/network.js), utils/coverage.js → public/data/coverage.json (Prettier-ignored),
+  results/coverage-catchments.csv, analysis-summary.json `coverage`. layers/coverage.js
+  (GeoJsonDataSource, clamped, hidden by default; isCoverageCell lets cell clicks run the
+  search), components/Coverage.jsx, LayerToggle initiallyVisible/onToggle, studyArea preset.
   (Update this section after each module.)
