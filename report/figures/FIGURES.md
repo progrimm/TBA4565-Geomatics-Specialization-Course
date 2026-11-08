@@ -31,3 +31,16 @@ Notes:
 - Cesium views (project-2-*) have no `viewer` handle in the production build, so "loaded" was taken as no network request in flight for 3 s, then a 2 s settle (the skill's `tilesLoaded` check needs a `VITE_BENCHMARK` build). Every Cesium screenshot was inspected for missing tiles.
 - "Opened in" for the Nugatti file was 0.36, 0.19 and 0.21 s on three loads in this session (one machine, headless Chromium with GPU), so it is not one fixed number.
 - Every capture in this file was taken with 0 console errors, 0 page errors and 0 failed (HTTP ≥ 400) requests.
+
+## Recaptured 2026-11-08 (commit `0b56743`, live site)
+
+project-1-01 to 06 and project-2-01 to 05 above were recaptured with the same names, after the renames ("A New World Map", "Trondheim Shelter Analysis") and Project 2's new design. Desktop 1600×1000, mobile 390×844 at deviceScaleFactor 2. Every capture had 0 console errors, 0 page errors and 0 failed requests, and every image was inspected. Project 1's states and numbers match the captions above (Norway tooltip: 65.6°N · Mercator 9.38× · sec²φ 5.88×). Project 2's captions above are out of date for 03: the park south of Nidarosdomen now gives shelter no. 30671, 582 m · 7 min (fastest, slopes included) against 414 m in a straight line.
+
+| File | Shows | Draft caption | Required credit |
+| --- | --- | --- | --- |
+| project-2-06-route-through-building.png | Click on the Brattøra pier: route to no. 30667 through Byhaven kjøpesenter | The walk to the nearest shelter (1.33 km, 16 min) passes through a shopping centre, so the building is coloured green and named under "Through". | © OpenStreetMap contributors (ODbL); © DSB (NLOD 2.0); Cesium ion |
+| project-2-07-out-of-range-popup.png | Click in the fjord: out-of-range popup | A point 477 m from the nearest mapped path is refused instead of being answered with a straight line. | as above |
+| project-2-08-coverage-study-area.png | "Walking distance" layer, "Whole study area" view, map key with the classes | SSB's 250 m population cells coloured by the walk from home to the nearest shelter: short walks around the shelters, over 4 km in the outer residential areas. | Population grid © SSB (NLOD); © OpenStreetMap contributors (ODbL); © DSB (NLOD 2.0); Cesium ion |
+| project-2-09-coverage-cell.png | Same, a cell in Byåsen clicked: InfoBox and the route from the click | A cell with 251 residents is 5.03 km from its nearest shelter (no. 12330, 45 places); the InfoBox values are for the cell centre, the panel's for the clicked point. | as project-2-08 |
+| project-2-10-how-it-works.png | "How it works" sheet, top: question and data sources | The explainer lists each dataset with provider, format, CRS, date and licence. | none beyond the map |
+| project-2-11-how-it-works-results.png | Same sheet, key results and limitations | The key results come from the analysis scripts: coverage, capacity, slopes, the route check and the terrain check. | none beyond the map |
