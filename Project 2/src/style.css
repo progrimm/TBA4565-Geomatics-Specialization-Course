@@ -1,28 +1,30 @@
 /* ---------- Design tokens ---------- */
-/* Crisis-tool look: near-black field-kit surfaces, bone-white text, and the shelter
-   amber from the map as the one accent colour. Kept quiet on purpose: the only
-   "warning" decoration is a thin hazard stripe on the panel and the popup. */
+/* Neutral dark analysis UI: grey surfaces that sit well on aerial imagery, light text,
+   and one blue accent for interactive elements. Colour on the map itself is reserved
+   for the data symbols (shelters, route, passage buildings), so the UI stays out of
+   their way. Contrast ratios (WCAG formula, worst case = white imagery behind the 92 %
+   surface, i.e. rgb(46 48 52)): text 10.8:1, muted 5.9:1, accent 6.1:1, danger 4.7:1,
+   switch off-track 4.1:1 (non-text, ≥ 3:1); dark text on the accent 8.7:1. */
 :root {
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Consolas, monospace;
-  --text: #e8e6df;
-  /* ≥ 6:1 against the panel even over bright imagery behind the 92 % surface (WCAG AA). */
-  --text-muted: #a3a29a;
-  --accent: #f5a623; /* = shelter symbol colour (SHELTERS.style.color) */
-  --accent-dark: #d48b0f;
-  --accent-contrast: #14130f;
-  --danger: #ff5a4f; /* = out-of-range point (NEAREST.style.outOfRangeColor) */
+  --text: #e6e8eb;
+  --text-muted: #a7adb5;
+  --accent: #6cb4ff;
+  --accent-strong: #9ccbff;
+  --accent-contrast: #0d1117;
+  --danger: #ff6b61; /* = out-of-range point (NEAREST.style.outOfRangeColor) */
   --route: #3ddc84; /* = route and passage buildings (NEAREST.style) */
+  --switch-off: #8b9097;
 
-  --surface: rgb(16 17 15 / 92%);
+  --surface: rgb(28 30 34 / 92%);
+  --surface-solid: #1c1e22;
   --surface-hover: rgb(255 255 255 / 6%);
-  --border: rgb(255 255 255 / 10%);
-  --shadow: 0 10px 40px rgb(0 0 0 / 55%);
+  --border: rgb(255 255 255 / 12%);
+  --shadow: 0 8px 32px rgb(0 0 0 / 45%);
   --glass: blur(12px) saturate(120%);
-  --infobox: rgb(16 17 15 / 95%);
-  --hazard: repeating-linear-gradient(-45deg, var(--accent) 0 8px, var(--accent-contrast) 8px 16px);
+  --infobox: rgb(28 30 34 / 95%);
 
-  --radius: 6px;
+  --radius: 8px;
   --radius-sm: 4px;
   --gutter: 16px;
   --space-1: 4px;
@@ -55,16 +57,12 @@ body {
   outline-offset: 2px;
 }
 
-/* Small uppercase monospace labels: section headings, kickers, list terms. */
-.panel__heading,
-.panel__kicker,
-.popup__kicker,
-.analysis__result dt {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+a {
+  color: var(--accent);
+}
+
+a:hover {
+  color: var(--accent-strong);
 }
 
 /* ---------- Panel ---------- */
@@ -72,67 +70,63 @@ body {
   position: absolute;
   top: var(--gutter);
   left: var(--gutter);
-  width: 268px;
-  padding: calc(var(--space-4) + 4px) var(--space-4) var(--space-4);
+  width: 300px;
+  max-height: calc(100% - 2 * var(--gutter));
+  padding: var(--space-4);
   border-radius: var(--radius);
   background: var(--surface);
   backdrop-filter: var(--glass);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
   box-sizing: border-box;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
-/* Thin hazard stripe along the top edge. */
-.panel::before,
-.popup::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: 4px;
-  background: var(--hazard);
-}
-
-.panel__home {
-  display: inline-block;
+.panel__links {
+  display: flex;
+  gap: var(--space-2);
   margin-bottom: var(--space-3);
+}
+
+.panel__link {
   padding: var(--space-1) var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
+  background: transparent;
   color: var(--text-muted);
+  font: inherit;
   font-size: 0.8rem;
   line-height: 1.4;
   text-decoration: none;
+  cursor: pointer;
   transition:
     color 150ms,
     border-color 150ms;
 }
 
-.panel__home:hover {
+.panel__link:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--text);
 }
 
 .panel__header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-2);
 }
 
 .panel__title {
   margin: 0;
-  font-size: 1.2rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-size: 1.1rem;
+  font-weight: 650;
+  line-height: 1.3;
 }
 
-.panel__kicker {
+.panel__subtitle {
   margin: 2px 0 0;
   color: var(--text-muted);
-  font-size: 0.65rem;
+  font-size: 0.85rem;
 }
 
 .panel__toggle {
@@ -168,6 +162,8 @@ body {
   gap: var(--space-2);
   margin: var(--space-4) 0 var(--space-2);
   color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .panel__heading::after {
@@ -187,21 +183,17 @@ body {
   width: 100%;
   padding: var(--space-2) var(--space-3);
   border: 0;
-  border-left: 2px solid transparent;
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text);
   font: inherit;
   font-size: 0.9rem;
   text-align: left;
   cursor: pointer;
-  transition:
-    background 150ms,
-    border-color 150ms;
+  transition: background 150ms;
 }
 
 .view-button:hover {
-  border-left-color: var(--accent);
   background: var(--surface-hover);
 }
 
@@ -246,8 +238,7 @@ body {
 
 .layer__status {
   color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
 }
 
 .switch {
@@ -257,8 +248,7 @@ body {
   height: 20px;
   margin: 0;
   border-radius: 999px;
-  /* Off track: ≥ 3:1 against the panel (WCAG 1.4.11 for controls). */
-  background: #8a8983;
+  background: var(--switch-off);
   cursor: pointer;
   transition: background 150ms;
 }
@@ -315,7 +305,7 @@ body {
 .analysis .analysis__hint:last-child {
   margin: var(--space-2) 0 0;
   color: var(--text-muted);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
 }
 
 .analysis .analysis__hint.analysis__hint--danger {
@@ -330,9 +320,7 @@ body {
 }
 
 .analysis__result dt {
-  padding-top: 0.15em;
   color: var(--text-muted);
-  font-size: 0.65rem;
 }
 
 .analysis__result dd {
@@ -342,6 +330,204 @@ body {
 .analysis__note {
   color: var(--route);
   font-size: 0.75rem;
+}
+
+/* ---------- Map key ---------- */
+.legend {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0 var(--space-3);
+  list-style: none;
+  font-size: 0.8rem;
+}
+
+.legend__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.legend__symbol {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  /* Centre the symbol drawn by ::before in an 18 px cell, so labels line up. */
+  display: grid;
+  place-items: center;
+}
+
+.legend__symbol::before {
+  content: '';
+  background: var(--symbol);
+}
+
+/* Same look as the map: points with a black outline, a 4 px line, a filled area. */
+.legend__symbol--point::before {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #000;
+}
+
+.legend__symbol--line::before {
+  width: 18px;
+  height: 4px;
+  border-radius: 2px;
+}
+
+.legend__symbol--area::before {
+  width: 14px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+/* ---------- "How it works" dialog: a side sheet ---------- */
+.about {
+  width: min(520px, 100%);
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--border);
+  background: var(--surface-solid);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  box-sizing: border-box;
+}
+
+.about::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+.about__content {
+  padding: 0 var(--space-4) var(--space-4) 20px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.about__header {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) 0 var(--space-3);
+  background: var(--surface-solid);
+  border-bottom: 1px solid var(--border);
+}
+
+.about__title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 650;
+}
+
+.about__close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.about__close:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.about__section {
+  margin-top: var(--space-4);
+}
+
+.about__heading {
+  margin: 0 0 var(--space-2);
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.about p {
+  margin: 0 0 var(--space-2);
+}
+
+.about__cards,
+.about__concepts {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.about__cards > li,
+.about__concepts > li {
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.about__concepts {
+  counter-reset: concept;
+}
+
+.about__concepts > li {
+  counter-increment: concept;
+}
+
+.about__concepts .about__card-title::before {
+  content: counter(concept) '. ';
+  color: var(--text-muted);
+}
+
+.about__card-title {
+  margin: 0 0 var(--space-1);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.about__facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px var(--space-3);
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.about__row {
+  display: contents;
+}
+
+.about__facts dt {
+  color: var(--text-muted);
+}
+
+.about__facts dd {
+  margin: 0;
+}
+
+.about__list {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.about__list li + li {
+  margin-top: var(--space-1);
+}
+
+.about__note {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.about__note:first-of-type {
+  margin-top: var(--space-2);
 }
 
 /* ---------- Out-of-range popup ---------- */
@@ -358,25 +544,27 @@ body {
 .popup {
   position: relative;
   width: min(100%, 22rem);
-  padding: calc(var(--space-4) + 4px) var(--space-4) var(--space-4);
+  padding: var(--space-4);
   border-radius: var(--radius);
   background: var(--surface);
   backdrop-filter: var(--glass);
   border: 1px solid var(--border);
+  border-top: 3px solid var(--danger);
   box-shadow: var(--shadow);
   box-sizing: border-box;
-  overflow: hidden;
   pointer-events: auto;
 }
 
 .popup__kicker {
   margin: 0 0 var(--space-1);
   color: var(--danger);
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .popup__title {
   margin: 0 0 var(--space-2);
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   line-height: 1.3;
 }
 
@@ -394,12 +582,12 @@ body {
   background: var(--accent);
   color: var(--accent-contrast);
   font: inherit;
-  font-weight: 650;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .popup__button:hover {
-  background: var(--accent-dark);
+  background: var(--accent-strong);
 }
 
 /* ---------- Messages (toasts) ---------- */
@@ -471,12 +659,11 @@ body {
     left: 0;
     width: auto;
     max-height: 60vh;
-    overflow-y: auto;
     border-radius: var(--radius) var(--radius) 0 0;
     border-bottom: 0;
   }
 
-  /* Keep attribution visible above the collapsed sheet.
+  /* Keep attribution visible above the collapsed sheet (its measured height plus a gap).
      !important because Viewer.resize() writes an inline `bottom` (Cesium 1.146.0). */
   .cesium-viewer-bottom {
     bottom: 128px !important;
@@ -484,6 +671,11 @@ body {
 
   .cesium-infoBox {
     width: calc(100% - 2 * var(--gutter));
+  }
+
+  .about {
+    width: 100%;
+    border-left: 0;
   }
 }
 

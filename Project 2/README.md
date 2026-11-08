@@ -23,19 +23,22 @@ on code quality: linting, tests, error handling and CI.
   It also shows the total number of shelters and their total capacity. Routing runs entirely in
   the browser, with no API key and no server (see [Nearest shelter](#nearest-shelter))
 - Out of range: a click more than 100 m from the walking network, or on a part of it that reaches
-  no shelter, gets a popup ("Good luck, champ. You won't make it…") instead of a long straight
-  line (see [Out of range](#out-of-range))
+  no shelter, gets a popup ("Outside the walking network" or "No path to a shelter") instead of a
+  long straight line (see [Out of range](#out-of-range))
 - Building passages: if the route goes through a building (a shopping centre, a station hall, a
   building passage), that building is coloured green in the 3D view and named in the panel (see
   [Building passages](#building-passages))
-- A dark "crisis tool" design: near-black panel, the shelter amber as the accent, a thin hazard
-  stripe (see [Status](#status))
+- "How it works": a side sheet that explains the question, the data (provider, format, CRS,
+  date, licence), the GIS concepts in the order a click uses them, the key results of a grid
+  analysis and the limitations (see [How it works](#how-it-works))
+- A map key in the panel, and a neutral dark design with one blue accent (see
+  [Status](#status))
 - Loading and error messages for every layer. If one layer fails, the rest of the app keeps
   working
 - A collapsible control panel that becomes a bottom sheet on mobile. All panel controls work
   with the keyboard, and camera flights respect `prefers-reduced-motion`
-- A "← My GIS module" link at the top of the panel goes back to the module homepage (`../`). It
-  sits outside the collapsible body, so it stays visible when the sheet is collapsed on mobile
+- A "← My GIS module" link and the "How it works" button at the top of the panel. They sit
+  outside the collapsible body, so they stay visible when the sheet is collapsed on mobile
 
 ## Getting Started
 
@@ -68,19 +71,20 @@ load.
 
 Run these from `Project 2/`.
 
-| Command                 | Purpose                                                                            |
-| ----------------------- | ---------------------------------------------------------------------------------- |
-| `npm run dev`           | Start the Vite dev server                                                          |
-| `npm run build`         | Production build to `dist/`                                                        |
-| `npm run preview`       | Serve the production build locally                                                 |
-| `npm run lint`          | ESLint, including React hooks rules                                                |
-| `npm run format`        | Format all files with Prettier                                                     |
-| `npm run format:check`  | Check formatting without writing                                                   |
-| `npm test`              | Run the Vitest unit tests once                                                     |
-| `npm run test:watch`    | Run Vitest in watch mode                                                           |
-| `npm run data:shelters` | Re-download the shelter dataset (see [Data](#shelters))                            |
-| `npm run data:network`  | Re-download the walking network (see [Walking network](#walking-network))          |
-| `npm run data:passages` | Recompute the building passages (see [Building passages](#building-passages-data)) |
+| Command                 | Purpose                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------ |
+| `npm run dev`           | Start the Vite dev server                                                            |
+| `npm run build`         | Production build to `dist/`                                                          |
+| `npm run preview`       | Serve the production build locally                                                   |
+| `npm run lint`          | ESLint, including React hooks rules                                                  |
+| `npm run format`        | Format all files with Prettier                                                       |
+| `npm run format:check`  | Check formatting without writing                                                     |
+| `npm test`              | Run the Vitest unit tests once                                                       |
+| `npm run test:watch`    | Run Vitest in watch mode                                                             |
+| `npm run data:shelters` | Re-download the shelter dataset (see [Data](#shelters))                              |
+| `npm run data:network`  | Re-download the walking network (see [Walking network](#walking-network))            |
+| `npm run data:passages` | Recompute the building passages (see [Building passages](#building-passages-data))   |
+| `npm run analysis:grid` | Re-run the grid analysis behind "How it works" (see [Grid analysis](#grid-analysis)) |
 
 Browser checks and the benchmark are plain Node scripts that use Playwright (see
 [Quality checks](#quality-checks)):
@@ -104,7 +108,8 @@ src/
   viewer.js       Viewer creation and global scene settings
   layers/         plain-JS Cesium loaders, one per layer (no React)
   hooks/          React hooks bridging React and Cesium (viewer lifecycle, layer state)
-  components/     React UI: panel, view buttons, layer toggles, messages
+  components/     React UI: panel, view buttons, layer toggles, map key, "How it works", messages
+  content/        text of the "How it works" panel (data sources, concepts, limitations)
   state/          framework-independent message store
   utils/          pure helpers (CRS conversion, camera options, HTML escaping, distances, routing)
 scripts/          Node data-prep scripts
@@ -253,10 +258,11 @@ of metres away. `findWalkInRange` (`utils/network.js`) therefore refuses a click
 - the connector is longer than `NEAREST.maxConnector` = 100 m (geodesic, `config.js`), or
 - no shelter can be reached from the click's part of the network (Dijkstra finds no target).
 
-A refused click draws only the clicked point (red) and opens a popup: "Good luck, champ. You
-won't make it…", followed by the reason ("That spot is 553 m from the nearest mapped path…" or
-"No path from there reaches a shelter…"). The popup is a non-modal `role="alertdialog"`: focus
-moves to its "Try again" button, Escape closes it, and the next click on the map replaces it.
+A refused click draws only the clicked point (red) and opens a popup titled "Outside the walking
+network" ("This point is 553 m from the nearest mapped path (limit 100 m).") or "No path to a
+shelter". The popup is a non-modal `role="alertdialog"`: focus moves to its "Close" button,
+Escape closes it, and the next click on the map replaces it. (Until 2026-11-08 the title was
+"Good luck, champ. You won't make it…" and the button "Try again".)
 While the network is still loading, or if it failed, the straight-line fallback stays, because
 the panel already says that routes are unavailable.
 
@@ -421,6 +427,65 @@ format; `npm run data:shelters -- --allow-skipped` writes the valid ones after a
 The 2026-10-28 fetch left out none. The script formats its output with
 Prettier, so `npm run format:check` passes after a re-fetch.
 
+## How it works
+
+The "How it works" button opens a side sheet (full screen on mobile). It is a native
+[`<dialog>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/dialog) opened with
+[`showModal()`](https://developer.mozilla.org/en-US/docs/Web/API/HTMLDialogElement/showModal),
+so the browser keeps focus inside it and closes it on Escape; focus then returns to the button. A
+click on the backdrop also closes it. It has five parts:
+
+1. **The question** the app answers.
+2. **Data:** one card per dataset with provider, format, CRS, date, use and licence. The dates
+   are read at run time, not typed into the text: the shelter fetch date from the `metadata`
+   member of `shelters.geojson`, and the OSM dates of the walking network and the building
+   footprints from their files (`useWalkingNetwork`). Streamed Cesium ion data is marked
+   "streamed".
+3. **GIS concepts**, in the order a click uses them: CRS conversion, ellipsoidal vs NN2000
+   heights, ECEF and ENU frames, picking the ground, geodesic distance, the network graph and
+   Dijkstra, snapping and the 100 m rule, the building-passage overlay, and 3D Tiles level of
+   detail. Each has a 2–3 sentence explanation and a link to the API docs, the EPSG entry or the
+   original paper.
+4. **Key results** from `public/data/analysis-summary.json` (see [Grid analysis](#grid-analysis)),
+   plus the live shelter count and capacity.
+5. **Limitations**, a short version of [Limitations](#limitations).
+
+The text lives in `src/content/about.js`, as data. `tests/about.test.js` checks that every
+dataset has a licence, a CRS and HTTPS links, that every concept has a reference, and that the
+committed summary file turns into result rows without `undefined`. The shelter file and the
+summary are fetched the first time the sheet opens (`hooks/useAboutFacts.js`). If the summary
+fails, the sheet says "The analysis results could not be loaded." and the rest still works:
+checked with Playwright by aborting the request for `analysis-summary.json` (note shown, shelter
+date still shown, no page errors).
+
+### Grid analysis
+
+`npm run analysis:grid` (`scripts/analyse-grid.js`) runs the same search as a click,
+`findWalkInRange` with the 100 m rule, from a 30 × 30 grid of points spaced evenly (in degrees)
+from corner to corner of the shelters' bounding box (`utils/grid.js`, unit-tested). It writes
+`public/data/analysis-summary.json`, which the "How it works" sheet reads, so the numbers in the
+app come from this script. To run in plain Node the script imports `config.js`, so `config.js`
+now reads `import.meta.env ?? {}`; Vite still inlines the values at build time (checked in
+`dist`: `BASE_URL` is `./`, and there is still no `__benchmark`).
+
+Run on 2026-11-08 with the committed data (shelters fetched 2026-10-28, network 2026-10-27,
+footprints 2026-11-05):
+
+| Result                                                | Value                       |
+| ----------------------------------------------------- | --------------------------- |
+| Routed / refused as too far / refused as unreachable  | 835 / 55 / 10 of 900        |
+| Nearest on foot ≠ nearest in a straight line          | 137 of 835 (16.4 %)         |
+| Walk ÷ geodesic distance to the same shelter (detour) | median 1.33, p90 1.70       |
+| Walking distance                                      | median 2 024 m, p90 4 118 m |
+| Connector, click → network                            | median 17.0 m, p90 53.4 m   |
+| Routes through at least one building                  | 45 of 835 (5.4 %)           |
+
+The routed, refused, connector and building counts match [Out of range](#out-of-range) and
+[Building passages](#building-passages). The 19 % and the 1.34 / 1.68 in
+[Nearest shelter](#nearest-shelter) come from the earlier 2026-10-27 run, which had no 100 m rule
+and so also routed points far from the network (884 reachable points). Quantiles here use linear
+interpolation between ranks (type 7, as NumPy's default).
+
 ## Quality checks
 
 Hardening pass on 2026-10-28. Screenshots from the check scripts go to the OS temp folder unless a folder is given. The browser checks ran against the production build
@@ -509,21 +574,25 @@ re-run only.
 
 - All panel controls are real `<button>` elements, or checkboxes with the `switch` role inside a
   `<label>`. `scripts/check-accessibility.js` tabs through the page at 1600 × 900 and 390 × 844.
-  The tab order is Cesium's credit links, then the panel toggle, the three view buttons and the
-  two layer switches. Every stop has a visible focus outline. Space toggles a switch (checked
-  before and after) and Enter presses a button. The script asserts these points and exited 0. On mobile, the first stops in the collapsed panel are "← My GIS module" and then "Show controls", and
-  Enter opens it.
-- Contrast: since 2026-11-05 the panel, popup and toasts are near-black (rgb(16 17 15), 92 %
-  opaque). The worst case is white imagery behind it, where the panel mixes to rgb(35 36 34).
-  There, text (#e8e6df) has 12.5:1, muted text (#a3a29a) 6.1:1, the amber accent (#f5a623)
-  7.7:1, the red "No route" label (#ff5a4f) 5.1:1 and the green "highlighted on the map" note
-  (#3ddc84) 8.7:1
+  The tab order is Cesium's credit links, then "← My GIS module", "How it works", the panel
+  toggle, the three view buttons and the two layer switches. Every stop has a visible focus
+  outline. Space toggles a switch (checked before and after) and Enter presses a button. On
+  mobile, the first stops in the collapsed panel are "← My GIS module", "How it works" and then
+  "Show controls", and Enter opens it. Since 2026-11-08 the script also opens "How it works"
+  with Enter and asserts that focus moves into the dialog, that 8 Tabs keep it there, that the
+  key results are shown, and that Escape closes it and returns focus to the button. The script
+  asserts these points and exited 0.
+- Contrast: since 2026-11-08 the panel, popup and toasts are neutral dark grey (rgb(28 30 34),
+  92 % opaque). The worst case is white imagery behind it, where the panel mixes to
+  rgb(46 48 52). There, text (#e6e8eb) has 10.8:1, muted text (#a7adb5) 5.9:1, the blue accent
+  (#6cb4ff, links and focus outlines) 6.1:1, the red "No route" label (#ff6b61) 4.7:1 and the
+  green "highlighted on the map" note (#3ddc84) 7.4:1
   ([WCAG 2.2 contrast minimum, 4.5:1](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)).
-  The switch's off track (#8a8983) has 4.4:1
+  The switch's off track (#8b9097) has 4.1:1
   ([non-text contrast, 3:1](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html)),
-  and the dark button text on amber 9.2:1. These ratios are computed from the colours with the
-  WCAG formula, not measured on screen. (Before: the NTNU design's white panel gave 5.7:1 for
-  muted text.)
+  and the dark button text on the accent 8.7:1. These ratios are computed from the colours with
+  the WCAG formula, not measured on screen. (Before: the 2026-11-05 near-black design gave 12.5:1
+  for text and 6.1:1 for muted text.)
 - Reduced motion: with `prefers-reduced-motion: reduce` (Playwright's
   [`reducedMotion`](https://playwright.dev/docs/api/class-browser#browser-new-context-option-reduced-motion)),
   pressing Nidarosdomen jumped straight to the view, and `tests/motion.test.js` checks that the
@@ -697,3 +766,30 @@ passed at 1600 × 900 and 390 × 844: `<title>` and panel heading read "Trondhei
 Analysis", no console errors and no responses ≥ 400. Screenshots inspected: at 1600 px the title
 wraps to two lines in the 268 px panel; at 390 px it fits on one line and the collapsed sheet
 still starts below the credits.
+
+Neutral design, map key and "How it works" (2026-11-08):
+
+- **Design.** The crisis-tool look was replaced by a neutral dark analysis UI: grey panel
+  (rgb(28 30 34), 92 %), light text, one blue accent `#6cb4ff` for links, switches, focus and
+  buttons. Removed: the amber–black hazard stripe, the "Emergency shelter finder" kicker, the
+  amber "3D" in the title and the uppercase monospace labels; headings are sentence case. The
+  popup now reads "Outside the walking network" / "No path to a shelter" with a "Close" button.
+  The out-of-range point is `#ff6b61` on the map and in the text (was `#ff5a4f`, which would fall
+  below 4.5:1 on the new grey). The other map colours are unchanged. Contrast: see
+  [Accessibility](#accessibility).
+- **Map key** in the panel: shelter, route, building on the route, clicked point, out-of-range
+  point, drawn from the same colours as the map (`config.js`).
+- **"How it works"** and the **grid analysis** (see [How it works](#how-it-works)).
+- **Verified** against the production build (`npx vite preview --port 4174`, personal token):
+  - lint, format check, tests (14 files, 77 tests) and build pass;
+  - `scripts/check-accessibility.js` exited 0 (new tab order, dialog focus, Tab stays inside,
+    Escape closes and returns focus) and `scripts/check-failed-layers.js` exited 0 with no `FAIL`;
+  - Playwright at 1600 × 900 and 390 × 844: a click on Torvet gave shelter no. 6870 (266 m walk,
+    196 m straight at 1600 px; 265 m and 205 m at 390 px, a slightly different click point), a
+    click at Brattøra gave the route through Byhaven kjøpesenter with the building highlighted,
+    and fjord clicks gave the popup (456 m and 654 m). The sheet opened with dates
+    "fetched 2026-10-28", "OSM data of 2026-10-27" and "OSM data of 2026-11-05" and the key results.
+    No console errors and no responses ≥ 400. The collapsed mobile sheet is 116 px tall and
+    starts at y = 728; the credits end at y = 716. Screenshots inspected.
+- **Not verified:** screen-reader announcement of the dialog, Safari, and the live site (not
+  pushed yet).

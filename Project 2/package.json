@@ -17,7 +17,8 @@
     "test:watch": "vitest",
     "data:shelters": "node scripts/fetch-shelters.js",
     "data:network": "node scripts/fetch-network.js",
-    "data:passages": "node scripts/fetch-passages.js"
+    "data:passages": "node scripts/fetch-passages.js",
+    "analysis:grid": "node scripts/analyse-grid.js"
   },
   "dependencies": {
     "cesium": "1.146.0",

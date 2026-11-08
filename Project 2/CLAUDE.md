@@ -32,6 +32,9 @@ Learning goals:
   popup instead of a straight line (added 2026-11-05 on request)
 - Building passages: buildings the route goes through are coloured in OSM Buildings and named
   in the panel (added 2026-11-05 on request)
+- Map key and "How it works" side sheet (question, data sources with live dates, GIS concepts,
+  key results from scripts/analyse-grid.js, limitations), neutral dark design (added
+  2026-11-08 on request; plan: geoid heights, coverage/capacity, Tobler time, route validation)
 - Do NOT add features beyond this list without asking.
 
 ## Tech stack
@@ -158,4 +161,9 @@ public/data/ – static datasets (shelters GeoJSON, walking network JSON)
   site path stays `/trondheim-3d/`. Plan for the next steps: neutral dark design + "How it works"
   explainer, NN2000 heights from a geoid model, coverage/capacity (SSB 250 m grid), Tobler walk
   time, external route validation (approved 2026-11-08).
+- 2026-11-08: step 1 done. Neutral dark design (tokens in style.css, blue accent #6cb4ff),
+  components/Legend.jsx, components/About.jsx (<dialog> + showModal), content/about.js,
+  hooks/useAboutFacts.js, scripts/analyse-grid.js → public/data/analysis-summary.json
+  (npm run analysis:grid), utils/grid.js. config.js reads `import.meta.env ?? {}` so Node
+  scripts can import it. check-accessibility.js covers the dialog.
   (Update this section after each module.)

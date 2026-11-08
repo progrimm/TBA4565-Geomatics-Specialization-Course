@@ -2,8 +2,9 @@
  * Keyboard and focus check of the control panel at desktop and mobile width.
  * Tabs through the page and records, for each focused element, its role, accessible
  * name and whether a focus outline is drawn; then operates the controls with the
- * keyboard only. Runs with prefers-reduced-motion: reduce. Saves a screenshot per width
- * and exits with code 1 if an expectation fails.
+ * keyboard only, including opening and closing the "How it works" dialog. Runs with
+ * prefers-reduced-motion: reduce. Saves screenshots per width and exits with code 1 if
+ * an expectation fails.
  *
  *   npm run build && npx vite preview --port 4174
  *   node scripts/check-accessibility.js [screenshotDir]
@@ -58,13 +59,14 @@ for (const { name, viewport } of WIDTHS) {
   await page.goto(URL);
   await page.waitForTimeout(SETTLE_MS);
 
-  // On mobile the panel starts collapsed: its first focus stops must be the homepage link,
-  // which stays outside the collapsible body, and then the expand button.
+  // On mobile the panel starts collapsed: its first focus stops must be the homepage link
+  // and "How it works", which stay outside the collapsible body, and then the expand button.
   const before = await tabThrough(page);
-  const [firstPanelStop, secondPanelStop] = before.filter((stop) => stop.inPanel);
+  const [firstPanelStop, secondPanelStop, thirdPanelStop] = before.filter((stop) => stop.inPanel);
+  expect(firstPanelStop?.name === '← My GIS module', `${name}: first panel stop is the home link`);
+  expect(secondPanelStop?.name === 'How it works', `${name}: second panel stop is "How it works"`);
   if (name === 'mobile') {
-    expect(firstPanelStop?.name === '← My GIS module', 'mobile: first panel stop is the home link');
-    expect(secondPanelStop?.expanded === 'false', 'mobile: next panel stop is "Show controls"');
+    expect(thirdPanelStop?.expanded === 'false', 'mobile: next panel stop is "Show controls"');
     await page.locator('.panel__toggle').focus();
     await page.keyboard.press('Enter');
   }
@@ -94,6 +96,31 @@ for (const { name, viewport } of WIDTHS) {
   await page.waitForTimeout(1500);
   await page.getByRole('switch', { name: 'Public shelters' }).focus();
   await page.screenshot({ path: join(OUT_DIR, `keyboard-${name}.png`) });
+
+  // "How it works": Enter opens the dialog with focus inside it, Tab stays inside
+  // (modal), Escape closes it and focus returns to the button.
+  const aboutButton = page.getByRole('button', { name: 'How it works' });
+  await aboutButton.focus();
+  await page.keyboard.press('Enter');
+  const dialog = page.getByRole('dialog', { name: 'How it works' });
+  await dialog.waitFor();
+  await page.waitForTimeout(1000); // let the results file load
+  const focusInDialog = () => page.evaluate(() => !!document.activeElement.closest('dialog'));
+  expect(await focusInDialog(), `${name}: focus moves into the dialog`);
+  for (let i = 0; i < 8; i += 1) await page.keyboard.press('Tab');
+  expect(await focusInDialog(), `${name}: Tab stays inside the dialog`);
+  expect(
+    (await dialog.textContent()).includes('Walk ÷ straight line'),
+    `${name}: the dialog shows the key results`,
+  );
+  await page.screenshot({ path: join(OUT_DIR, `about-${name}.png`) });
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  expect(!(await dialog.isVisible()), `${name}: Escape closes the dialog`);
+  expect(
+    await aboutButton.evaluate((el) => el === document.activeElement),
+    `${name}: focus returns to "How it works"`,
+  );
 
   console.warn(
     JSON.stringify({ name, beforeExpand: before, stops, buildingsBefore, buildingsAfterSpace }),

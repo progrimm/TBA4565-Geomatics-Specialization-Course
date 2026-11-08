@@ -40,16 +40,16 @@ export default function OutOfRange({ outOfRange, onClose }) {
       >
         <p className="popup__kicker">No route</p>
         <h2 className="popup__title" id={titleId}>
-          Good luck, champ. You won’t make it…
+          {reason === 'far' ? 'Outside the walking network' : 'No path to a shelter'}
         </h2>
         <p className="popup__text" id={textId}>
           {reason === 'far'
-            ? `That spot is ${formatDistance(connector)} from the nearest mapped path. Routes start at most ${NEAREST.maxConnector} m from the walking network.`
-            : 'No path from there reaches a shelter: that part of the network is cut off.'}{' '}
-          Pick a spot on a street or path.
+            ? `This point is ${formatDistance(connector)} from the nearest mapped path (limit ${NEAREST.maxConnector} m).`
+            : 'The paths at this point are not connected to any shelter in the network.'}{' '}
+          Choose a point on or near a street or path.
         </p>
         <button ref={buttonRef} type="button" className="popup__button" onClick={onClose}>
-          Try again
+          Close
         </button>
       </div>
     </div>

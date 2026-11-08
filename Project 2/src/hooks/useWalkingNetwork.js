@@ -26,7 +26,10 @@ function fetchPassages() {
 /**
  * Load the walking network (and the buildings it passes through) once and build its graph.
  * @returns {{status: 'loading' | 'ready' | 'error', graph?: import('../utils/network.js').Graph,
- *   passages?: Map<string, import('../utils/passages.js').PassageBuilding[]>}}
+ *   passages?: Map<string, import('../utils/passages.js').PassageBuilding[]>,
+ *   osmTimestamp?: string, passagesTimestamp?: string}}
+ *   osmTimestamp: OSM data date of the network; passagesTimestamp: of the footprints
+ *   (only when the passages file matches this network).
  */
 export function useWalkingNetwork() {
   const [state, setState] = useState({ status: 'loading' });
@@ -37,10 +40,13 @@ export function useWalkingNetwork() {
     Promise.all([fetchJson(NEAREST.network.url), fetchPassages()])
       .then(([network, passages]) => {
         if (!active) return;
+        const passageIndex = passageIndexFor(network, passages);
         setState({
           status: 'ready',
           graph: buildGraph(network),
-          passages: passageIndexFor(network, passages),
+          passages: passageIndex,
+          osmTimestamp: network.osmTimestamp,
+          passagesTimestamp: passageIndex && passages.osmTimestamp,
         });
       })
       .catch((error) => {

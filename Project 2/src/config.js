@@ -2,8 +2,13 @@
  * App-wide constants. No magic numbers elsewhere in the code.
  */
 
+// Vite replaces import.meta.env at build time. In plain Node (scripts/analyse-grid.js
+// imports this file) it is undefined, so fall back to an empty object.
+const env = import.meta.env ?? {};
+const BASE_URL = env.BASE_URL ?? './';
+
 /** Cesium ion token, injected by Vite from .env (VITE_CESIUM_TOKEN). */
-export const CESIUM_TOKEN = import.meta.env.VITE_CESIUM_TOKEN;
+export const CESIUM_TOKEN = env.VITE_CESIUM_TOKEN;
 
 /**
  * Preset camera views. Each view looks at a target point from `range` metres
@@ -55,7 +60,7 @@ export const TILESET_SETTINGS = {
   // Cesium OSM Buildings (ion asset 96188). Licence: ODbL, © OpenStreetMap contributors.
   buildings: {
     // VITE_BUILDINGS_SSE overrides it for scripts/benchmark-buildings.js only.
-    maximumScreenSpaceError: Number(import.meta.env.VITE_BUILDINGS_SSE) || 16,
+    maximumScreenSpaceError: Number(env.VITE_BUILDINGS_SSE) || 16,
   },
 };
 
@@ -64,7 +69,7 @@ export const TILESET_SETTINGS = {
  * `npm run data:shelters`: WGS84 lon/lat, no height (points are clamped to terrain).
  */
 export const SHELTERS = {
-  url: `${import.meta.env.BASE_URL}data/shelters.geojson`,
+  url: `${BASE_URL}data/shelters.geojson`,
   credit: 'Tilfluktsrom: © DSB, NLOD',
   style: {
     pixelSize: 12,
@@ -84,7 +89,7 @@ export const NEAREST = {
    * `npm run data:network`. Compact format, see utils/osmNetwork.js.
    */
   network: {
-    url: `${import.meta.env.BASE_URL}data/walking-network.json`,
+    url: `${BASE_URL}data/walking-network.json`,
     credit: 'Walking network: © OpenStreetMap contributors, ODbL',
   },
   /**
@@ -92,7 +97,7 @@ export const NEAREST = {
    * `npm run data:passages` for the committed walking-network.json snapshot.
    */
   passages: {
-    url: `${import.meta.env.BASE_URL}data/building-passages.json`,
+    url: `${BASE_URL}data/building-passages.json`,
   },
   /**
    * Longest straight connector (geodesic metres) from a click to its nearest network
@@ -108,10 +113,16 @@ export const NEAREST = {
     pointSize: 10, // pixels
     outlineColor: '#000000',
     outlineWidth: 2,
-    outOfRangeColor: '#ff5a4f', // the clicked point when it is out of range
+    outOfRangeColor: '#ff6b61', // the clicked point when it is out of range
     passageColor: '#3ddc84', // buildings the route passes through
   },
 };
+
+/**
+ * Results of scripts/analyse-grid.js (npm run analysis:grid), shown in the
+ * "How it works" panel.
+ */
+export const ANALYSIS_SUMMARY_URL = `${BASE_URL}data/analysis-summary.json`;
 
 /** The "My GIS module" homepage, relative to this app's subpath. */
 export const HOME_URL = '../';
