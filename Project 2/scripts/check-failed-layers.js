@@ -12,14 +12,23 @@ import { expect, launchBrowser, screenshotDir } from './browser.js';
 
 const URL = process.env.APP_URL ?? 'http://localhost:4174/';
 const OUT_DIR = screenshotDir(process.argv[2]);
+// minutes: whether the result shows a walking time (needs node heights and a walk).
 const CASES = [
-  { name: 'nothing-blocked', block: undefined, shelters: true, walk: true, coverage: true },
+  {
+    name: 'nothing-blocked',
+    block: undefined,
+    shelters: true,
+    walk: true,
+    coverage: true,
+    minutes: true,
+  },
   {
     name: 'shelters-blocked',
     block: '**/data/shelters.geojson',
     shelters: false,
     walk: false,
     coverage: true,
+    minutes: false,
   },
   {
     name: 'network-blocked',
@@ -27,6 +36,7 @@ const CASES = [
     shelters: true,
     walk: false,
     coverage: true,
+    minutes: false,
   },
   // Optional data: routes still work, only building highlighting is lost.
   {
@@ -35,6 +45,7 @@ const CASES = [
     shelters: true,
     walk: true,
     coverage: true,
+    minutes: true,
   },
   // The coverage layer is optional: its switch is disabled, everything else works.
   {
@@ -43,6 +54,16 @@ const CASES = [
     shelters: true,
     walk: true,
     coverage: false,
+    minutes: true,
+  },
+  // Node heights are optional: routes fall back to the shortest walk, without minutes.
+  {
+    name: 'heights-blocked',
+    block: '**/data/node-heights.json',
+    shelters: true,
+    walk: true,
+    coverage: true,
+    minutes: false,
   },
 ];
 const VIEWPORT = { width: 1600, height: 900 };
@@ -63,7 +84,7 @@ const readState = (page) =>
   }));
 
 const browser = await launchBrowser();
-for (const { name, block, shelters, walk, coverage } of CASES) {
+for (const { name, block, shelters, walk, coverage, minutes } of CASES) {
   const context = await browser.newContext({ viewport: VIEWPORT });
   const page = await context.newPage();
   const pageErrors = [];
@@ -89,6 +110,7 @@ for (const { name, block, shelters, walk, coverage } of CASES) {
   expect(layer('Walking distance').enabled === coverage, `${name}: coverage switch state`);
   expect(nearest.includes('Straight') === shelters, `${name}: nearest result after click`);
   expect(nearest.includes('Walk\n') === walk, `${name}: walking distance shown`);
+  expect(/\d+ min/.test(nearest) === minutes, `${name}: walking time shown`);
   if (block) expect(loaded.toasts.length > 0, `${name}: an error message should be shown`);
 
   console.warn(JSON.stringify({ name, loaded, nearestAfterClick: nearest, pageErrors }));

@@ -42,10 +42,15 @@ describe('"How it works" content', () => {
       'Through a building',
       'Residents covered',
       'Capacity',
+      'Slopes',
+      'Residents by time',
       'Terrain check',
     ]);
-    expect(rows[6].value).toContain(`RMSE ${summary.terrainCheck.rmseMetres.toFixed(1)} m`);
-    expect(rows[5].value).toContain(summary.coverage.residentsPerPlace.toFixed(1));
+    expect(rows[8].value).toContain(`RMSE ${summary.terrainCheck.rmseMetres.toFixed(1)} m`);
+    const { residents, places } = summary.coverage;
+    expect(rows[5].value).toContain(
+      `${(residents / places).toFixed(1)} residents per shelter place`,
+    );
     expect(rows[0].value).toContain(`${summary.routed} routed`);
     expect(rows[1].value).toContain(summary.detourRatio.median.toFixed(2));
     expect(rows.every((row) => !row.value.includes('undefined'))).toBe(true);

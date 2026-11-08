@@ -14,7 +14,8 @@ const files = new WeakMap();
 /**
  * The contents of coverage.json behind a data source from loadCoverage.
  * @param {GeoJsonDataSource | undefined} dataSource
- * @returns {{cells: Array<[number[][], number, number | null, number | null]>,
+ * @returns {{cells: Array<[number[][], number, number | null, number | null, number | null,
+ *   number | null]>,
  *   dataset: string, fetched: string} | undefined}
  */
 export const coverageFile = (dataSource) => dataSource && files.get(dataSource);
@@ -29,23 +30,25 @@ export const isCoverageCell = (picked) => picked?.id?.properties?.kind?.getValue
  * The cells of public/data/coverage.json (see scripts/analyse-coverage.js) as GeoJSON
  * polygons. Corners are WGS84 lon/lat, converted from EUREF89 / UTM 33N; the cells are
  * squares in UTM 33, so on a lon/lat map they are slightly rotated quadrilaterals.
- * @param {{cells: Array<[number[][], number, number | null, number | null]>}} coverage
+ * @param {{cells: Array<[number[][], number, number | null, number | null, number | null,
+ *   number | null]>}} coverage - per cell: corners, residents, shortest walk (m) and its
+ *   shelter, fastest walk (minutes, slopes included) and its shelter.
  * @returns {object} GeoJSON FeatureCollection.
  */
 export function toCellFeatures({ cells }) {
   return {
     type: 'FeatureCollection',
-    features: cells.map(([corners, population, walk, romnr]) => ({
+    features: cells.map(([corners, population, walk, romnr, minutes = null, fastRomnr = null]) => ({
       type: 'Feature',
       geometry: { type: 'Polygon', coordinates: [[...corners, corners[0]]] },
-      properties: { kind: CELL_KIND, population, walk, romnr },
+      properties: { kind: CELL_KIND, population, walk, romnr, minutes, fastRomnr },
     })),
   };
 }
 
 /** Colour and InfoBox text of one cell entity. */
 function styleCell(entity) {
-  const { population, walk, romnr } = entity.properties.getValue();
+  const { population, walk, romnr, minutes, fastRomnr } = entity.properties.getValue();
   const index = distanceClass(walk, COVERAGE.classes);
   const color = index === -1 ? COVERAGE.noRouteColor : COVERAGE.classes[index].color;
   entity.name = `${population} residents (250 m cell)`;
@@ -53,6 +56,12 @@ function styleCell(entity) {
     ['Residents (SSB 2026)', population],
     ['Walk to nearest shelter', walk === null ? 'no route' : formatDistance(walk)],
     ['Nearest shelter on foot', romnr === null ? '–' : `No. ${romnr}`],
+    ...(minutes === null
+      ? []
+      : [
+          ['Fastest walk, slopes included', `${Math.round(minutes)} min`],
+          ...(fastRomnr !== romnr ? [['Fastest to', `No. ${fastRomnr}`]] : []),
+        ]),
   ]);
   entity.polygon.material = Color.fromCssColorString(color).withAlpha(COVERAGE.alpha);
   entity.polygon.outline = false; // outlines are not drawn on ground-clamped polygons

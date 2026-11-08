@@ -200,3 +200,65 @@ describe('multiSourceDijkstra', () => {
     expect(d[nodeOf(10.41, 63.4205)]).toBeGreaterThan(0);
   });
 });
+
+describe('walking time on slopes (Tobler)', async () => {
+  const { byTime, pathSeconds } = await import('../src/utils/network.js');
+  const { flatSeconds, segmentSeconds } = await import('../src/utils/walkingTime.js');
+  // Hand-made hill: from S, shelter A is 300 m away but 45 m up (15 %), shelter B is
+  // 400 m away on the flat. Nearest by distance: A. Fastest: B.
+  const S = 0;
+  const A = 1;
+  const B = 2;
+  const hill = {
+    lon: Float64Array.from([10.4, 10.4, 10.4]),
+    lat: Float64Array.from([63.43, 63.4327, 63.4264]),
+    adjacency: [
+      [A, 300, B, 400],
+      [S, 300],
+      [S, 400],
+    ],
+    heights: Float64Array.from([0, 45, 0]),
+  };
+  const shelterA = { ...at(10.4, 63.4327), romnr: 10, plasser: 1, adresse: 'Hill top' };
+  const shelterB = { ...at(10.4, 63.4264), romnr: 11, plasser: 1, adresse: 'Valley' };
+  const shelterNodes = new Map([
+    [A, shelterA],
+    [B, shelterB],
+  ]);
+  const start = at(10.4, 63.43);
+
+  it('picks the shortest walk by distance and the fastest by time', () => {
+    expect(findNearestByWalking(start, hill, shelterNodes).shelter).toBe(shelterA);
+    const fastest = findNearestByWalking(start, hill, shelterNodes, { by: 'time' });
+    expect(fastest.shelter).toBe(shelterB);
+    expect(fastest.walk.distance).toBeCloseTo(400, 6);
+    expect(fastest.walk.seconds).toBeCloseTo(flatSeconds(400), 6);
+  });
+
+  it('times uphill and downhill differently', () => {
+    const time = byTime(hill);
+    expect(time(S, A, 300)).toBeCloseTo(segmentSeconds(300, 45), 9);
+    expect(time(A, S, 300)).toBeLessThan(time(S, A, 300));
+    expect(pathSeconds(hill, [S, A])).toBeCloseTo(segmentSeconds(300, 45), 9);
+    expect(shortestPathToAny(hill, A, new Set([S]), time).distance).toBeCloseTo(
+      segmentSeconds(300, -45),
+      9,
+    );
+  });
+
+  it('reverses the walk in the multi-source search (walking towards the shelters)', () => {
+    const { distance, source } = multiSourceDijkstra(hill, [A, B], (from, to, metres) =>
+      byTime(hill)(from, to, metres),
+    );
+    // From S, B (286 s on the flat) beats A (300 m uphill).
+    expect(source[S]).toBe(B);
+    expect(distance[S]).toBeCloseTo(segmentSeconds(400, 0), 9);
+  });
+
+  it('falls back to distance without heights', () => {
+    const flat = { ...hill, heights: undefined };
+    const walk = findNearestByWalking(start, flat, shelterNodes, { by: 'time' });
+    expect(walk.shelter).toBe(shelterA);
+    expect(walk.walk.seconds).toBeUndefined();
+  });
+});

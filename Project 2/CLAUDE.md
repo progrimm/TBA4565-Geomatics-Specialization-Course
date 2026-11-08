@@ -38,6 +38,8 @@ Learning goals:
 - NN2000 heights via Kartverket's geoid model, terrain check (2026-11-08 on request)
 - Coverage and capacity: SSB 250 m population grid, "Walking distance" layer, "Coverage"
   panel section, "Whole study area" view (2026-11-08 on request)
+- Walking time on slopes: node heights from Kartverket's DTM, Tobler's hiking function; the
+  nearest shelter is the fastest walk (2026-11-08 on request)
 - Do NOT add features beyond this list without asking.
 
 ## Tech stack
@@ -184,4 +186,10 @@ public/data/ – static datasets (shelters GeoJSON, walking network JSON)
   results/coverage-catchments.csv, analysis-summary.json `coverage`. layers/coverage.js
   (GeoJsonDataSource, clamped, hidden by default; isCoverageCell lets cell clicks run the
   search), components/Coverage.jsx, LayerToggle initiallyVisible/onToggle, studyArea preset.
+- 2026-11-08: step 4 done. scripts/fetch-heights.js (npm run data:heights): DTM WCS
+  nhm_dtm_topo_25832, 5 m tiles → public/data/node-heights.json (dm, snapshot-guarded,
+  bridges/tunnels interpolated). utils/walkingTime.js (Tobler), utils/raster.js, byDistance /
+  byTime edge costs and withHeights in utils/network.js (multi-source cost is reversed).
+  scripts/overpass.js shared. Grid and coverage scripts report times. The view buttons stay
+  (removal started and reverted on request).
   (Update this section after each module.)

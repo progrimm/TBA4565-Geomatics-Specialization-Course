@@ -4,6 +4,7 @@ import { coverageFile } from '../layers/coverage.js';
 import { summarizeCoverage } from '../utils/coverage.js';
 
 const THRESHOLDS = [500, 1000, 2000];
+const MINUTES = [10, 20];
 const integer = new Intl.NumberFormat('en-GB');
 const percent = (share) => `${(share * 100).toFixed(0)} %`;
 const distance = (metres) => (metres < 1000 ? `${metres} m` : `${metres / 1000} km`);
@@ -26,7 +27,18 @@ export default function Coverage({ state, shelters, layerVisible }) {
       romnr,
       connector: 0,
     }));
-    return summarizeCoverage(cells, shelters, THRESHOLDS, NEAREST.maxConnector);
+    const residents = file.cells.reduce((sum, cell) => sum + cell[1], 0);
+    const withinMinutes = MINUTES.map((minutes) => ({
+      minutes,
+      share:
+        file.cells
+          .filter((cell) => cell[4] !== null && cell[4] !== undefined && cell[4] <= minutes)
+          .reduce((sum, cell) => sum + cell[1], 0) / residents,
+    }));
+    return {
+      ...summarizeCoverage(cells, shelters, THRESHOLDS, NEAREST.maxConnector),
+      withinMinutes: file.cells[0]?.length > 4 ? withinMinutes : [],
+    };
   }, [state.layer, shelters]);
 
   return (
@@ -48,6 +60,15 @@ export default function Coverage({ state, shelters, layerVisible }) {
               </div>
             ))}
           </dl>
+          {summary.withinMinutes.length > 0 && (
+            <p className="analysis__minutes">
+              Walking time with slopes:{' '}
+              {summary.withinMinutes
+                .map(({ minutes, share }) => `${percent(share)} within ${minutes} min`)
+                .join(', ')}
+              .
+            </p>
+          )}
           <p className="analysis__credit">
             {layerVisible
               ? 'Click a cell for its residents and walk. “Whole study area” shows all of it.'

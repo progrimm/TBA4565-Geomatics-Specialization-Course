@@ -193,6 +193,46 @@
         "residentsPerPlace": 2.59
       }
     ],
-    "checkedAgainstSingleSearch": 53
+    "checkedAgainstSingleSearch": 53,
+    "walkingTime": {
+      "method": "Tobler's hiking function on node heights (node-heights.json); connectors at 5.04 km/h",
+      "withinMinutes": [
+        {
+          "minutes": 10,
+          "residents": 32395,
+          "share": 0.1774
+        },
+        {
+          "minutes": 20,
+          "residents": 95988,
+          "share": 0.5258
+        },
+        {
+          "minutes": 30,
+          "residents": 145777,
+          "share": 0.7985
+        }
+      ],
+      "fastestShelterDiffers": {
+        "cells": 39,
+        "residents": 8047
+      }
+    }
+  },
+  "walkingTime": {
+    "method": "Tobler's hiking function on node heights from Kartverket's DTM (node-heights.json)",
+    "heightsFetched": "2026-11-08",
+    "fastestDifferentFromShortest": {
+      "count": 23,
+      "share": 0.0275
+    },
+    "fastestMinutes": {
+      "median": 25.4,
+      "p90": 51.8
+    },
+    "shortestWalkSlopeFactor": {
+      "median": 1.052,
+      "p90": 1.143
+    }
   }
 }

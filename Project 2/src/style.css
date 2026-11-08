@@ -332,6 +332,12 @@ a:hover {
   font-size: 0.75rem;
 }
 
+.analysis__minutes {
+  margin: var(--space-2) 0 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
 .analysis__sub {
   color: var(--text-muted);
   font-size: 0.75rem;

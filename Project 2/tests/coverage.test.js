@@ -82,7 +82,11 @@ describe('coverage layer cells', async () => {
       population: 120,
       walk: 640,
       romnr: 6870,
+      minutes: null,
+      fastRomnr: null,
     });
+    const timed = toCellFeatures({ cells: [[corners, 120, 640, 6870, 8.3, 30671]] });
+    expect(timed.features[0].properties).toMatchObject({ minutes: 8.3, fastRomnr: 30671 });
   });
 
   it('recognises picked coverage cells, and nothing else', () => {

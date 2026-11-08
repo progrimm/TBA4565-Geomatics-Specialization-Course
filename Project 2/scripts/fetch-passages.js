@@ -11,36 +11,14 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { toOffset, walkableWaysQuery } from '../src/utils/osmNetwork.js';
 import { findPassages, toBuildingPolygons } from '../src/utils/passages.js';
+import { overpass } from './overpass.js';
 
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 const NETWORK = new URL('../public/data/walking-network.json', import.meta.url);
 const OUTPUT = new URL('../public/data/building-passages.json', import.meta.url);
 // Metres of a way that must lie inside a footprint before it counts as going through
 // the building. OSM footprints and footways are accurate to about 1–2 m, so a footway
 // along a wall can cut a corner by a metre or two without entering the building.
 const MIN_INSIDE = 5;
-
-// Overpass answers 429/502/504 when it is busy; wait and retry a few times.
-const RETRIES = 3;
-const RETRY_WAIT_MS = 30000;
-
-/** POST an Overpass QL query and return the JSON response. */
-async function overpass(query) {
-  for (let attempt = 1; ; attempt += 1) {
-    const response = await fetch(OVERPASS_URL, {
-      method: 'POST',
-      body: new URLSearchParams({ data: query }),
-      headers: { 'User-Agent': 'trondheim-shelter-analysis (NTNU TBA4565 student project)' },
-    });
-    if (response.ok) return response.json();
-    const busy = [429, 502, 503, 504].includes(response.status);
-    if (!busy || attempt > RETRIES) {
-      throw new Error(`Overpass request failed: ${response.status} ${response.statusText}`);
-    }
-    console.warn(`Overpass busy (${response.status}), retry ${attempt}/${RETRIES} in 30 s…`);
-    await new Promise((resolve) => setTimeout(resolve, RETRY_WAIT_MS));
-  }
-}
 
 const started = performance.now();
 const network = JSON.parse(await readFile(NETWORK, 'utf8'));

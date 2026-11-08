@@ -31,3 +31,13 @@ export function utm32ToWgs84(east, north) {
 export function utm33ToWgs84(east, north) {
   return proj4(EPSG_25833, WGS84, [east, north]);
 }
+
+/**
+ * Convert WGS84 longitude/latitude to EUREF89 / UTM32 (EPSG:25832). Horizontal only.
+ * @param {number} longitude - degrees.
+ * @param {number} latitude - degrees.
+ * @returns {[number, number]} [east, north] in metres.
+ */
+export function wgs84ToUtm32(longitude, latitude) {
+  return proj4(WGS84, EPSG_25832, [longitude, latitude]);
+}

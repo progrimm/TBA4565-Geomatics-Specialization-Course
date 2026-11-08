@@ -85,6 +85,7 @@ export default function About({ open, onClose, network, shelterTotals }) {
     geoidFetched: GEOID_GRID.fetched,
     terrainChecked: facts.summary?.terrainCheck?.date,
     coverageFetched: facts.summary?.coverage?.date,
+    heightsFetched: facts.summary?.walkingTime?.heightsFetched,
   };
 
   return (

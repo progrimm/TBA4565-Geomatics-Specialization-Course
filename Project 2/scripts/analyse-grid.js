@@ -10,7 +10,8 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { NEAREST } from '../src/config.js';
 import { gridPoints, quantile } from '../src/utils/grid.js';
 import { findNearest } from '../src/utils/nearest.js';
-import { buildGraph, findWalkInRange, snapShelters } from '../src/utils/network.js';
+import { buildGraph, findWalkInRange, snapShelters, withHeights } from '../src/utils/network.js';
+import { flatSeconds } from '../src/utils/walkingTime.js';
 import { buildingsOnPath, passageIndexFor } from '../src/utils/passages.js';
 
 const DATA = new URL('../public/data/', import.meta.url);
@@ -20,10 +21,11 @@ const GRID_SIZE = 30;
 const readJson = async (name) => JSON.parse(await readFile(new URL(name, DATA), 'utf8'));
 const round = (value, decimals) => Number(value.toFixed(decimals));
 
-const [shelterFile, network, passages] = await Promise.all([
+const [shelterFile, network, passages, heights] = await Promise.all([
   readJson('shelters.geojson'),
   readJson('walking-network.json'),
   readJson('building-passages.json'),
+  readJson('node-heights.json'),
 ]);
 
 // Shelter records as in layers/shelters.js: WGS84 lon/lat in degrees plus attributes.
@@ -39,7 +41,9 @@ const bbox = {
   north: Math.max(...shelters.map((s) => s.latitude)),
 };
 
-const graph = buildGraph(network);
+// With node heights: the walks also get Tobler times, and "fastest" can be searched.
+const graph = withHeights(buildGraph(network), network, heights);
+if (!graph.heights) throw new Error('node-heights.json does not match the network');
 const shelterNodes = snapShelters(graph, shelters);
 const passageIndex = passageIndexFor(network, passages);
 
@@ -47,6 +51,9 @@ const counts = { routed: 0, far: 0, unreachable: 0, differentShelter: 0, through
 const detourRatios = [];
 const connectors = [];
 const walks = [];
+let fasterElsewhere = 0;
+const fastestMinutes = [];
+const slopeFactors = [];
 for (const point of gridPoints(bbox, GRID_SIZE)) {
   const { nearest, outOfRange } = findWalkInRange(point, graph, shelterNodes, NEAREST.maxConnector);
   if (!nearest) {
@@ -61,6 +68,14 @@ for (const point of gridPoints(bbox, GRID_SIZE)) {
   if (findNearest(point, shelters).shelter !== nearest.shelter) counts.differentShelter += 1;
   if (passageIndex && buildingsOnPath(nearest.walk.nodes, passageIndex).length > 0)
     counts.throughBuildings += 1;
+  // Walking time: the fastest walk (Tobler) from the same point.
+  const fastest = findWalkInRange(point, graph, shelterNodes, NEAREST.maxConnector, {
+    by: 'time',
+  }).nearest;
+  if (fastest.shelter !== nearest.shelter) fasterElsewhere += 1;
+  fastestMinutes.push(fastest.walk.seconds / 60);
+  // How much the slopes slow the shortest walk: its time ÷ the same length on the flat.
+  slopeFactors.push(nearest.walk.seconds / flatSeconds(nearest.walk.distance));
 }
 
 const ascending = (values) => [...values].sort((a, b) => a - b);
@@ -101,6 +116,16 @@ const result = {
   detourRatio: summary(detourRatios, 2),
   walkMetres: summary(walks, 0),
   connectorMetres: summary(connectors, 1),
+  walkingTime: {
+    method: "Tobler's hiking function on node heights from Kartverket's DTM (node-heights.json)",
+    heightsFetched: heights.fetched,
+    fastestDifferentFromShortest: {
+      count: fasterElsewhere,
+      share: round(fasterElsewhere / counts.routed, 4),
+    },
+    fastestMinutes: summary(fastestMinutes, 1),
+    shortestWalkSlopeFactor: summary(slopeFactors, 3),
+  },
 };
 
 // Keep results that other scripts add to the same file (terrainCheck, coverage).

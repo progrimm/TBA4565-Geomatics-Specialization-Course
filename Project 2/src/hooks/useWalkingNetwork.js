@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NEAREST } from '../config.js';
 import { showMessage } from '../state/messages.js';
-import { buildGraph } from '../utils/network.js';
+import { buildGraph, withHeights } from '../utils/network.js';
 import { passageIndexFor } from '../utils/passages.js';
 
 /** Fetch a JSON file; rejects on network errors and HTTP errors. */
@@ -24,7 +24,19 @@ function fetchPassages() {
 }
 
 /**
- * Load the walking network (and the buildings it passes through) once and build its graph.
+ * Node heights are optional too: without them routes are by distance only.
+ */
+function fetchHeights() {
+  return fetchJson(NEAREST.heights.url).catch((error) => {
+    console.error('Node heights failed to load:', error);
+    showMessage('Slope data unavailable: routes are by distance, without walking times.', 'error');
+    return undefined;
+  });
+}
+
+/**
+ * Load the walking network (with the buildings it passes through and its node heights)
+ * once and build its graph.
  * @returns {{status: 'loading' | 'ready' | 'error', graph?: import('../utils/network.js').Graph,
  *   passages?: Map<string, import('../utils/passages.js').PassageBuilding[]>,
  *   osmTimestamp?: string, passagesTimestamp?: string}}
@@ -37,13 +49,13 @@ export function useWalkingNetwork() {
   useEffect(() => {
     let active = true;
     const hideLoading = showMessage('Loading walking network…');
-    Promise.all([fetchJson(NEAREST.network.url), fetchPassages()])
-      .then(([network, passages]) => {
+    Promise.all([fetchJson(NEAREST.network.url), fetchPassages(), fetchHeights()])
+      .then(([network, passages, heights]) => {
         if (!active) return;
         const passageIndex = passageIndexFor(network, passages);
         setState({
           status: 'ready',
-          graph: buildGraph(network),
+          graph: withHeights(buildGraph(network), network, heights),
           passages: passageIndex,
           osmTimestamp: network.osmTimestamp,
           passagesTimestamp: passageIndex && passages.osmTimestamp,

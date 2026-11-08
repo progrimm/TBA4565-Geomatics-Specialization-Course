@@ -4,7 +4,7 @@ import { toShelterRecords } from '../layers/shelters.js';
 import { highlightBuildings } from '../layers/buildings.js';
 import { drawClickedPoint, drawNearestLine, onGroundClick } from '../layers/nearest.js';
 import { findNearest } from '../utils/nearest.js';
-import { findWalkInRange, snapShelters } from '../utils/network.js';
+import { findNearestByWalking, findWalkInRange, snapShelters } from '../utils/network.js';
 import { buildingsOnPath } from '../utils/passages.js';
 import { geoidHeight } from '../utils/geoid.js';
 import { GEOID_GRID } from '../utils/geoidGrid.js';
@@ -12,9 +12,13 @@ import { GEOID_GRID } from '../utils/geoidGrid.js';
 /**
  * @typedef {{shelter: import('../utils/nearest.js').Shelter, distance: number,
  *   walk?: import('../utils/network.js').Walk,
- *   through?: import('../utils/passages.js').PassageBuilding[]}} NearestResult
+ *   through?: import('../utils/passages.js').PassageBuilding[], by?: 'distance' | 'time',
+ *   shortest?: {shelter: import('../utils/nearest.js').Shelter,
+ *     walk: import('../utils/network.js').Walk}}} NearestResult
  *   distance: straight-line (geodesic) metres; walk: undefined when the walking
- *   network is not available; through: buildings the walk passes through.
+ *   network is not available; through: buildings the walk passes through; by: whether the
+ *   walk is the fastest (with node heights) or the shortest; shortest: the shortest walk
+ *   if it leads to another shelter than the fastest.
  * @typedef {{reason: 'far' | 'unreachable', connector?: number}} OutOfRange
  *   connector: geodesic metres from the click to the nearest network node.
  * @typedef {{ellipsoidal: number, geoid?: number, nn2000?: number}} GroundHeight
@@ -47,10 +51,29 @@ function groundHeight(point) {
  */
 function findNearestShelter(point, { shelters, graph, shelterNodes, passages }) {
   if (!graph) return { nearest: findNearest(point, shelters) };
-  const { nearest, outOfRange } = findWalkInRange(point, graph, shelterNodes, NEAREST.maxConnector);
+  // With node heights, "nearest" is the fastest walk (Tobler); otherwise the shortest.
+  const by = graph.heights ? 'time' : 'distance';
+  const { nearest, outOfRange } = findWalkInRange(
+    point,
+    graph,
+    shelterNodes,
+    NEAREST.maxConnector,
+    {
+      by,
+    },
+  );
   if (!nearest) return { outOfRange };
   const through = passages ? buildingsOnPath(nearest.walk.nodes, passages) : [];
-  return { nearest: { ...nearest, through } };
+  // The shortest walk, when it leads to another shelter than the fastest one.
+  const shortest = by === 'time' ? findNearestByWalking(point, graph, shelterNodes) : undefined;
+  return {
+    nearest: {
+      ...nearest,
+      through,
+      by,
+      shortest: shortest && shortest.shelter !== nearest.shelter ? shortest : undefined,
+    },
+  };
 }
 
 /** Draw a result: the route and the buildings it passes through, or only the clicked point. */

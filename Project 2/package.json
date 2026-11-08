@@ -19,6 +19,7 @@
     "data:network": "node scripts/fetch-network.js",
     "data:passages": "node scripts/fetch-passages.js",
     "data:geoid": "node scripts/fetch-geoid.js",
+    "data:heights": "node scripts/fetch-heights.js",
     "analysis:grid": "node scripts/analyse-grid.js",
     "analysis:coverage": "node scripts/analyse-coverage.js"
   },

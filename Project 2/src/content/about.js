@@ -7,13 +7,13 @@
 
 /** The question the app answers. */
 export const QUESTION =
-  'Where is the nearest public shelter on foot from a point in Trondheim, and how far is the walk? Across the city: how many residents live within walking distance of a shelter, and how many residents are there per shelter place?';
+  'Where is the nearest public shelter on foot from a point in Trondheim, and how long is the walk, uphill and downhill? Across the city: how many residents live within walking distance of a shelter, and how many residents are there per shelter place?';
 
 /**
  * @typedef {{name: string, url: string}} Link
  * @typedef {{name: string, provider: string, format: string, crs: string,
  *   date?: 'sheltersFetched' | 'networkTimestamp' | 'passagesTimestamp' | 'geoidFetched' |
- *   'terrainChecked' | 'coverageFetched', dateLabel?: string,
+ *   'terrainChecked' | 'coverageFetched' | 'heightsFetched', dateLabel?: string,
  *   use: string, licence: Link, source: Link}} DataSource
  *   date: key into the run-time dates (see useAboutFacts); omitted for streamed services.
  */
@@ -82,6 +82,20 @@ export const DATA_SOURCES = [
     source: {
       name: 'Geonorge',
       url: 'https://kartkatalog.geonorge.no/metadata/uuid/384ce432-8da7-4cfa-9afa-140d2b6c29d3',
+    },
+  },
+  {
+    name: 'National terrain model (DTM), 5 m',
+    provider: 'Kartverket, Nasjonal høydemodell via WCS',
+    format: 'OGC WCS 1.0.0 GeoTIFF tiles, resampled from 1 m to 5 m',
+    crs: 'EUREF89 / UTM 32N (EPSG:25832), NN2000 heights',
+    date: 'heightsFetched',
+    dateLabel: 'downloaded',
+    use: 'The height of every network node, for walking times on slopes.',
+    licence: { name: 'CC BY 4.0', url: 'https://creativecommons.org/licenses/by/4.0/' },
+    source: {
+      name: 'DTM WCS',
+      url: 'https://kartkatalog.geonorge.no/metadata/uuid/05821c51-2f5b-411f-9098-924d13dbea9a',
     },
   },
   {
@@ -166,6 +180,11 @@ export const CONCEPTS = [
     link: { name: 'Dijkstra (1959)', url: 'https://doi.org/10.1007/BF01386390' },
   },
   {
+    title: 'Walking time on slopes',
+    text: 'Each network vertex gets its height from Kartverket’s terrain model, and each edge its walking time from Tobler’s hiking function: 6 km/h on a gentle 5 % downhill, 5.04 km/h on the flat, slower uphill and on steep downhills. The same street takes longer up than down, so the graph becomes directed, and the fastest shelter is not always the nearest.',
+    link: { name: 'Tobler (1993)', url: 'https://escholarship.org/uc/item/05r820mz' },
+  },
+  {
     title: 'Snapping and the 100 m rule',
     text: 'The click and each shelter are joined to their nearest network vertex by a straight connector. If the click’s connector is longer than 100 m (the fjord, a large field, outside the network), the app refuses it instead of drawing a long straight line.',
     link: {
@@ -210,7 +229,7 @@ export const CONCEPTS = [
 /** Short versions of the limitations in the README. */
 export const LIMITATIONS = [
   'The network is an OpenStreetMap snapshot: missing or wrongly tagged paths change the result. Stairs, barriers and opening hours are not considered.',
-  'Distance, not time: slopes are ignored, so an uphill walk counts the same as a flat one.',
+  'Walking times use Tobler’s average hiker on the terrain under the path, with heights interpolated across bridges and tunnels; stairs, crowds, age and fitness are not modelled.',
   'Snapping uses the nearest vertex, not the nearest point on a street, and the connectors are straight lines.',
   'Cesium World Terrain is much coarser than Kartverket’s 1 m terrain model (see the terrain check), so a clicked ground height is approximate, and so is how the 3D view drapes routes.',
   'The routes cover the shelters’ area plus about 1 km. Clicks outside it are refused, and the coverage analysis only counts residents inside it.',
@@ -245,12 +264,15 @@ export function keyResults(summary) {
       value: `${percent(summary.throughBuildings.share)} of routes (${summary.throughBuildings.count})`,
     },
     ...(summary.coverage ? coverageRows(summary.coverage) : []),
+    ...(summary.walkingTime ? walkingTimeRows(summary.walkingTime, summary.coverage) : []),
     ...(summary.terrainCheck ? [terrainRow(summary.terrainCheck)] : []),
   ];
 }
 
 /** The coverage analysis (scripts/analyse-coverage.js) as result rows. */
-function coverageRows({ residents, residentsPerPlace, within, catchments }) {
+function coverageRows({ residents, places, within, catchments }) {
+  // From the counts, not the rounded ratio in the file (34.65 would print as 34.6).
+  const residentsPerPlace = residents / places;
   const shares = within
     .map(
       ({ metres, share }) =>
@@ -269,6 +291,26 @@ function coverageRows({ residents, residentsPerPlace, within, catchments }) {
       value: `${residentsPerPlace.toFixed(1)} residents per shelter place; by catchment from ${least.residentsPerPlace.toFixed(1)} (no. ${least.romnr}) to ${most.residentsPerPlace.toFixed(1)} (no. ${most.romnr})`,
     },
   ];
+}
+
+/** The walking-time results (Tobler, analyse-grid.js and analyse-coverage.js) as rows. */
+function walkingTimeRows({ fastestDifferentFromShortest, shortestWalkSlopeFactor }, coverage) {
+  const rows = [
+    {
+      label: 'Slopes',
+      value: `make the shortest walk ${percent(shortestWalkSlopeFactor.median - 1)} slower than on the flat (median; 90th percentile ${percent(shortestWalkSlopeFactor.p90 - 1)}); the fastest shelter differs from the nearest at ${percent(fastestDifferentFromShortest.share)} of the test points`,
+    },
+  ];
+  const timed = coverage?.walkingTime;
+  if (timed) {
+    rows.push({
+      label: 'Residents by time',
+      value: timed.withinMinutes
+        .map(({ minutes, share }) => `${percent(share)} within ${minutes} min`)
+        .join(', '),
+    });
+  }
+  return rows;
 }
 
 /** The terrain check (scripts/check-terrain.js) as a result row. */

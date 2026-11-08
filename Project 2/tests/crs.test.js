@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { utm32ToWgs84, utm33ToWgs84 } from '../src/utils/crs.js';
+import { utm32ToWgs84, utm33ToWgs84, wgs84ToUtm32 } from '../src/utils/crs.js';
 
 describe('utm32ToWgs84', () => {
   it('maps the zone 32 origin (false easting 500 000 m) to 9°E on the equator', () => {
@@ -36,5 +36,13 @@ describe('utm33ToWgs84', () => {
     const northMetres = (latNorth - lat) * 111132;
     const bearing = (Math.atan2(eastMetres, northMetres) * 180) / Math.PI;
     expect(bearing).toBeCloseTo(-4.1, 0);
+  });
+});
+
+describe('wgs84ToUtm32', () => {
+  it('inverts utm32ToWgs84 to well under a millimetre', () => {
+    const [east, north] = wgs84ToUtm32(...utm32ToWgs84(569813.4307, 7034377.044946));
+    expect(east).toBeCloseTo(569813.4307, 4);
+    expect(north).toBeCloseTo(7034377.044946, 4);
   });
 });

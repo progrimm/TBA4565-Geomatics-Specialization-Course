@@ -9,6 +9,8 @@ const NETWORK_TEXT = {
 const numberFormat = new Intl.NumberFormat('en-GB');
 /** Height in metres with one decimal, e.g. "12.3 m". */
 const formatHeight = (metres) => `${metres.toFixed(1)} m`;
+/** Walking time, rounded to whole minutes, e.g. "14 min". */
+const formatMinutes = (seconds) => (seconds < 60 ? '< 1 min' : `${Math.round(seconds / 60)} min`);
 
 /**
  * "Name (type)" for a building, e.g. "Trondheim Torg (retail)". `building=yes`
@@ -63,7 +65,26 @@ export default function NearestShelter({
                 {nearest.walk && (
                   <>
                     <dt>Walk</dt>
-                    <dd>{formatDistance(nearest.walk.distance)} along streets and paths</dd>
+                    <dd>
+                      {formatDistance(nearest.walk.distance)}
+                      {nearest.walk.seconds === undefined
+                        ? ' along streets and paths'
+                        : ` · ${formatMinutes(nearest.walk.seconds)}`}{' '}
+                      {nearest.by === 'time' && (
+                        <span className="analysis__sub">(fastest, slopes included)</span>
+                      )}
+                    </dd>
+                  </>
+                )}
+                {nearest.shortest && (
+                  <>
+                    <dt>Shortest</dt>
+                    <dd>
+                      No. {nearest.shortest.shelter.romnr}:{' '}
+                      {formatDistance(nearest.shortest.walk.distance)} ·{' '}
+                      {formatMinutes(nearest.shortest.walk.seconds)}{' '}
+                      <span className="analysis__sub">(shorter, but slower on the slopes)</span>
+                    </dd>
                   </>
                 )}
                 {nearest.through?.length > 0 && (

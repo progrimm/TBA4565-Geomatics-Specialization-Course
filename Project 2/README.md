@@ -41,6 +41,9 @@ on code quality: linting, tests, error handling and CI.
   from one multi-source Dijkstra. A "Walking distance" layer colours each cell by the walk from
   home to the nearest shelter, and the panel gives the share of residents within 500 m, 1 km and
   2 km and the residents per shelter place (see [Coverage and capacity](#coverage-and-capacity))
+- Walking time on slopes: every network node has a height from Kartverket's terrain model, and
+  Tobler's hiking function turns slopes into minutes. "Nearest" is the fastest walk, with the
+  shortest one shown when it leads elsewhere (see [Walking time on slopes](#walking-time-on-slopes))
 - Loading and error messages for every layer. If one layer fails, the rest of the app keeps
   working
 - A collapsible control panel that becomes a bottom sheet on mobile. All panel controls work
@@ -79,22 +82,23 @@ load.
 
 Run these from `Project 2/`.
 
-| Command                     | Purpose                                                                              |
-| --------------------------- | ------------------------------------------------------------------------------------ |
-| `npm run dev`               | Start the Vite dev server                                                            |
-| `npm run build`             | Production build to `dist/`                                                          |
-| `npm run preview`           | Serve the production build locally                                                   |
-| `npm run lint`              | ESLint, including React hooks rules                                                  |
-| `npm run format`            | Format all files with Prettier                                                       |
-| `npm run format:check`      | Check formatting without writing                                                     |
-| `npm test`                  | Run the Vitest unit tests once                                                       |
-| `npm run test:watch`        | Run Vitest in watch mode                                                             |
-| `npm run data:shelters`     | Re-download the shelter dataset (see [Data](#shelters))                              |
-| `npm run data:network`      | Re-download the walking network (see [Walking network](#walking-network))            |
-| `npm run data:passages`     | Recompute the building passages (see [Building passages](#building-passages-data))   |
-| `npm run analysis:grid`     | Re-run the grid analysis behind "How it works" (see [Grid analysis](#grid-analysis)) |
-| `npm run data:geoid`        | Re-cut the geoid model subgrid (see [Heights and the geoid](#heights-and-the-geoid)) |
-| `npm run analysis:coverage` | Re-run the coverage analysis (see [Coverage and capacity](#coverage-and-capacity))   |
+| Command                     | Purpose                                                                                               |
+| --------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `npm run dev`               | Start the Vite dev server                                                                             |
+| `npm run build`             | Production build to `dist/`                                                                           |
+| `npm run preview`           | Serve the production build locally                                                                    |
+| `npm run lint`              | ESLint, including React hooks rules                                                                   |
+| `npm run format`            | Format all files with Prettier                                                                        |
+| `npm run format:check`      | Check formatting without writing                                                                      |
+| `npm test`                  | Run the Vitest unit tests once                                                                        |
+| `npm run test:watch`        | Run Vitest in watch mode                                                                              |
+| `npm run data:shelters`     | Re-download the shelter dataset (see [Data](#shelters))                                               |
+| `npm run data:network`      | Re-download the walking network (see [Walking network](#walking-network))                             |
+| `npm run data:passages`     | Recompute the building passages (see [Building passages](#building-passages-data))                    |
+| `npm run analysis:grid`     | Re-run the grid analysis behind "How it works" (see [Grid analysis](#grid-analysis))                  |
+| `npm run data:heights`      | Re-sample node heights from the terrain model (see [Walking time on slopes](#walking-time-on-slopes)) |
+| `npm run data:geoid`        | Re-cut the geoid model subgrid (see [Heights and the geoid](#heights-and-the-geoid))                  |
+| `npm run analysis:coverage` | Re-run the coverage analysis (see [Coverage and capacity](#coverage-and-capacity))                    |
 
 Browser checks and the benchmark are plain Node scripts that use Playwright (see
 [Quality checks](#quality-checks)):
@@ -443,7 +447,177 @@ format; `npm run data:shelters -- --allow-skipped` writes the valid ones after a
 The 2026-10-28 fetch left out none. The script formats its output with
 Prettier, so `npm run format:check` passes after a re-fetch.
 
-C:/Users/aamgr/AppData/Local/Temp/claude/2b378ed8abbf8342/200b5ab7-51cc-4c83-b904-bc8e4ab168db/scratchpad/readme-coverage.md
+## Coverage and capacity
+
+The nearest-shelter search answers one click. This analysis asks the same question for
+everyone who lives in the study area: **how far is the walk from home to the nearest public
+shelter, and how many residents are there per shelter place?** DSB's public shelters are for
+the whole population, so residents ÷ places is a direct capacity measure.
+
+**Data.** Statistics Norway's population grid, _Befolkning på rutenett 250 m_, 2026 edition:
+registered residents counted in 250 m × 250 m squares
+([Geonorge](https://kartkatalog.geonorge.no/metadata/uuid/0c0ad0ce-55e8-4d73-9c12-0eb0e2454acb),
+NLOD). `npm run analysis:coverage` (`scripts/analyse-coverage.js`) fetches the cells that
+intersect the walking network's bounding box from SSB's
+[OGC API Features](https://kart.ssb.no/api/ogc/v1/befolkning_paa_rutenett_ogc_api) service
+(collection `befolkning_250m_2026`, 1 000 features per page, following the `next` links). Only
+cells with residents are in the dataset.
+
+**CRS.** The service returns the cells in its storage CRS, labelled EPSG:32633 (WGS 84 / UTM
+33N), even though GeoJSON
+([RFC 7946 §4](https://datatracker.ietf.org/doc/html/rfc7946#section-4)) expects lon/lat. The
+script checks that label and converts corners and centres with proj4 as EUREF89 / UTM 33N
+(`utm33ToWgs84` in `utils/crs.js`; the two frames differ by under a metre). Trondheim lies in
+zone 32, so zone-33 grid north is rotated by the meridian convergence, about −4.1° here
+(unit-tested): on the map the cells are slightly tilted, not lon/lat rectangles.
+
+**Method.**
+
+1. **Service areas from one search** (`multiSourceDijkstra`, `utils/network.js`): Dijkstra starts
+   from all twelve shelter nodes at distance 0. Every network node is settled first from its
+   nearest shelter, which gives its walking distance and its shelter label in one pass: a
+   network Voronoi diagram
+   ([Erwig 2000](<https://doi.org/10.1002/1097-0037(200010)36:3%3C156::AID-NET2%3E3.0.CO;2-L>)).
+   Because edges are undirected, distance from a shelter equals distance to it.
+2. **Cell walks:** each cell centre gets the same walk a click there would get: the straight
+   connector to its nearest network node, the network distance, and the shelter's own
+   connector. Every 20th cell (53 cells) was checked against the app's single-point search
+   (`findNearestByWalking`): same shelter and walk within 1 µm. The script stops if any differ.
+3. **Study area:** cells whose centre lies inside the network's bounding box (1 045 cells). 40
+   cells (4 191 residents) with their centre outside it are left out, because the network does
+   not reach them.
+4. **Summary** (`summarizeCoverage`, `utils/coverage.js`, unit-tested).
+
+**Results** (2026-11-08):
+
+| Walk from home to the nearest shelter | Residents | Share  |
+| ------------------------------------- | --------- | ------ |
+| ≤ 500 m                               | 12 598    | 6.9 %  |
+| 500 m – 1 km                          | 35 460    | 19.4 % |
+| 1–2 km                                | 76 930    | 42.1 % |
+| 2–4 km                                | 53 174    | 29.1 % |
+| > 4 km                                | 4 290     | 2.3 %  |
+| No route (isolated paths)             | 109       | 0.06 % |
+| **All, in 1 045 cells**               | 182 561   | 100 %  |
+
+So 26.3 % of the residents live within 1 km on foot and 68.5 % within 2 km. The twelve shelters
+have 5 268 places: **34.7 residents per place**. By catchment (the residents whose nearest
+shelter on foot it is, `results/coverage-catchments.csv`):
+
+| Shelter | Address                                 | Places | Residents | Per place |
+| ------- | --------------------------------------- | ------ | --------- | --------- |
+| 12330   | Øvre Flatåsveg 16                       | 45     | 8 051     | 178.9     |
+| 12325   | Øvre Flatåsveg 2 A                      | 200    | 25 618    | 128.1     |
+| 12333   | Gamle Jonsvannsveien 12                 | 280    | 26 848    | 95.9      |
+| 11848   | Siriusveien 10                          | 200    | 17 959    | 89.8      |
+| 48494   | Mellomveien 5                           | 450    | 26 519    | 58.9      |
+| 30673   | Olav Kyrres gate 6 (St. Olavs hospital) | 500    | 24 575    | 49.2      |
+| 30667   | Olav Tryggvasons gate 28                | 220    | 9 459     | 43.0      |
+| 30677   | Østre Rosten 39 (Rostenhallen)          | 780    | 20 882    | 26.8      |
+| 30678   | Hasselbakken 5A og 5 C                  | 513    | 10 766    | 21.0      |
+| 30671   | Nedre Bakklandet 11–41                  | 800    | 7 768     | 9.7       |
+| 20798   | Kjøpmannsgata 34                        | 650    | 2 373     | 3.7       |
+| 6870    | Westermannsveita 4                      | 630    | 1 634     | 2.6       |
+
+The pattern: the centre (Midtbyen, Bakklandet) has many places and few residents, the outer
+residential areas few places and many residents. The three Midtbyen shelters together have
+1 500 places for 13 466 residents in their catchments. This is "nearest on foot", not an
+allocation: nobody is sent to a second shelter when the first is full.
+
+**In the app.** A third layer switch, "Walking distance" (off by default), shows the cells
+coloured by walk class with 55 % opacity: a 5-class blue–purple sequential scheme (ColorBrewer
+BuPu), readable with colour-vision deficiencies, and grey for no route. While it is on, the map
+key lists the classes. A click on a cell opens its InfoBox (residents, walk, shelter) _and_ runs
+the nearest-shelter search from that point (`isCoverageCell` lets cell clicks through in
+`onGroundClick`). A "Coverage" section in the panel shows the residents, residents per place and
+the shares within 500 m, 1 km and 2 km, computed in the browser from the same file with the same
+`summarizeCoverage`. A fourth view, "Whole study area" (centre of the network's box, 58.1 m
+NN2000 from DTM 1, heading 0°, pitch −65°, range 20 km), shows the whole layer. The SSB credit is
+in Cesium's credit list ("Data attribution"). The file is 111 kB and kept out of Prettier.
+
+**Limitations.**
+
+- **Night-time population:** the grid counts where people are registered as living, not where
+  they are during the day (work, school, the city centre).
+- **One walk per cell:** everyone in a 250 m cell gets the walk from its centre. Different cell
+  sizes or positions would give different numbers (the modifiable areal unit problem). 15 cells
+  (235 residents) have a centre more than 100 m from the network, where the walk starts with a
+  long straight line.
+- **Study area:** only the network's bounding box (shelters' box plus about 1 km), not the whole
+  municipality.
+- **No capacity allocation:** residents per place counts each resident at their nearest shelter
+  on foot only; a location-allocation model with capacities would be the next step.
+
+## Walking time on slopes
+
+Trondheim is hilly. A walk up to Singsaker or Byåsen takes longer than the same distance on the
+flat, and a shelter that is a little further away but downhill can be quicker to reach. Since
+2026-11-08 the app measures walks in **minutes** as well as metres.
+
+**Heights for the network** (`npm run data:heights`, `scripts/fetch-heights.js`):
+
+1. Kartverket's national terrain model (_Nasjonal høydemodell_, DTM) from its WCS in EUREF89 /
+   UTM 32N ([Geonorge](https://kartkatalog.geonorge.no/metadata/uuid/05821c51-2f5b-411f-9098-924d13dbea9a),
+   CC BY 4.0), coverage `nhm_dtm_topo_25832`, as WCS 1.0.0 `GetCoverage` GeoTIFF tiles over the
+   network's box plus 50 m: 9 tiles of up to 1 000 × 1 000 pixels, resampled by the server
+   (bilinear) to 5 m. Read with `geotiff`. Not Cesium World Terrain, which the
+   [terrain check](#terrain-check) showed to be 8 m RMSE off.
+2. Every network node is converted to UTM 32 (`wgs84ToUtm32`, `utils/crs.js`) and sampled
+   bilinearly between the four surrounding pixel centres (`sampleBilinear`, `utils/raster.js`,
+   unit-tested, with no-data handling). 1 110 of 164 294 nodes fell on no-data pixels (the model
+   has no values over water, e.g. at the ends of piers); they get the mean of their network
+   neighbours.
+3. **Bridges and tunnels:** the terrain model is the ground under a bridge (often the river) and
+   the hillside above a tunnel. Walkable ways tagged `bridge=*` or `tunnel=*` (not
+   `tunnel=building_passage`, which is at ground level) are fetched from Overpass and matched to
+   network nodes by their micro-degree coordinates. 554 of 555 ways matched; the heights of
+   their 222 inner nodes are interpolated linearly, by distance, between the two end nodes.
+4. Written to `public/data/node-heights.json` (integer decimetres, 744 kB, Prettier-ignored),
+   with the network's OSM timestamp. The app ignores the file, with a console warning, if the
+   timestamp or the node count does not match (`withHeights`, `utils/network.js`).
+
+**Check:** at the 59 network nodes of the terrain check, the 5 m resampled heights differ from
+Kartverket's DTM 1 point heights (height API) by +0.10 m on average and at most 0.85 m.
+
+**Walking time** (`utils/walkingTime.js`): Tobler's hiking function
+([Tobler 1993](https://escholarship.org/uc/item/05r820mz)),
+
+    v = 6 · exp(−3.5 · |s + 0.05|) km/h,  s = Δh / Δx,
+
+gives 6 km/h on a 5 % downhill, 5.04 km/h on the flat and 3.55 km/h at 10 % uphill (unit-tested
+values). Each edge takes `length / v` with the slope from its two node heights. The cost now
+depends on the direction, so the graph is directed for time. Dijkstra takes an edge-cost
+function (`byDistance` or `byTime`, `utils/network.js`). In the multi-source search the walk
+runs towards the shelters, the opposite way from the search, so the cost is reversed there.
+The straight connectors (click → network, network → shelter) have no heights and are walked at
+the flat speed. Tests (`tests/network.test.js`): on a hand-made hill the shortest walk goes to
+the hill-top shelter (300 m, 15 % up) and the fastest to the valley shelter (400 m, flat); uphill
+and downhill times differ; the reversed multi-source search agrees; without heights the search
+falls back to distance.
+
+**In the app.** With heights loaded, "nearest" means **fastest on foot**. The panel shows, for
+example, "Walk 266 m · 3 min (fastest, slopes included)" at Torvet. If the shortest walk leads
+to another shelter, a "Shortest" row gives it ("No. … · … m · … min, shorter, but slower on the
+slopes"). The coverage cells' InfoBox adds the fastest time, and the "Coverage" section adds the
+shares of residents within 10 and 20 minutes. Without the heights file the app works as before,
+by distance ("Slope data unavailable…", sixth case in `check-failed-layers.js`).
+
+**Results** (2026-11-08):
+
+- **Grid** (`npm run analysis:grid`, the 835 routed points of the 30 × 30 grid): slopes make the
+  shortest walk a median 5.2 % slower than on the flat (90th percentile 14.3 %). At 23 points
+  (2.8 %) the fastest shelter is another one than the nearest. Example: from 63.36772 N,
+  10.47314 E the nearest shelter on foot is no. 12333 (6 248 m, 82.8 min), but no. 11848 is
+  faster (6 424 m, 80.6 min). The fastest walk takes a median 25.4 min (p90 51.8 min).
+- **Coverage** (`npm run analysis:coverage`, a second multi-source search by time): 17.7 % of
+  the 182 561 residents live within 10 minutes of a shelter on foot, 52.6 % within 20 and 79.8 %
+  within 30. For 8 047 residents (39 cells) the fastest shelter differs from the nearest. Both
+  results were checked against the single-point search for every 20th cell (53 cells).
+
+**Limitations.** Tobler's function describes an average hiker on a trail, fitted to Imhof's
+data. It does not model stairs (they get the terrain slope), crowds, traffic lights, age,
+fitness or carrying things. A 5 m terrain model smooths short ramps and kerbs. Heights inside
+building passages are the terrain model's interpolation under the building.
 
 ## Heights and the geoid
 
@@ -542,8 +716,8 @@ click on the backdrop also closes it. It has five parts:
    "streamed".
 3. **GIS concepts**, in the order a click uses them: CRS conversion, ellipsoidal vs NN2000
    heights, ECEF and ENU frames, picking the ground, geodesic distance, the network graph and
-   Dijkstra, snapping and the 100 m rule, service areas from one search, population on a grid
-   (MAUP), the building-passage overlay, and 3D Tiles level of detail (11 since 2026-11-08). Each has a 2–3 sentence explanation and a link to the API docs, the EPSG entry or the
+   Dijkstra, walking time on slopes, snapping and the 100 m rule, service areas from one search, population on a grid
+   (MAUP), the building-passage overlay, and 3D Tiles level of detail (12 since 2026-11-08). Each has a 2–3 sentence explanation and a link to the API docs, the EPSG entry or the
    original paper.
 4. **Key results** from `public/data/analysis-summary.json` (see [Grid analysis](#grid-analysis)),
    plus the live shelter count and capacity.
@@ -619,6 +793,19 @@ there are no page errors, and exits with code 1 if any check fails (it exited 0)
 | `shelters.geojson` blocked                    | "Shelter data could not be loaded." Shelter switch disabled ("Unavailable"), buildings ready | No search (no shelters); view buttons and map still work | none        |
 | `walking-network.json` blocked                | "Walking network unavailable: showing straight-line distances." Both layers ready            | Shelter no. 30671: 335 m straight, no walking distance   | none        |
 | `building-passages.json` blocked (2026-11-05) | "Building passages unavailable: routes are shown without them." Both layers ready            | Shelter no. 30671: 489 m walk, 335 m straight            | none        |
+
+Re-run on 2026-11-08 with six cases (the same click, now with walking times). It exited 0 with
+no `FAIL`; every case asserts the switch states, the toast, whether a walk and a time are shown,
+and no page errors:
+
+| Case (2026-11-08)                | Toast                                                                    | After the click                                                     |
+| -------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| Nothing blocked                  | none                                                                     | No. 30671: 491 m · 6 min (fastest, slopes included), 337 m straight |
+| `shelters.geojson` blocked       | "Shelter data could not be loaded."                                      | "Shelter data is unavailable."                                      |
+| `walking-network.json` blocked   | "Walking network unavailable: showing straight-line distances."          | No. 30671: 337 m straight, no walk                                  |
+| `building-passages.json` blocked | "Building passages unavailable: routes are shown without them."          | No. 30671: 491 m · 6 min                                            |
+| `coverage.json` blocked          | "Walking-distance layer could not be loaded." Switch "Unavailable"       | No. 30671: 491 m · 6 min                                            |
+| `node-heights.json` blocked      | "Slope data unavailable: routes are by distance, without walking times." | No. 30671: 491 m along streets and paths, no minutes                |
 
 ### Performance
 
@@ -705,6 +892,8 @@ re-run only.
   a click is therefore not a survey-grade NN2000 height, even though the geoid conversion
   itself is accurate to about a millimetre. It also depends on the terrain detail loaded at the
   time of the click.
+- **Walking times are for an average walker.** Tobler's function on a 5 m terrain model; stairs,
+  crowds, age and fitness are not modelled (see [Walking time on slopes](#walking-time-on-slopes)).
 - **Coverage is about where people live.** The SSB grid counts registered residents in 250 m
   cells, gives everyone in a cell the walk from its centre, and only covers the network's
   bounding box; see [Coverage and capacity](#coverage-and-capacity).
@@ -764,6 +953,7 @@ and credits are kept enabled on purpose.
 | Befolkning på rutenett 250 m, 2026 (population grid) | © Statistisk sentralbyrå (SSB)                          | [NLOD](https://data.norge.no/nlod/no/1.0)                                 |
 | Height reference model HREF2025A (geoid)             | © Kartverket                                            | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                 |
 | DTM 1 point heights (height API)                     | © Kartverket                                            | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                 |
+| Nasjonal høydemodell DTM (WCS, node heights)         | © Kartverket                                            | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                 |
 
 CesiumJS is licensed under Apache 2.0.
 
@@ -957,3 +1147,34 @@ Coverage and capacity (2026-11-08):
   credit is in "Data attribution". No console errors or warnings and no responses ≥ 400.
   Screenshots inspected.
 - **Not verified:** frame rate with the layer on (the benchmark covers the buildings only).
+
+Walking time on slopes (2026-11-08):
+
+- **Heights and times** (see [Walking time on slopes](#walking-time-on-slopes)): node heights from
+  Kartverket's DTM via WCS (5 m; 0.10 m mean and at most 0.85 m from DTM 1 at 59 points),
+  bridges and tunnels interpolated, Tobler's hiking function on directed edges. "Nearest" is now
+  the fastest walk, with the shortest one listed when it leads elsewhere. Slopes make the
+  shortest walk a median 5.2 % slower; at 2.8 % of the grid points the fastest shelter is
+  another one; 52.6 % of residents live within 20 minutes of a shelter on foot.
+- **New code:** `scripts/fetch-heights.js` (`npm run data:heights`), `scripts/overpass.js` (the
+  Overpass helper, now shared with `fetch-passages.js`), `utils/walkingTime.js`,
+  `utils/raster.js`, `wgs84ToUtm32`, edge-cost functions and `withHeights` in
+  `utils/network.js`; the grid and coverage scripts report walking times too. All distance
+  results are unchanged (checked: the earlier numbers in `analysis-summary.json` and
+  `results/coverage-catchments.csv` did not change).
+- **Verified** against the production build: lint, format check, tests (17 files, 108 tests) and
+  build pass; `check-failed-layers.js` (six cases, now also asserting the walking time) and
+  `check-accessibility.js` exited 0 with no `FAIL`; Playwright at 1600 × 900 and 390 × 844: a
+  click at Torvet shows "266 m · 3 min (fastest, slopes included)" (264 m at 390 px), a coverage
+  cell's InfoBox shows its fastest time, the "Coverage" section shows "18 % within 10 min, 53 %
+  within 20 min", and "How it works" lists the terrain model, the Tobler concept and the
+  "Slopes" and "Residents by time" rows (and 34.7 residents per place: the sheet used to print
+  34.6 from the rounded value in the file; it now divides the counts). No console errors or
+  warnings and no responses ≥ 400. Screenshots inspected.
+- **Fixed:** the "Coverage and capacity" section was missing from this README after the step-3
+  commit (a file path had been written in its place); it is restored above.
+- **Not changed:** the view buttons. Removing them was started and reverted at your request,
+  so Midtbyen, Nidarosdomen, Bakklandet and "Whole study area" stay.
+- **Not verified:** the "Shortest" row in the browser. No browser click hit a point where the
+  fastest and the nearest shelter differ; the logic is unit-tested and the example above is
+  from Node.
