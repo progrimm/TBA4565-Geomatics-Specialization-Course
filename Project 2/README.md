@@ -1251,3 +1251,12 @@ Route check against OSRM (2026-11-08):
 - **App:** "How it works" shows a "Route check" row and a limitation about the snapshot.
 - **Verified:** lint, format check, tests (17 files, 108 tests) and build pass; Playwright at
   1600 × 900 and 390 × 844 shows the new row in the sheet with no console errors.
+
+Live check (2026-11-08): after pushing steps 0–5 (`51fe64c`…`a8bedd0`), the Homepage, Project 1
+and Project 2 CI runs and the
+[Pages deploy](https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course/actions/runs/42530772245)
+succeeded. With Playwright on the live site at 1600 × 900 and 390 × 844: the homepage shows "A
+New World Map" and "Trondheim Shelter Analysis"; the app's title, the Coverage section (182,561
+residents, 34.7 per place), a Torvet click ("266 m · 3 min (fastest, slopes included)"; 264 m at
+390 px) and the "Route check" and "Residents by time" rows in "How it works" are there. No console
+errors and no responses ≥ 400. Screenshot at 1600 px inspected.
