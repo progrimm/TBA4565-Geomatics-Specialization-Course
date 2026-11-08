@@ -13,9 +13,9 @@
  *
  *   node scripts/benchmark-buildings.js [runs=3] [sse values, default 16,32]
  */
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { launchBrowser } from './browser.js';
+import { launchBrowser, startPreview, stopPreview, vite } from './browser.js';
 
 const RUNS = Number(process.argv[2] ?? 3);
 const SSE_VALUES = (process.argv[3] ?? '16,32').split(',').map(Number);
@@ -38,38 +38,6 @@ const median = (values) => {
   return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
 };
 
-/** Run vite (build or preview) through npx; shell is needed for npx on Windows. */
-const vite = (args, env) => ({ command: `npx vite ${args}`, options: { env, shell: true } });
-
-/** Start `vite preview` for one build and resolve once it accepts requests. */
-async function startPreview(outDir) {
-  const url = `http://localhost:${PORT}/`;
-  // A server left on the port would be measured instead of this build.
-  const alreadyUp = await fetch(url).then(
-    () => true,
-    () => false,
-  );
-  if (alreadyUp) throw new Error(`port ${PORT} is already in use`);
-  const { command, options } = vite(`preview --outDir ${outDir} --port ${PORT} --strictPort`);
-  // detached: own process group on Linux/macOS, so stopPreview can kill the whole tree.
-  const server = spawn(command, { ...options, stdio: 'ignore', detached: true });
-  for (let i = 0; i < 50; i += 1) {
-    try {
-      if ((await fetch(url)).ok) return { server, url };
-    } catch {
-      // not up yet
-    }
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  throw new Error(`vite preview did not start on port ${PORT}`);
-}
-
-/** Stop the preview server: the shell, npx and vite. */
-function stopPreview(server) {
-  if (process.platform === 'win32') spawnSync('taskkill', ['/pid', String(server.pid), '/T', '/F']);
-  else process.kill(-server.pid); // negative pid = the whole process group
-}
-
 mkdirSync('results', { recursive: true });
 const browser = await launchBrowser();
 const rows = [];
@@ -80,7 +48,7 @@ for (const sse of SSE_VALUES) {
   const build = vite(`build --outDir ${outDir} --emptyOutDir --logLevel error`, env);
   const built = spawnSync(build.command, { ...build.options, stdio: 'inherit' });
   if (built.status !== 0) throw new Error(`build for SSE ${sse} failed`);
-  const { server, url } = await startPreview(outDir);
+  const { server, url } = await startPreview(outDir, PORT);
 
   try {
     for (let run = 1; run <= RUNS; run += 1) {

@@ -85,6 +85,8 @@ public/data/ – static datasets (shelters GeoJSON, walking network JSON)
 
 ## Security
 
+- Read `.env` values only in src/env.js, one key at a time (`import.meta.env.VITE_X`).
+  Never use the whole `import.meta.env` object: Vite would inline every VITE_ variable.
 - The Cesium ion token is read from `.env` as `VITE_CESIUM_TOKEN`. Never
   hardcode, print or commit it. `.env` is in `.gitignore`; provide
   `.env.example` with a placeholder.
@@ -164,6 +166,13 @@ public/data/ – static datasets (shelters GeoJSON, walking network JSON)
 - 2026-11-08: step 1 done. Neutral dark design (tokens in style.css, blue accent #6cb4ff),
   components/Legend.jsx, components/About.jsx (<dialog> + showModal), content/about.js,
   hooks/useAboutFacts.js, scripts/analyse-grid.js → public/data/analysis-summary.json
-  (npm run analysis:grid), utils/grid.js. config.js reads `import.meta.env ?? {}` so Node
-  scripts can import it. check-accessibility.js covers the dialog.
+  (npm run analysis:grid), utils/grid.js. config.js has no import.meta.env (Node scripts
+  import it); .env values are read one key at a time in src/env.js (never the whole
+  import.meta.env object: Vite would inline every VITE_ variable). check-accessibility.js covers the dialog.
+- 2026-11-08: step 2 done. Geoid model HREF2025A (scripts/fetch-geoid.js → utils/geoidGrid.js,
+  npm run data:geoid; geotiff 3.0.5 dev dependency), utils/geoid.js (bilinear N, h = H + N).
+  CAMERA_VIEWS targets now use `heightNN2000`; toCameraOptions converts. Clicked ground point
+  shows NN2000 height. scripts/check-terrain.js: Cesium World Terrain vs DTM 1 (RMSE 8.0 m) →
+  results/terrain-vs-dtm1.csv and analysis-summary.json `terrainCheck`. Vite build/preview
+  helpers moved to scripts/browser.js.
   (Update this section after each module.)

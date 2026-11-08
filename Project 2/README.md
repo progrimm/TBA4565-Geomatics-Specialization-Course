@@ -33,6 +33,10 @@ on code quality: linting, tests, error handling and CI.
   analysis and the limitations (see [How it works](#how-it-works))
 - A map key in the panel, and a neutral dark design with one blue accent (see
   [Status](#status))
+- NN2000 heights from Kartverket's geoid model: the camera targets are stored in NN2000 and
+  converted with h = H + N, and a clicked ground point shows its NN2000 height. A terrain check
+  compares Cesium World Terrain with Kartverket's 1 m terrain model (see
+  [Heights and the geoid](#heights-and-the-geoid))
 - Loading and error messages for every layer. If one layer fails, the rest of the app keeps
   working
 - A collapsible control panel that becomes a bottom sheet on mobile. All panel controls work
@@ -85,15 +89,17 @@ Run these from `Project 2/`.
 | `npm run data:network`  | Re-download the walking network (see [Walking network](#walking-network))            |
 | `npm run data:passages` | Recompute the building passages (see [Building passages](#building-passages-data))   |
 | `npm run analysis:grid` | Re-run the grid analysis behind "How it works" (see [Grid analysis](#grid-analysis)) |
+| `npm run data:geoid`    | Re-cut the geoid model subgrid (see [Heights and the geoid](#heights-and-the-geoid)) |
 
 Browser checks and the benchmark are plain Node scripts that use Playwright (see
 [Quality checks](#quality-checks)):
 
-| Command                               | Purpose                                                        |
-| ------------------------------------- | -------------------------------------------------------------- |
-| `node scripts/check-failed-layers.js` | Block one data request at a time and check the app still works |
-| `node scripts/check-accessibility.js` | Tab through the panel at 1600 px and 390 px, operate controls  |
-| `node scripts/benchmark-buildings.js` | First-load time and frame rate for two SSE values              |
+| Command                               | Purpose                                                                                        |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `node scripts/check-failed-layers.js` | Block one data request at a time and check the app still works                                 |
+| `node scripts/check-accessibility.js` | Tab through the panel at 1600 px and 390 px, operate controls                                  |
+| `node scripts/benchmark-buildings.js` | First-load time and frame rate for two SSE values                                              |
+| `node scripts/check-terrain.js`       | Cesium World Terrain vs Kartverket DTM 1 (see [Heights and the geoid](#heights-and-the-geoid)) |
 
 CI ([`.github/workflows/project2-ci.yml`](../.github/workflows/project2-ci.yml)) runs lint,
 format check, tests and build on every push and pull request that touches `Project 2/`.
@@ -105,6 +111,7 @@ src/
   main.jsx        entry point: ion token setup and React root only
   App.jsx         composes hooks and components
   config.js       constants: camera views, asset IDs, data URLs, tileset settings
+  env.js          build-time values from .env (the Cesium token), read one key at a time
   viewer.js       Viewer creation and global scene settings
   layers/         plain-JS Cesium loaders, one per layer (no React)
   hooks/          React hooks bridging React and Cesium (viewer lifecycle, layer state)
@@ -131,9 +138,10 @@ Main design choices:
 
 ### Coordinate reference systems
 
-- The app works in WGS84. Longitude and latitude are in degrees and **heights are ellipsoidal**,
-  not NN2000. In Trondheim the geoid is about 40 m above the ellipsoid, so ellipsoidal height is
-  roughly NN2000 height + 40 m. The camera target heights in `config.js` follow this convention.
+- The app works in WGS84. Longitude and latitude are in degrees. Cesium's heights are
+  **ellipsoidal** (h, above the WGS84 ellipsoid). Since 2026-11-08 the app converts between h and
+  NN2000 heights (H) with Kartverket's geoid model, h = H + N (see
+  [Heights and the geoid](#heights-and-the-geoid)). Until then it used a constant N = 40 m.
 - The shelter source data is in EUREF89 / UTM zone 32N (EPSG:25832). It is converted to WGS84
   with proj4 at data-prep time, treating EUREF89 as equal to WGS84 (the difference is under a
   metre).
@@ -148,17 +156,19 @@ ECEF with
 The landmark is then in the centre of the screen by construction. The old presets stored a camera
 position and were estimated by eye.
 
-| View         | Target (OpenStreetMap, via Nominatim)                      | Ground, NN2000 (Kartverket DTM 1 m) | Target height, ellipsoidal | Heading / pitch / range |
-| ------------ | ---------------------------------------------------------- | ----------------------------------- | -------------------------- | ----------------------- |
-| Midtbyen     | Torvet, relation 4681742: 63.4303661 N, 10.3953233 E       | 9.6 m                               | 50 m (ground + 40)         | 0° / −45° / 2000 m      |
-| Nidarosdomen | Nidarosdomen, way 417245741: 63.4269308 N, 10.3969145 E    | 13.8 m                              | 74 m (ground + 20 m + 40)  | 90° / −15° / 350 m      |
-| Bakklandet   | Nedre Bakklandet, way 22652739: 63.4288329 N, 10.4032895 E | 2.7 m                               | 51 m (ground + 8 m + 40)   | 110° / −20° / 400 m     |
+| View         | Target (OpenStreetMap, via Nominatim)                      | Ground, NN2000 (Kartverket DTM 1 m) | Target H, NN2000 (`config.js`) | N (HREF2025A) | Target h = H + N | Heading / pitch / range |
+| ------------ | ---------------------------------------------------------- | ----------------------------------- | ------------------------------ | ------------- | ---------------- | ----------------------- |
+| Midtbyen     | Torvet, relation 4681742: 63.4303661 N, 10.3953233 E       | 9.6 m                               | 9.6 m (ground)                 | 39.373 m      | 48.97 m          | 0° / −45° / 2000 m      |
+| Nidarosdomen | Nidarosdomen, way 417245741: 63.4269308 N, 10.3969145 E    | 13.8 m                              | 33.8 m (ground + 20 m)         | 39.387 m      | 73.19 m          | 90° / −15° / 350 m      |
+| Bakklandet   | Nedre Bakklandet, way 22652739: 63.4288329 N, 10.4032895 E | 2.7 m                               | 10.7 m (ground + 8 m)          | 39.367 m      | 50.07 m          | 110° / −20° / 400 m     |
 
 Coordinates come from the [Nominatim](https://nominatim.openstreetmap.org/) search API
 (© OpenStreetMap contributors, ODbL). Ground heights come from Kartverket's height API
 (`ws.geonorge.no/hoydedata/v1/punkt`, `dtm1` source, CC BY 4.0). Both were looked up on
-2026-10-27. The +40 m geoid offset is the approximation described above, not a geoid-model
-value.
+2026-10-27. Since 2026-11-08 `config.js` stores the NN2000 target height and
+`utils/camera.js` adds N from the geoid model; before, it stored ground + aim + 40 m (50, 74 and
+51 m). The targets moved down by 0.8–1.0 m, which the preset screenshots (1600 × 900, crosshair)
+do not show: Torvet, the cathedral's west front and Nedre Bakklandet are still under the crosshair.
 
 Checked with Playwright screenshots (a crosshair overlay marks the screen centre) at 1600 × 900
 and 390 × 844. Torvet, the cathedral's west front and the Bakklandet wharf row sit under the
@@ -427,6 +437,87 @@ format; `npm run data:shelters -- --allow-skipped` writes the valid ones after a
 The 2026-10-28 fetch left out none. The script formats its output with
 Prettier, so `npm run format:check` passes after a re-fetch.
 
+## Heights and the geoid
+
+Cesium positions everything with **ellipsoidal heights** h, above the WGS84 ellipsoid.
+Norwegian maps and Kartverket's terrain models use **NN2000 heights** H, above a reference
+surface close to mean sea level. The two differ by the **geoid height** N: h = H + N. In
+Trondheim N is about 39.4 m, so mixing the two puts things 39 m too high or too low.
+
+**The model.** `npm run data:geoid` (`scripts/fetch-geoid.js`) downloads Kartverket's height
+reference model **HREF2025A_NN2000_EUREF89** from Geonorge. This is the official model for
+NN2000:2025 from 2026-10-14 ([Kartverket](https://www.kartverket.no/til-lands/posisjon/href-hoydereferansemodell),
+[Geonorge metadata](https://kartkatalog.geonorge.no/metadata/uuid/384ce432-8da7-4cfa-9afa-140d2b6c29d3),
+CC BY 4.0). The zip holds a GeoTIFF lattice of N values, 0.02° × 0.04° apart, as "pixel is
+point". The script reads it with [`geotiff`](https://geotiffjs.github.io/geotiff.js/) (new dev
+dependency 3.0.5, used only by scripts) and keeps the 7 × 7 nodes around the walking network,
+written to `src/utils/geoidGrid.js` (N 39.04–39.89 m). The zip is unpacked with Node's `zlib`, so
+no unzip tool is needed. `utils/geoid.js` interpolates N bilinearly between the four nearest
+nodes, as PROJ does for vertical grids.
+
+**Checks.**
+
+- `tests/geoid.test.js`: node values, a cell centre and a quarter point on a hand-made lattice,
+  points just outside, and the floating-point edge case ((63.5 − 63.48) / 0.02 is slightly more
+  than 1, which first returned `undefined` on the last row), plus Torvet against the API.
+- Against Kartverket's [transformation API](https://ws.geonorge.no/transformering/v1/)
+  (EPSG:4937 → EPSG:5942, so h = 0 gives H = −N): at 16 points over the area the largest
+  difference was 0.80 mm (recorded in `geoidGrid.js`). During development the same
+  interpolation of the previous model, HREF2018B, matched the API to 0.00 mm at 5 points, so
+  the API still uses HREF2018B, and the 0.8 mm is the 2018 → 2025 model update in Trondheim.
+
+**Where it is used.**
+
+- The camera presets store NN2000 target heights (ground from DTM 1 plus an aim height), and
+  `toCameraOptions` converts them (see [Camera views](#camera-views)).
+- A click on the ground shows "Ground: 0.9 m NN2000 (ellipsoidal 40.3 m − geoid 39.4 m)" in the
+  panel (Torvet, 1600 × 900 and 390 × 844). `onGroundClick` now also returns the ellipsoidal
+  height that `Globe.pick` found on Cesium World Terrain.
+
+### Terrain check
+
+That 0.9 m at Torvet is wrong: Kartverket's DTM 1 gives 9.59 m there. The geoid conversion is
+not the cause, because it is checked to a millimetre. Cesium World Terrain itself is too low. To
+measure this, `node scripts/check-terrain.js`:
+
+1. picks points on the walking network: an 8 × 8 grid over the shelters' bounding box, each
+   moved to its nearest network node, dropping grid points more than 100 m from the network
+   (fjord, river);
+2. gets DTM 1 heights (NN2000) from Kartverket's
+   [height API](https://ws.geonorge.no/hoydedata/v1/) (`dtm1` source, 50 points per request);
+3. builds the app with `VITE_BENCHMARK=true`, opens it in Playwright, and samples Cesium World
+   Terrain at the same points with
+   [`sampleTerrainMostDetailed`](https://cesium.com/learn/cesiumjs/ref-doc/global.html#sampleTerrainMostDetailed)
+   (new `sampleTerrain` hook in `src/benchmark.js`), so the result does not depend on what the
+   view has loaded;
+4. compares Cesium h − N with DTM 1 and writes every point to `results/terrain-vs-dtm1.csv` and
+   the summary to `public/data/analysis-summary.json`, which "How it works" shows.
+
+The build and preview helpers moved from `benchmark-buildings.js` to `scripts/browser.js`, so
+both scripts share them.
+
+Run on 2026-11-08 (59 points):
+
+| Cesium World Terrain − DTM 1 | Value   |
+| ---------------------------- | ------- |
+| Mean (bias)                  | +1.67 m |
+| RMSE                         | 8.03 m  |
+| Median absolute difference   | 4.98 m  |
+| 90th percentile, absolute    | 12.67 m |
+| Largest absolute difference  | 21.52 m |
+
+The mean is close to zero, so there is no systematic height-system error: without the geoid
+correction it would be about +39 m. The points range from 3.3 to 385.3 m NN2000. The six
+largest differences (13.4–21.5 m) are all at points 66–347 m up, in the hills. Of the six points
+below 30 m, four agree within 2.3 m; the other two differ by 4.2 m and 12.1 m. The camera
+targets were sampled the same way (most detailed level, same build): Cesium World Terrain gives
+H = 0.90 m at Torvet (DTM 1: 9.59 m) and 1.65 m at Nidarosdomen (13.77 m), so the rendered ground
+there is 9–12 m too low and the OSM buildings stand on it; at Nedre Bakklandet it gives 1.79 m
+(2.7 m). Not verified: what source and resolution Cesium World Terrain uses in Norway.
+
+For this project it means: Cesium World Terrain is fine as a backdrop but not as data. The
+terrain-aware walking time (next step) should use Kartverket's DTM, not Cesium's terrain.
+
 ## How it works
 
 The "How it works" button opens a side sheet (full screen on mobile). It is a native
@@ -465,8 +556,8 @@ date still shown, no page errors).
 from corner to corner of the shelters' bounding box (`utils/grid.js`, unit-tested). It writes
 `public/data/analysis-summary.json`, which the "How it works" sheet reads, so the numbers in the
 app come from this script. To run in plain Node the script imports `config.js`, so `config.js`
-now reads `import.meta.env ?? {}`; Vite still inlines the values at build time (checked in
-`dist`: `BASE_URL` is `./`, and there is still no `__benchmark`).
+no longer uses `import.meta.env`: the `.env` values moved to `src/env.js` (see
+[Cesium ion Token and Security](#cesium-ion-token-and-security)).
 
 Run on 2026-11-08 with the committed data (shelters fetched 2026-10-28, network 2026-10-27,
 footprints 2026-11-05):
@@ -600,10 +691,16 @@ re-run only.
 
 ## Limitations
 
-- **Heights are ellipsoidal, not NN2000.** Cesium works with heights above the WGS84 ellipsoid.
-  The camera targets use NN2000 ground height + 40 m as an approximate geoid offset for
-  Trondheim, not a value from a geoid model, so a height read from the app is not an NN2000
-  height.
+- **Cesium World Terrain is coarse in Trondheim.** At points on the walking network it differs
+  from Kartverket's DTM 1 by an RMSE of 8.0 m, and up to 21.5 m (see
+  [Terrain check](#terrain-check)); at Torvet it is 8.7 m too low. The "Ground" height shown for
+  a click is therefore not a survey-grade NN2000 height, even though the geoid conversion
+  itself is accurate to about a millimetre. It also depends on the terrain detail loaded at the
+  time of the click.
+- **NN2000:2025 vs NN2000:2018.** The geoid model is HREF2025A (official from 2026-10-14). DTM 1
+  heights from the height API and Kartverket's transformation API still use NN2000:2018
+  (HREF2018B). In Trøndelag the two differ by less than 1 mm (measured below), far below the
+  other errors.
 - **EUREF89 is treated as WGS84.** The shelters are converted from EUREF89 / UTM 32N with proj4,
   without a datum shift. The difference between the two frames is under a metre, which is below
   the accuracy of a shelter point on a city map.
@@ -626,6 +723,16 @@ re-run only.
 - Vite embeds `VITE_` variables in the client bundle, so **the token is public in a production
   build**. For deployment, use a separate token with minimal scopes that is restricted to the
   deployed URL in Cesium ion.
+- **Only the token is in the bundle.** `src/env.js` is the only file that reads `.env`, one key
+  at a time (`import.meta.env.VITE_CESIUM_TOKEN`). Vite replaces each such expression with its
+  value. An expression that uses the whole `import.meta.env` object makes Vite paste the whole
+  object, with every `VITE_` variable, into the bundle. That happened on 2026-11-08 in step 1
+  (`import.meta.env ?? {}` in `config.js`, so Node scripts could import it) and was fixed
+  before it was pushed. Checked after the fix, without printing any value: of the variables in
+  `.env` (only `VITE_CESIUM_TOKEN`), the token's value occurs once in `dist/assets`, no
+  `VITE_` name occurs, Vite's env object (`MODE`, `DEV`, …) is not inlined, and there is no
+  `__benchmark`. A test build with `VITE_BUILDINGS_SSE=32` still compiled to
+  `maximumScreenSpaceError: 32`.
 - On GitHub Pages the token comes from the repository secret `CESIUM_ION_TOKEN`, which
   `.github/workflows/pages.yml` passes to the build as `VITE_CESIUM_TOKEN`. See the root
   [README](../README.md#deployment).
@@ -793,3 +900,22 @@ Neutral design, map key and "How it works" (2026-11-08):
     starts at y = 728; the credits end at y = 716. Screenshots inspected.
 - **Not verified:** screen-reader announcement of the dialog, Safari, and the live site (not
   pushed yet).
+
+NN2000 heights from a geoid model, and a terrain check (2026-11-08):
+
+- **Geoid model** HREF2025A cut to the study area (`npm run data:geoid`, `utils/geoidGrid.js`),
+  bilinear interpolation in `utils/geoid.js`, 0.80 mm from Kartverket's transformation API at
+  16 points. Camera targets are stored in NN2000 and converted with h = H + N; a ground click
+  shows its NN2000 height. "How it works" lists the model and DTM 1 as data sources, explains
+  h = H + N with the model's own numbers, and shows the terrain check.
+- **Terrain check** (`scripts/check-terrain.js`): Cesium World Terrain − DTM 1 at 59 network
+  points: mean +1.67 m, RMSE 8.03 m, largest 21.52 m (see [Terrain check](#terrain-check)).
+- **Verified:** lint, format check, tests (15 files, 84 tests) and build pass;
+  `check-accessibility.js` and `check-failed-layers.js` exited 0 with no `FAIL`; Playwright at
+  1600 × 900 and 390 × 844 against the production build: the three presets with a crosshair
+  (desktop: Torvet, the west front and Nedre Bakklandet centred), a Torvet click showing
+  "Ground 0.9 m NN2000 (ellipsoidal 40.3 m − geoid 39.4 m)", and the sheet showing the model
+  ("downloaded 2026-11-08"), DTM 1 ("queried 2026-11-08") and the terrain row. No console errors
+  and no responses ≥ 400. Screenshots inspected.
+- **Not verified:** the crosshair check at 390 px (the open sheet covers the centre of the
+  view), and how Cesium World Terrain was made for Norway.

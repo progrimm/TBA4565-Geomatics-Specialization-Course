@@ -8,6 +8,7 @@ import {
   keyResults,
 } from '../content/about.js';
 import { useAboutFacts } from '../hooks/useAboutFacts.js';
+import { GEOID_GRID } from '../utils/geoidGrid.js';
 
 const README_URL =
   'https://github.com/progrimm/TBA4565-Geomatics-Specialization-Course/tree/main/Project%202#readme';
@@ -81,6 +82,8 @@ export default function About({ open, onClose, network, shelterTotals }) {
     sheltersFetched: facts.sheltersFetched,
     networkTimestamp: network.osmTimestamp,
     passagesTimestamp: network.passagesTimestamp,
+    geoidFetched: GEOID_GRID.fetched,
+    terrainChecked: facts.summary?.terrainCheck?.date,
   };
 
   return (

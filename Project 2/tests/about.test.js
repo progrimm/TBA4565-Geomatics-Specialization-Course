@@ -40,7 +40,9 @@ describe('"How it works" content', () => {
       'Walk ÷ straight line',
       'Different shelter',
       'Through a building',
+      'Terrain check',
     ]);
+    expect(rows[4].value).toContain(`RMSE ${summary.terrainCheck.rmseMetres.toFixed(1)} m`);
     expect(rows[0].value).toContain(`${summary.routed} routed`);
     expect(rows[1].value).toContain(summary.detourRatio.median.toFixed(2));
     expect(rows.every((row) => !row.value.includes('undefined'))).toBe(true);

@@ -332,6 +332,11 @@ a:hover {
   font-size: 0.75rem;
 }
 
+.analysis__sub {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
 /* ---------- Map key ---------- */
 .legend {
   display: grid;

@@ -103,5 +103,8 @@ const result = {
   connectorMetres: summary(connectors, 1),
 };
 
-await writeFile(OUTPUT, `${JSON.stringify(result, null, 2)}\n`);
-console.warn(JSON.stringify(result, null, 2));
+// Keep results that other scripts add to the same file (terrainCheck from check-terrain.js).
+const previous = await readFile(OUTPUT, 'utf8').then(JSON.parse, () => ({}));
+const merged = previous.terrainCheck ? { ...result, terrainCheck: previous.terrainCheck } : result;
+await writeFile(OUTPUT, `${JSON.stringify(merged, null, 2)}\n`);
+console.warn(JSON.stringify(merged, null, 2));

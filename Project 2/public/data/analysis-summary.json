@@ -39,5 +39,16 @@
   "connectorMetres": {
     "median": 17,
     "p90": 53.4
+  },
+  "terrainCheck": {
+    "date": "2026-11-08",
+    "points": 59,
+    "meanDifferenceMetres": 1.67,
+    "rmseMetres": 8.03,
+    "medianAbsDifferenceMetres": 4.98,
+    "p90AbsDifferenceMetres": 12.67,
+    "maxAbsDifferenceMetres": 21.52,
+    "geoidModel": "HREF2025A_NN2000_EUREF89",
+    "definition": "Cesium World Terrain (sampleTerrainMostDetailed, h − N) minus Kartverket DTM 1 (NN2000) at walking-network nodes near an 8 × 8 grid over the shelters’ bounding box."
   }
 }

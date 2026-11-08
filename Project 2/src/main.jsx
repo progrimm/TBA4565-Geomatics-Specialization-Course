@@ -3,7 +3,7 @@ import 'cesium/Build/Cesium/Widgets/widgets.css';
 import './style.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { CESIUM_TOKEN } from './config.js';
+import { CESIUM_TOKEN } from './env.js';
 import { configureIon } from './viewer.js';
 import App from './App.jsx';
 

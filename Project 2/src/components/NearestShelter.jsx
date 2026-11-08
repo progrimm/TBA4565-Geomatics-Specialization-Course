@@ -7,6 +7,8 @@ const NETWORK_TEXT = {
   error: 'Walking network unavailable: straight-line distances only.',
 };
 const numberFormat = new Intl.NumberFormat('en-GB');
+/** Height in metres with one decimal, e.g. "12.3 m". */
+const formatHeight = (metres) => `${metres.toFixed(1)} m`;
 
 /**
  * "Name (type)" for a building, e.g. "Trondheim Torg (retail)". `building=yes`
@@ -28,8 +30,16 @@ const describeBuilding = ({ name, building }) => {
  * @param {import('../utils/nearest.js').Shelter[]} props.shelters
  * @param {import('../hooks/useNearestShelter.js').NearestResult} [props.nearest]
  * @param {import('../hooks/useNearestShelter.js').OutOfRange} [props.outOfRange]
+ * @param {import('../hooks/useNearestShelter.js').GroundHeight} [props.ground] - clicked point.
  */
-export default function NearestShelter({ status, networkStatus, shelters, nearest, outOfRange }) {
+export default function NearestShelter({
+  status,
+  networkStatus,
+  shelters,
+  nearest,
+  outOfRange,
+  ground,
+}) {
   const { count, capacity } = summarizeShelters(shelters);
 
   return (
@@ -69,6 +79,24 @@ export default function NearestShelter({ status, networkStatus, shelters, neares
                 <dd>{formatDistance(nearest.distance)} (geodesic)</dd>
                 <dt>Capacity</dt>
                 <dd>{numberFormat.format(nearest.shelter.plasser)} people</dd>
+                {ground && (
+                  <>
+                    <dt>Ground</dt>
+                    <dd>
+                      {ground.nn2000 === undefined ? (
+                        `${formatHeight(ground.ellipsoidal)} above the ellipsoid`
+                      ) : (
+                        <>
+                          {formatHeight(ground.nn2000)} NN2000{' '}
+                          <span className="analysis__sub">
+                            (ellipsoidal {formatHeight(ground.ellipsoidal)} − geoid{' '}
+                            {formatHeight(ground.geoid)})
+                          </span>
+                        </>
+                      )}
+                    </dd>
+                  </>
+                )}
               </dl>
             ) : (
               <p className={`analysis__hint${outOfRange ? ' analysis__hint--danger' : ''}`}>

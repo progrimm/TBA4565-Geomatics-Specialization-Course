@@ -16,7 +16,9 @@ import { formatDistance } from '../utils/nearest.js';
  * Clicks on objects (shelters, buildings, the drawn line) are ignored: the
  * Viewer's InfoBox handles those. Clicks on the sky are ignored too.
  * @param {import('cesium').Viewer} viewer
- * @param {(point: import('../utils/nearest.js').LonLat) => void} onClick - WGS84 degrees.
+ * @param {(point: import('../utils/nearest.js').LonLat & {height: number}) => void} onClick -
+ *   WGS84 degrees; height: metres above the WGS84 ellipsoid on Cesium World Terrain, at
+ *   the level of detail loaded at the time of the click.
  * @returns {() => void} call to stop listening.
  */
 export function onGroundClick(viewer, onClick) {
@@ -28,10 +30,11 @@ export function onGroundClick(viewer, onClick) {
     const ray = camera.getPickRay(position);
     const ground = ray && scene.globe.pick(ray, scene);
     if (!ground) return;
-    const { longitude, latitude } = Cartographic.fromCartesian(ground);
+    const { longitude, latitude, height } = Cartographic.fromCartesian(ground);
     onClick({
       longitude: CesiumMath.toDegrees(longitude),
       latitude: CesiumMath.toDegrees(latitude),
+      height,
     });
   }, ScreenSpaceEventType.LEFT_CLICK);
   return () => handler.destroy();

@@ -6,6 +6,8 @@ import { drawClickedPoint, drawNearestLine, onGroundClick } from '../layers/near
 import { findNearest } from '../utils/nearest.js';
 import { findWalkInRange, snapShelters } from '../utils/network.js';
 import { buildingsOnPath } from '../utils/passages.js';
+import { geoidHeight } from '../utils/geoid.js';
+import { GEOID_GRID } from '../utils/geoidGrid.js';
 
 /**
  * @typedef {{shelter: import('../utils/nearest.js').Shelter, distance: number,
@@ -15,7 +17,25 @@ import { buildingsOnPath } from '../utils/passages.js';
  *   network is not available; through: buildings the walk passes through.
  * @typedef {{reason: 'far' | 'unreachable', connector?: number}} OutOfRange
  *   connector: geodesic metres from the click to the nearest network node.
+ * @typedef {{ellipsoidal: number, geoid?: number, nn2000?: number}} GroundHeight
+ *   The clicked ground point's height on Cesium World Terrain: ellipsoidal (h), the
+ *   geoid height (N) and the NN2000 height (H = h − N); N and H are undefined outside
+ *   the geoid grid.
  */
+
+/**
+ * Heights of a clicked ground point.
+ * @param {import('../utils/nearest.js').LonLat & {height: number}} point
+ * @returns {GroundHeight}
+ */
+function groundHeight(point) {
+  const geoid = geoidHeight(point, GEOID_GRID);
+  return {
+    ellipsoidal: point.height,
+    geoid,
+    nn2000: geoid === undefined ? undefined : point.height - geoid,
+  };
+}
 
 /**
  * Find the nearest shelter: by walking distance when the network graph is ready
@@ -59,7 +79,7 @@ function drawResult(viewer, tileset, point, nearest) {
  * @param {{graph?: import('../utils/network.js').Graph, passages?: Map}} networkState - from useWalkingNetwork().
  * @param {import('./useAsyncLayer.js').LayerState} buildingsState - from useAsyncLayer(addBuildings).
  * @returns {{shelters: import('../utils/nearest.js').Shelter[], nearest?: NearestResult,
- *   outOfRange?: OutOfRange, dismissOutOfRange: () => void}}
+ *   outOfRange?: OutOfRange, ground?: GroundHeight, dismissOutOfRange: () => void}}
  */
 export function useNearestShelter(viewer, sheltersState, networkState, buildingsState) {
   const { graph, passages } = networkState;
@@ -85,7 +105,7 @@ export function useNearestShelter(viewer, sheltersState, networkState, buildings
       const { nearest, outOfRange } = findNearestShelter(point, analysis);
       removeDrawing();
       removeDrawing = drawResult(viewer, tilesetRef.current, point, nearest);
-      setResult({ analysis, nearest, outOfRange });
+      setResult({ analysis, nearest, outOfRange, ground: groundHeight(point) });
     });
     return () => {
       stopListening();
@@ -105,6 +125,7 @@ export function useNearestShelter(viewer, sheltersState, networkState, buildings
     shelters: analysis.shelters,
     nearest: current.nearest,
     outOfRange: current.outOfRange,
+    ground: current.ground,
     dismissOutOfRange,
   };
 }

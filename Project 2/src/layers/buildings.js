@@ -1,5 +1,6 @@
 import { Cesium3DTileStyle, createOsmBuildingsAsync } from 'cesium';
 import { TILESET_SETTINGS } from '../config.js';
+import { BUILDINGS_SSE } from '../env.js';
 import { showMessage } from '../state/messages.js';
 
 /**
@@ -12,7 +13,10 @@ import { showMessage } from '../state/messages.js';
 export async function addBuildings(viewer) {
   const hideLoading = showMessage('Loading buildings…');
   try {
-    const tileset = await createOsmBuildingsAsync(TILESET_SETTINGS.buildings);
+    const tileset = await createOsmBuildingsAsync({
+      ...TILESET_SETTINGS.buildings,
+      ...(BUILDINGS_SSE && { maximumScreenSpaceError: BUILDINGS_SSE }),
+    });
     // The viewer may have been destroyed while loading (e.g. React StrictMode remount).
     if (viewer.isDestroyed()) {
       hideLoading();

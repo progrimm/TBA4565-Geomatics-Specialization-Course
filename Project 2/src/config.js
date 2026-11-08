@@ -2,28 +2,29 @@
  * App-wide constants. No magic numbers elsewhere in the code.
  */
 
-// Vite replaces import.meta.env at build time. In plain Node (scripts/analyse-grid.js
-// imports this file) it is undefined, so fall back to an empty object.
-const env = import.meta.env ?? {};
-const BASE_URL = env.BASE_URL ?? './';
+// No import.meta.env here: Node scripts import this file too. Build-time values from
+// .env live in env.js.
 
-/** Cesium ion token, injected by Vite from .env (VITE_CESIUM_TOKEN). */
-export const CESIUM_TOKEN = env.VITE_CESIUM_TOKEN;
+/**
+ * Base of the data URLs: relative to the page, like Vite's `base: './'`, so the app
+ * works under any subpath (e.g. /trondheim-3d/ on GitHub Pages).
+ */
+const DATA_URL = './data/';
 
 /**
  * Preset camera views. Each view looks at a target point from `range` metres
  * away, in the direction given by `heading` (degrees clockwise from north) and
  * `pitch` (degrees, negative = looking down), so the target is centred on screen.
  * Target coordinates: WGS84 longitude/latitude in degrees from OpenStreetMap
- * (Nominatim). Target height in metres above the WGS84 ellipsoid (not NN2000):
- * Kartverket NN2000 ground height (DTM 1 m) plus an aim height above ground,
- * + 40 m because in Trondheim the geoid is ~40 m above the ellipsoid.
+ * (Nominatim). Target height `heightNN2000` in metres in NN2000: Kartverket's ground
+ * height (DTM 1 m) plus an aim height above ground. utils/camera.js converts it to an
+ * ellipsoidal height with the geoid model (h = H + N, utils/geoid.js).
  */
 export const CAMERA_VIEWS = {
   // Torvet (OSM relation 4681742), ground 9.6 m NN2000. Looking north over Midtbyen.
   trondheimCentre: {
     label: 'Midtbyen',
-    target: { longitude: 10.3953233, latitude: 63.4303661, height: 50 },
+    target: { longitude: 10.3953233, latitude: 63.4303661, heightNN2000: 9.6 },
     heading: 0,
     pitch: -45,
     range: 2000,
@@ -32,7 +33,7 @@ export const CAMERA_VIEWS = {
   // building. Looking east at the west front.
   nidarosdomen: {
     label: 'Nidarosdomen',
-    target: { longitude: 10.3969145, latitude: 63.4269308, height: 74 },
+    target: { longitude: 10.3969145, latitude: 63.4269308, heightNN2000: 33.8 },
     heading: 90,
     pitch: -15,
     range: 350,
@@ -42,7 +43,7 @@ export const CAMERA_VIEWS = {
   // across the river at the wharf row, with Gamle Bybro on the right.
   bakklandet: {
     label: 'Bakklandet',
-    target: { longitude: 10.4032895, latitude: 63.4288329, height: 51 },
+    target: { longitude: 10.4032895, latitude: 63.4288329, heightNN2000: 10.7 },
     heading: 110,
     pitch: -20,
     range: 400,
@@ -59,8 +60,8 @@ export const MOBILE_QUERY = '(max-width: 640px)';
 export const TILESET_SETTINGS = {
   // Cesium OSM Buildings (ion asset 96188). Licence: ODbL, © OpenStreetMap contributors.
   buildings: {
-    // VITE_BUILDINGS_SSE overrides it for scripts/benchmark-buildings.js only.
-    maximumScreenSpaceError: Number(env.VITE_BUILDINGS_SSE) || 16,
+    // VITE_BUILDINGS_SSE (env.js) overrides it for scripts/benchmark-buildings.js only.
+    maximumScreenSpaceError: 16,
   },
 };
 
@@ -69,7 +70,7 @@ export const TILESET_SETTINGS = {
  * `npm run data:shelters`: WGS84 lon/lat, no height (points are clamped to terrain).
  */
 export const SHELTERS = {
-  url: `${BASE_URL}data/shelters.geojson`,
+  url: `${DATA_URL}shelters.geojson`,
   credit: 'Tilfluktsrom: © DSB, NLOD',
   style: {
     pixelSize: 12,
@@ -89,7 +90,7 @@ export const NEAREST = {
    * `npm run data:network`. Compact format, see utils/osmNetwork.js.
    */
   network: {
-    url: `${BASE_URL}data/walking-network.json`,
+    url: `${DATA_URL}walking-network.json`,
     credit: 'Walking network: © OpenStreetMap contributors, ODbL',
   },
   /**
@@ -97,7 +98,7 @@ export const NEAREST = {
    * `npm run data:passages` for the committed walking-network.json snapshot.
    */
   passages: {
-    url: `${BASE_URL}data/building-passages.json`,
+    url: `${DATA_URL}building-passages.json`,
   },
   /**
    * Longest straight connector (geodesic metres) from a click to its nearest network
@@ -122,7 +123,7 @@ export const NEAREST = {
  * Results of scripts/analyse-grid.js (npm run analysis:grid), shown in the
  * "How it works" panel.
  */
-export const ANALYSIS_SUMMARY_URL = `${BASE_URL}data/analysis-summary.json`;
+export const ANALYSIS_SUMMARY_URL = `${DATA_URL}analysis-summary.json`;
 
 /** The "My GIS module" homepage, relative to this app's subpath. */
 export const HOME_URL = '../';

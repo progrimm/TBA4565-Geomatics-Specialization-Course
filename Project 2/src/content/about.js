@@ -12,7 +12,8 @@ export const QUESTION =
 /**
  * @typedef {{name: string, url: string}} Link
  * @typedef {{name: string, provider: string, format: string, crs: string,
- *   date?: 'sheltersFetched' | 'networkTimestamp' | 'passagesTimestamp', dateLabel?: string,
+ *   date?: 'sheltersFetched' | 'networkTimestamp' | 'passagesTimestamp' | 'geoidFetched' |
+ *   'terrainChecked', dateLabel?: string,
  *   use: string, licence: Link, source: Link}} DataSource
  *   date: key into the run-time dates (see useAboutFacts); omitted for streamed services.
  */
@@ -56,6 +57,31 @@ export const DATA_SOURCES = [
     source: { name: 'Overpass API', url: 'https://wiki.openstreetmap.org/wiki/Overpass_API' },
   },
   {
+    name: 'Height reference model NN2000:2025 (HREF2025A)',
+    provider: 'Kartverket',
+    format: 'GeoTIFF lattice, 0.02° × 0.04°, cut to the study area',
+    crs: 'EUREF89 lon/lat; N = NN2000 above the GRS80 ellipsoid',
+    date: 'geoidFetched',
+    dateLabel: 'downloaded',
+    use: 'Converting between NN2000 and ellipsoidal heights (h = H + N).',
+    licence: { name: 'CC BY 4.0', url: 'https://creativecommons.org/licenses/by/4.0/' },
+    source: {
+      name: 'Geonorge',
+      url: 'https://kartkatalog.geonorge.no/metadata/uuid/384ce432-8da7-4cfa-9afa-140d2b6c29d3',
+    },
+  },
+  {
+    name: 'Terrain model DTM 1',
+    provider: 'Kartverket, via the height API',
+    format: 'Point heights from the 1 m terrain model',
+    crs: 'NN2000 heights',
+    date: 'terrainChecked',
+    dateLabel: 'queried',
+    use: 'Ground heights of the camera targets, and the reference for checking Cesium World Terrain.',
+    licence: { name: 'CC BY 4.0', url: 'https://creativecommons.org/licenses/by/4.0/' },
+    source: { name: 'Height API', url: 'https://ws.geonorge.no/hoydedata/v1/' },
+  },
+  {
     name: 'Cesium OSM Buildings',
     provider: 'Cesium, from OpenStreetMap',
     format: '3D Tiles, streamed (ion asset 96188)',
@@ -93,8 +119,11 @@ export const CONCEPTS = [
   },
   {
     title: 'Ellipsoidal and NN2000 heights',
-    text: 'Cesium measures height above the WGS84 ellipsoid (h). Norwegian maps give height above the geoid in NN2000 (H). They differ by the geoid height N, h = H + N, which is about 40 m in Trondheim. The camera views use a constant 40 m, not a geoid model.',
-    link: { name: 'NN2000 height (EPSG:5941)', url: 'https://epsg.io/5941' },
+    text: 'Cesium measures height above the WGS84 ellipsoid (h). Norwegian maps give NN2000 heights (H), measured from a reference surface close to mean sea level. They differ by the geoid height N: h = H + N. Kartverket’s model gives N = 39.0–39.9 m across the study area; the app interpolates it bilinearly, which matches Kartverket’s transformation service to within 1 mm. It is used for the camera targets and the clicked point’s height.',
+    link: {
+      name: 'Kartverket: height reference model',
+      url: 'https://www.kartverket.no/til-lands/posisjon/href-hoydereferansemodell',
+    },
   },
   {
     title: 'Earth-centred and local frames',
@@ -153,7 +182,7 @@ export const LIMITATIONS = [
   'The network is an OpenStreetMap snapshot: missing or wrongly tagged paths change the result. Stairs, barriers and opening hours are not considered.',
   'Distance, not time: slopes are ignored, so an uphill walk counts the same as a flat one.',
   'Snapping uses the nearest vertex, not the nearest point on a street, and the connectors are straight lines.',
-  'Heights are ellipsoidal; the camera views use a constant geoid height of 40 m.',
+  'Cesium World Terrain is much coarser than Kartverket’s 1 m terrain model (see the terrain check), so a clicked ground height is approximate, and so is how the 3D view drapes routes.',
   'The routes cover the shelters’ area plus about 1 km. Clicks outside it are refused.',
 ];
 
@@ -184,7 +213,17 @@ export function keyResults(summary) {
       label: 'Through a building',
       value: `${percent(summary.throughBuildings.share)} of routes (${summary.throughBuildings.count})`,
     },
+    ...(summary.terrainCheck ? [terrainRow(summary.terrainCheck)] : []),
   ];
+}
+
+/** The terrain check (scripts/check-terrain.js) as a result row. */
+function terrainRow({ points, meanDifferenceMetres, rmseMetres, maxAbsDifferenceMetres }) {
+  const metres = (value) => `${value.toFixed(1)} m`;
+  return {
+    label: 'Terrain check',
+    value: `Cesium World Terrain − Kartverket DTM 1 at ${points} points on the network: mean ${metres(meanDifferenceMetres)}, RMSE ${metres(rmseMetres)}, largest ${metres(maxAbsDifferenceMetres)}`,
+  };
 }
 
 /**

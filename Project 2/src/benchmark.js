@@ -1,4 +1,9 @@
-import { Cesium3DTileset, EllipsoidTerrainProvider } from 'cesium';
+import {
+  Cartographic,
+  Cesium3DTileset,
+  EllipsoidTerrainProvider,
+  sampleTerrainMostDetailed,
+} from 'cesium';
 import { CAMERA_VIEWS } from './config.js';
 import { toCameraOptions } from './utils/camera.js';
 import { summarizeFrames } from './utils/frameStats.js';
@@ -36,7 +41,8 @@ function allTilesLoaded(scene) {
 }
 
 /**
- * Benchmark hooks for scripts/benchmark-buildings.js, exposed as window.__benchmark.
+ * Measurement hooks for scripts/benchmark-buildings.js and scripts/check-terrain.js,
+ * exposed as window.__benchmark.
  * Only bundled when the app is built with VITE_BENCHMARK=true.
  * @param {import('cesium').Viewer} viewer
  * @returns {() => void} call to stop polling and remove window.__benchmark.
@@ -64,6 +70,17 @@ export function installBenchmark(viewer) {
   window.__benchmark = {
     /** @returns {number | undefined} ms from navigation to the first fully loaded view. */
     firstLoadMs: () => firstLoadMs,
+    /**
+     * Terrain heights at the most detailed level Cesium World Terrain has, independent
+     * of what the view has loaded (for scripts/check-terrain.js).
+     * @param {number[][]} lonLats - WGS84 [lon, lat] in degrees.
+     * @returns {Promise<(number | null)[]>} metres above the WGS84 ellipsoid.
+     */
+    sampleTerrain: async (lonLats) => {
+      const positions = lonLats.map(([lon, lat]) => Cartographic.fromDegrees(lon, lat));
+      const sampled = await sampleTerrainMostDetailed(viewer.terrainProvider, positions);
+      return sampled.map((position) => position.height ?? null);
+    },
     /** @returns {number} memory held by the loaded tiles of all tilesets, bytes. */
     tilesetBytes: () =>
       tilesetsIn(scene).reduce((sum, tileset) => sum + tileset.totalMemoryUsageInBytes, 0),
