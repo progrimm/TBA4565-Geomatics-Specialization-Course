@@ -1,4 +1,6 @@
-# Project 1: Comparing Map Projections
+# Project 1: A New World Map
+
+Comparing map projections: Mercator vs Eckert IV. The app was called Projection Lab until 2026-11-08. The site path stays `/projection-lab/`, so existing links keep working.
 
 ## Purpose
 

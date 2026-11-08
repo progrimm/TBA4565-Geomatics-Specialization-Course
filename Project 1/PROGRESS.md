@@ -291,3 +291,10 @@ After each completed step, update the current checkpoint and append a short date
 - The next agreed action and whether the learner has authorized starting it.
 
 Only mark a phase complete once its behavior has been verified. Keep unfinished work explicit rather than treating code that was merely written as working code.
+### 2026-11-08: Renamed to A New World Map
+
+- **Changed:** the app is now called A New World Map (was Projection Lab): the page `<title>` and description in [index.html](frontend/index.html), the heading in [App.tsx](frontend/src/App.tsx), the homepage card and the READMEs. The site path stays `/projection-lab/`, so existing links keep working. The backend package name in `pyproject.toml` (`projection-lab-backend`) was left as it is, because changing it means regenerating `uv.lock` for an internal name.
+- **Verification:**
+  - frontend lint and build pass;
+  - after the root `npm run site:build`, served under the Pages prefix, a Playwright round trip (homepage → app → "← My GIS module") passed at 1600 × 900 and 390 × 844: `<title>` and `<h1>` read "A New World Map", with 0 console errors and 0 responses ≥ 400; the screenshots were inspected.
+- **Not verified:** the Docker Compose stack (the backend did not change).

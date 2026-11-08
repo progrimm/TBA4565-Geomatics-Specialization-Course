@@ -1,4 +1,4 @@
-# Project 1, Projection Lab: report evidence
+# Project 1, A New World Map: report evidence
 
 Collected 2026-10-29 by the `report-evidence` skill. Source material, not prose.
 

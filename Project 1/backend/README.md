@@ -1,4 +1,4 @@
-# Projection Lab Backend
+# A New World Map: backend
 
 FastAPI serves PostGIS country GeoJSON and projection-area statistics for all 177 countries. The frontend accesses it through Vite's `/api` development proxy.
 

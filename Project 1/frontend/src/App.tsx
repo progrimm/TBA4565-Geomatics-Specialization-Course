@@ -185,7 +185,7 @@ function App() {
       </a>
       <header className="app-header">
         <h1>
-          Projection <span>Lab</span>
+          A New World <span>Map</span>
         </h1>
         <span className="header-note">Mercator / Eckert IV</span>
       </header>
