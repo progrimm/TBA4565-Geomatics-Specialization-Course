@@ -13,9 +13,9 @@ The module covers three themes: GI science, GI systems and 3D GIS. Instead of on
 \toprule
 Project & Theme & Question \\
 \midrule
-Projection Lab & GI science & How much does the Mercator projection inflate the area of each country, and how does this depend on latitude? \\
+A New World Map & GI science & How much does the Mercator projection inflate the area of each country, and how does this depend on latitude? \\
 \addlinespace
-Trondheim 3D & GI systems & Where is the nearest public shelter in Trondheim, and how far is the walk? \\
+Trondheim Shelter Analysis & GI systems & Where is the nearest public shelter in Trondheim, and how far is the walk? \\
 \addlinespace
 3DGS Viewer & 3D GIS & What does a 3D Gaussian splat file contain, and can it be opened and inspected in a browser without a server? \\
 \bottomrule
@@ -24,7 +24,7 @@ Trondheim 3D & GI systems & Where is the nearest public shelter in Trondheim, an
 
 \subsection{Way of working}\label{sec:work}
 
-I used the AI coding assistant Claude Code \citep{claudecode} in all three projects, in two different roles. In the first part of Projection Lab, it worked as a tutor: I wrote and ran the code myself, and the assistant explained concepts and pointed me to the official documentation. In the rest of the work, the assistant wrote the code, while I set the goals, chose between alternatives, reviewed the changes and checked the result in the browser.
+I used the AI coding assistant Claude Code \citep{claudecode} in all three projects, in two different roles. In the first part of A New World Map, it worked as a tutor: I wrote and ran the code myself, and the assistant explained concepts and pointed me to the official documentation. In the rest of the work, the assistant wrote the code, while I set the goals, chose between alternatives, reviewed the changes and checked the result in the browser.
 
 I chose this way of working on purpose. AI assistants are becoming a normal part of software development, and I expect that working in geomatics will involve directing and reviewing such tools as much as writing code by hand. I wanted to experience GIS development from this perspective, while still learning the underlying technologies well enough to understand and check what the assistant made.
 
@@ -41,13 +41,13 @@ All data used in the projects is open, except my own splat capture in \cref{sec:
 \toprule
 Dataset & Source & Licence & Description \\
 \midrule
-Admin 0 Countries, 1:110m & Natural Earth \citep{naturalearth} & Public domain & Boundaries of 177 countries (GeoJSON, WGS 84). Used in Projection Lab. \\
+Admin 0 Countries, 1:110m & Natural Earth \citep{naturalearth} & Public domain & Boundaries of 177 countries (GeoJSON, WGS 84). Used in A New World Map. \\
 \addlinespace
-Public shelters (\emph{Tilfluktsrom -- offentlige}) & DSB, WFS service \citep{dsbwfs} & NLOD 2.0 & 12 shelters with number, capacity and address, in EUREF89 / UTM zone 32N. Used in Trondheim 3D. \\
+Public shelters (\emph{Tilfluktsrom -- offentlige}) & DSB, WFS service \citep{dsbwfs} & NLOD 2.0 & 12 shelters with number, capacity and address, in EUREF89 / UTM zone 32N. Used in Trondheim Shelter Analysis. \\
 \addlinespace
-Walking network & OpenStreetMap, Overpass API \citep{overpass} & ODbL & Footways, paths and streets around the shelters: 164\,294 nodes and 32\,944 ways. Used in Trondheim 3D. \\
+Walking network & OpenStreetMap, Overpass API \citep{overpass} & ODbL & Footways, paths and streets around the shelters: 164\,294 nodes and 32\,944 ways. Used in Trondheim Shelter Analysis. \\
 \addlinespace
-Cesium World Terrain and Cesium OSM Buildings & Cesium ion & Cesium ion terms; buildings ODbL & Global terrain and OpenStreetMap buildings, streamed as needed. Used in Trondheim 3D. \\
+Cesium World Terrain and Cesium OSM Buildings & Cesium ion & Cesium ion terms; buildings ODbL & Global terrain and OpenStreetMap buildings, streamed as needed. Used in Trondheim Shelter Analysis. \\
 \addlinespace
 Splat files & Own capture; ``SOAR Telescope'' by L.~Cerda \citep{soar} & Not published; CC BY 4.0 & Test files for the 3DGS Viewer. The app itself ships no data. \\
 \bottomrule
@@ -63,14 +63,14 @@ Splat files & Own capture; ``SOAR Telescope'' by L.~Cerda \citep{soar} & Not pub
 \toprule
 Tool & Project & Function \\
 \midrule
-D3 (d3-geo) \citep{d3} & Projection Lab & Projects and draws the world map in the browser \\
-PostgreSQL with PostGIS & Projection Lab & Stores the countries; geodesic area with \code{ST\_Area} \citep{postgis-starea} \\
-GDAL ogr2ogr \citep{gdal-ogr2ogr} & Projection Lab & Imports the GeoJSON file into PostGIS \\
-pyproj \citep{pyproj} and Shapely \citep{shapely} & Projection Lab & Spherical, Mercator and Eckert IV areas \\
-FastAPI \citep{fastapi} & Projection Lab & Web API between the database and the map \\
-Docker Compose & Projection Lab & Runs the database, the API and the web server together \\
-CesiumJS \citep{cesiumjs} and Cesium ion & Trondheim 3D & 3D globe, terrain and streaming of 3D Tiles \\
-proj4js & Trondheim 3D & Converts the shelters from EPSG:25832 to WGS 84 \\
+D3 (d3-geo) \citep{d3} & A New World Map & Projects and draws the world map in the browser \\
+PostgreSQL with PostGIS & A New World Map & Stores the countries; geodesic area with \code{ST\_Area} \citep{postgis-starea} \\
+GDAL ogr2ogr \citep{gdal-ogr2ogr} & A New World Map & Imports the GeoJSON file into PostGIS \\
+pyproj \citep{pyproj} and Shapely \citep{shapely} & A New World Map & Spherical, Mercator and Eckert IV areas \\
+FastAPI \citep{fastapi} & A New World Map & Web API between the database and the map \\
+Docker Compose & A New World Map & Runs the database, the API and the web server together \\
+CesiumJS \citep{cesiumjs} and Cesium ion & Trondheim Shelter Analysis & 3D globe, terrain and streaming of 3D Tiles \\
+proj4js & Trondheim Shelter Analysis & Converts the shelters from EPSG:25832 to WGS 84 \\
 Spark \citep{spark} and three.js \citep{threejs} & 3DGS Viewer & Renders Gaussian splats with WebGL \\
 React, Vite & All & User interface and build \\
 Vitest, pytest, ESLint & All & Unit tests and code checks \\

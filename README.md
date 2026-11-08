@@ -7,18 +7,18 @@ Learning projects for the NTNU course TBA4565 Specialization Subject: GI Science
 | Path | Project | Theme | Question |
 | --- | --- | --- | --- |
 | `/` | [Homepage](site/) | | "My GIS module": introduction, one card per project, credits |
-| `/projection-lab/` | [Project 1: Projection Lab](Project%201/README.md) | GI Science | How much does the Mercator projection inflate country areas, and how well does sec²φ predict it? |
-| `/trondheim-3d/` | [Project 2: Trondheim 3D](Project%202/README.md) | GI Systems | Where is the nearest public shelter in Trondheim, and how far is the walk? |
+| `/projection-lab/` | [Project 1: A New World Map](Project%201/README.md) | GI Science | How much does the Mercator projection inflate country areas, and how well does sec²φ predict it? |
+| `/trondheim-3d/` | [Project 2: Trondheim Shelter Analysis](Project%202/README.md) | GI Systems | Where is the nearest public shelter in Trondheim, and how far is the walk? |
 | `/3dgs-viewer/` | [Project 3: 3DGS Viewer](Project%203/README.md) | 3D GIS | What can you learn from a 3D Gaussian splat file without uploading it anywhere? |
 
 Every app links back to the homepage with the same "← My GIS module" link and uses the same favicon.
 
 ## The Projects
 
-**Project 1: Projection Lab.** React, TypeScript and d3-geo draw one morphing Mercator/Eckert IV map of 177 Natural Earth countries. Projection-area statistics for every country are precomputed with pyproj and Shapely, stored in PostGIS and served by FastAPI. A distortion-vs-latitude chart compares each country's Mercator inflation with sec²φ. The full stack runs with Docker Compose. On Pages it runs in a **static data mode**, reading JSON exported from the same queries.
+**Project 1: A New World Map.** React, TypeScript and d3-geo draw one morphing Mercator/Eckert IV map of 177 Natural Earth countries. Projection-area statistics for every country are precomputed with pyproj and Shapely, stored in PostGIS and served by FastAPI. A distortion-vs-latitude chart compares each country's Mercator inflation with sec²φ. The full stack runs with Docker Compose. On Pages it runs in a **static data mode**, reading JSON exported from the same queries.
 [README](Project%201/README.md) · [progress log](Project%201/PROGRESS.md) · [results](Project%201/results/summary.md) · [frontend](Project%201/frontend/README.md) · [backend](Project%201/backend/README.md) · [database](Project%201/database/README.md)
 
-**Project 2: Trondheim 3D.** A CesiumJS and React app with terrain, OSM buildings and DSB public shelters. You click the ground to get the nearest shelter by walking distance along the OSM network.
+**Project 2: Trondheim Shelter Analysis.** A CesiumJS and React app with terrain, OSM buildings and DSB public shelters. You click the ground to get the nearest shelter by walking distance along the OSM network.
 [README](Project%202/README.md)
 
 **Project 3: 3DGS Viewer.** A static viewer built with Spark and three.js. You open your own 3D Gaussian splat file (PLY, SPZ, .splat, .ksplat, SOG) to see its file facts, fix its up axis and measure a two-point distance. Nothing is uploaded.
