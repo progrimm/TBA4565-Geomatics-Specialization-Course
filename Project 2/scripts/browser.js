@@ -17,7 +17,7 @@ export const launchBrowser = () =>
  * @returns {string} the created directory.
  */
 export function screenshotDir(arg) {
-  const dir = arg ?? join(tmpdir(), 'trondheim-3d-checks');
+  const dir = arg ?? join(tmpdir(), 'shelter-analysis-checks');
   mkdirSync(dir, { recursive: true });
   return dir;
 }

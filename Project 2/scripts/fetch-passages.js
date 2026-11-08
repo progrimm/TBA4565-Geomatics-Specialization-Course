@@ -30,7 +30,7 @@ async function overpass(query) {
     const response = await fetch(OVERPASS_URL, {
       method: 'POST',
       body: new URLSearchParams({ data: query }),
-      headers: { 'User-Agent': 'trondheim-3d (NTNU TBA4565 student project)' },
+      headers: { 'User-Agent': 'trondheim-shelter-analysis (NTNU TBA4565 student project)' },
     });
     if (response.ok) return response.json();
     const busy = [429, 502, 503, 504].includes(response.status);

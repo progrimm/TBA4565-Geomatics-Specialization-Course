@@ -1,4 +1,4 @@
-# Trondheim Cesium – Project Guide for Claude
+# Trondheim Shelter Analysis (was Trondheim 3D) – Project Guide for Claude
 
 ## About this project
 
@@ -154,4 +154,8 @@ public/data/ – static datasets (shelters GeoJSON, walking network JSON)
   (node indices of the 2026-10-27 network, guarded by its OSM timestamp); highlighted with a
   Cesium3DTileStyle on `elementType`/`elementId`. Dark crisis-tool design replaced the NTNU look
   (tokens in style.css; route and passages green `#3ddc84`). Browser-checked at 1600 and 390 px.
+- 2026-11-08: renamed to "Trondheim Shelter Analysis" (subtitle "Walking access to public shelters");
+  site path stays `/trondheim-3d/`. Plan for the next steps: neutral dark design + "How it works"
+  explainer, NN2000 heights from a geoid model, coverage/capacity (SSB 250 m grid), Tobler walk
+  time, external route validation (approved 2026-11-08).
   (Update this section after each module.)

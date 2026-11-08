@@ -129,10 +129,6 @@ body {
   letter-spacing: -0.01em;
 }
 
-.panel__accent {
-  color: var(--accent);
-}
-
 .panel__kicker {
   margin: 2px 0 0;
   color: var(--text-muted);

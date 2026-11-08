@@ -1,7 +1,9 @@
-# Trondheim 3D
+# Trondheim Shelter Analysis
 
-A CesiumJS web app for exploring Trondheim, Norway, in 3D: global terrain, OpenStreetMap
-buildings and DSB public shelters (tilfluktsrom) with click-to-inspect attributes.
+A CesiumJS web app that analyses walking access to DSB's public shelters (tilfluktsrom) in
+Trondheim, Norway, on a 3D city model: global terrain, OpenStreetMap buildings and the shelters
+with click-to-inspect attributes. Called Trondheim 3D until 2026-11-08. The site path stays
+`/trondheim-3d/`, so existing links keep working.
 
 It is a learning project for TBA4565 at NTNU. The scope is deliberately small and the focus is
 on code quality: linting, tests, error handling and CI.
@@ -684,3 +686,14 @@ succeeded. The same Chromium clicks on the live site (production token) gave the
 1600 × 900 and 390 × 844, with no responses ≥ 400 and no console errors or warnings.
 
 Not verified: screen-reader announcement of the popup and Safari (no macOS or iOS device).
+
+Rename (2026-11-08): the app is now **Trondheim Shelter Analysis** (was Trondheim 3D), with the
+subtitle "Walking access to public shelters". The site path stays `/trondheim-3d/`, so existing
+links keep working. Changed: the page `<title>` and description, the panel heading, the homepage
+card, and the Overpass User-Agent (`trondheim-shelter-analysis`). The panel design is unchanged.
+Lint, format check, tests (12 files, 70 tests) and build pass. After the root `npm run site:build`,
+served under the Pages prefix, a Playwright round trip (homepage → app → "← My GIS module")
+passed at 1600 × 900 and 390 × 844: `<title>` and panel heading read "Trondheim Shelter
+Analysis", no console errors and no responses ≥ 400. Screenshots inspected: at 1600 px the title
+wraps to two lines in the 268 px panel; at 390 px it fits on one line and the collapsed sheet
+still starts below the credits.

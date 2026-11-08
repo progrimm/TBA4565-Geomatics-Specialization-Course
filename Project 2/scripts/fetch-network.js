@@ -39,7 +39,7 @@ out skel qt;`;
 const response = await fetch(OVERPASS_URL, {
   method: 'POST',
   body: new URLSearchParams({ data: query }),
-  headers: { 'User-Agent': 'trondheim-3d (NTNU TBA4565 student project)' },
+  headers: { 'User-Agent': 'trondheim-shelter-analysis (NTNU TBA4565 student project)' },
 });
 if (!response.ok) {
   throw new Error(`Overpass request failed: ${response.status} ${response.statusText}`);

@@ -16,10 +16,8 @@ export default function ControlPanel({ children }) {
       </a>
       <header className="panel__header">
         <div>
-          <h1 className="panel__title">
-            Trondheim <span className="panel__accent">3D</span>
-          </h1>
-          <p className="panel__kicker">Emergency shelter finder</p>
+          <h1 className="panel__title">Trondheim Shelter Analysis</h1>
+          <p className="panel__kicker">Walking access to public shelters</p>
         </div>
         <button
           className="panel__toggle"

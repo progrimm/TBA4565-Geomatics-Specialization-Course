@@ -1,4 +1,4 @@
-# Project 2, Trondheim 3D: report evidence
+# Project 2, Trondheim Shelter Analysis: report evidence
 
 Collected 2026-10-29 by the `report-evidence` skill. Source material, not prose.
 
@@ -72,7 +72,7 @@ The GI Science / GI Systems classification is my judgement. The course labels Pr
 - Dataset landing page or metadata record (e.g. Geonorge): **missing** from the repo.
 
 ### 3.2 OSM walking network
-- Source: OpenStreetMap via the Overpass API, `https://overpass-api.de/api/interpreter`, POST with User-Agent "trondheim-3d (NTNU TBA4565 student project)". (`scripts/fetch-network.js`)
+- Source: OpenStreetMap via the Overpass API, `https://overpass-api.de/api/interpreter`, POST with User-Agent "trondheim-shelter-analysis (NTNU TBA4565 student project; "trondheim-3d" until 2026-11-08)". (`scripts/fetch-network.js`)
 - Licence: ODbL 1.0, © OpenStreetMap contributors. On-screen credit "Walking network: © OpenStreetMap contributors, ODbL" under the nearest-shelter result. (`src/config.js` `NEAREST.network.credit`; `README.md` §Attribution)
 - Query: `way["highway"~"^(footway|path|pedestrian|steps|living_street|residential|service|unclassified|road|track|cycleway|tertiary|tertiary_link|secondary|secondary_link|primary|primary_link|trunk_link)$"]["foot"!~"^(no|private)$"]["access"!~"^(no|private)$"](bbox); (._;>;); out skel qt;`. Motorways and trunk roads are excluded. (`scripts/fetch-network.js` L19–60)
 - Bbox: the shelters' bounding box plus a margin of 0.01° lat and 0.02° lon (≈1.1 km N–S, ≈1 km E–W at 63.4°N). Stored bbox: S 63.3496445, W 10.3132241, N 63.4477223, E 10.5155293. (`scripts/fetch-network.js` `MARGIN`; **[re-run]** read from `public/data/walking-network.json`)
@@ -106,7 +106,7 @@ The GI Science / GI Systems classification is my judgement. The course labels Pr
 - Stack: Vite 8.3.5, React 19.3.1 (JSX, no TypeScript), CesiumJS 1.146.0 (pinned), proj4 2.22.0 and fast-xml-parser 5.11.2 (data prep), ESLint 10.13.0 with react-hooks, Prettier 3.9.10, Vitest 5.0.5, Playwright 1.64.1 (check scripts), vite-plugin-static-copy (copies the Cesium Workers/Assets/Widgets/ThirdParty). Node ≥ 24. (`package.json`; `vite.config.js`)
 - Design choices: plain React with refs and no Resium, so the Cesium API stays visible; Cesium code lives in `layers/` and `viewer.js`, not in components; every async load returns `undefined` on error and posts a message; `requestRenderMode` is on. (`README.md` §Project Structure; `CLAUDE.md` §Code standards)
 - Fully static: no backend and no routing API. GraphHopper was considered and rejected because the API key would be public in the bundle and the free daily quota could run out. (`README.md` §Nearest shelter "Why in the browser"; commit `895a1b0`)
-- Hosting: GitHub Pages under `/trondheim-3d/`, with a relative Vite `base: './'`. Built by the root `npm run site:build` (`scripts/build-site.mjs`) and deployed by `.github/workflows/pages.yml`, which passes the repository secret `CESIUM_ION_TOKEN` as `VITE_CESIUM_TOKEN`. (`vite.config.js`; `../README.md` §Deployment; `.github/workflows/pages.yml`)
+- Hosting: GitHub Pages under `/trondheim-3d/` (path kept after the 2026-11-08 rename), with a relative Vite `base: './'`. Built by the root `npm run site:build` (`scripts/build-site.mjs`) and deployed by `.github/workflows/pages.yml`, which passes the repository secret `CESIUM_ION_TOKEN` as `VITE_CESIUM_TOKEN`. (`vite.config.js`; `../README.md` §Deployment; `.github/workflows/pages.yml`)
 - Token security: Vite embeds the token in the bundle, so it is public by design. The production token has only the `assets:read` scope and Allowed URLs `https://progrimm.github.io`. (`README.md` §Cesium ion Token and Security; `../README.md` L49)
 - Benchmark code is included only when `VITE_BENCHMARK=true`. **[re-run]** `grep -rl __benchmark dist/assets` found nothing in the normal build. (`src/hooks/useCesiumViewer.js`)
 
