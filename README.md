@@ -6,7 +6,7 @@ Learning projects for the NTNU course TBA4565 Specialization Subject: GI Science
 
 | Path | Project | Theme | Question |
 | --- | --- | --- | --- |
-| `/` | [Homepage](site/) | | "My GIS module": introduction, one card per project, credits |
+| `/` | [Homepage](site/) | | "My GIS module": title, an "About the module" list (goal of the module, working with AI, public site), one card per project |
 | `/projection-lab/` | [Project 1: A New World Map](Project%201/README.md) | GI Science | How much does the Mercator projection inflate country areas, and how well does sec²φ predict it? |
 | `/trondheim-3d/` | [Project 2: Trondheim Shelter Analysis](Project%202/README.md) | GI Systems | Where is the nearest public shelter in Trondheim, and how far is the walk? |
 | `/3dgs-viewer/` | [Project 3: 3DGS Viewer](Project%203/README.md) | 3D GIS | What can you learn from a 3D Gaussian splat file without uploading it anywhere? |

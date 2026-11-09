@@ -112,6 +112,44 @@ a:hover {
   border-top: 2px solid var(--blue);
 }
 
+.hero__intro-heading {
+  margin: 0 0 0.6em;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 650;
+  font-stretch: 85%;
+  color: var(--blue);
+}
+
+/* Small square markers in NTNU blue instead of default bullets. */
+.about {
+  display: grid;
+  gap: 0.55em;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.about li {
+  position: relative;
+  padding-left: 1.25em;
+}
+
+.about li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 7px;
+  height: 7px;
+  background: var(--blue);
+}
+
+.about strong {
+  color: var(--ink);
+  font-weight: 650;
+}
+
 .hero__globe {
   position: relative;
   margin: 0;
